@@ -9,6 +9,9 @@ WriteMakefile(
     CONFIGURE_REQUIRES => {
         'Alien::gdal' => 0
     },
+    PREREQ_PM => {
+        'FFI::Platypus' => 0
+    },
     TEST_REQUIRES => {
         'Test::More' => 0,
     }
