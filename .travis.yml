@@ -15,7 +15,6 @@ before_install:
 #  - cpanm PkgConfig
 #  - cpanm Sort::Versions
   - cpanm https://github.com/shawnlaffan/perl-alien-gdal.git
-#  - svn co https://github.com/shawnlaffan/perl-alien-gdal.git/trunk alien-gdal; cd alien-gdal; perl Makefile.PL; make install; cd ..
 
 install:
   - cpanm -v --installdeps --notest .
