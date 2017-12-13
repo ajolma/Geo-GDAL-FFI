@@ -1,32 +1,52 @@
 package Geo::GDAL::FFI;
 
 use v5.10;
+use strict;
+use warnings;
 use Carp;
 use Alien::gdal;
 use FFI::Platypus;
 
-my $ffi = FFI::Platypus->new;
-$ffi->lib(Alien::gdal->dynamic_libs);
-
-$ffi->attach( 'CSLAddString' => ['opaque', 'string'] => 'opaque' );
-
-$ffi->attach( 'GDALAllRegister' => [] => 'void' );
-$ffi->attach( 'GDALGetDescription' => ['opaque'] => 'string' );
-$ffi->attach( 'GDALGetDriverCount' => [] => 'int' );
-$ffi->attach( 'GDALGetDriver' => ['int'] => 'opaque' );
-$ffi->attach( 'GDALGetDriverByName' => ['string'] => 'opaque' );
-$ffi->attach( 'GDALCreate' => ['opaque', 'string', 'int', 'int', 'int', 'int', 'opaque'] => 'opaque' );
-$ffi->attach( 'GDALVersionInfo' => ['string'] => 'string' );
-$ffi->attach( 'GDALOpen' => ['string', 'int'] => 'opaque' );
-$ffi->attach( 'GDALOpenEx' => ['string', 'unsigned int', 'opaque', 'opaque', 'opaque'] => 'opaque' );
-$ffi->attach( 'GDALGetRasterXSize' => ['opaque'] => 'int' );
-$ffi->attach( 'GDALDatasetGetLayer' => ['opaque', 'int'] => 'opaque' );
-$ffi->attach( 'OGR_L_ResetReading' => ['opaque'] => 'void' );
-$ffi->attach( 'OGR_L_GetNextFeature' => ['opaque'] => 'opaque' );
-
 sub new {
     my $class = shift;
-    return bless {}, $class;
+    my $ffi = FFI::Platypus->new;
+    $ffi->load_custom_type('::StringPointer' => 'string_pointer');
+    $ffi->lib(Alien::gdal->dynamic_libs);
+
+    $ffi->type('(int,int,string)->void' => 'CPLErrorHandler');
+    $ffi->attach('CPLPushErrorHandler' => ['CPLErrorHandler'] => 'void' );
+
+    # these should come from a type helper (TBD)
+    # perhaps the string_pointer is good for this?
+    #$ffi->attach( 'CPLStringPointer' => [] => 'opaque' );
+    #$ffi->attach( 'CPLStringPointer2String' => ['opaque'] => 'string' );
+    #$ffi->attach( 'CPLStringPointerFree' => ['opaque'] => 'void' );
+    
+    $ffi->attach( 'CSLAddString' => ['opaque', 'string'] => 'opaque' );
+
+    $ffi->attach( 'GDALAllRegister' => [] => 'void' );
+    $ffi->attach( 'GDALGetDescription' => ['opaque'] => 'string' );
+    $ffi->attach( 'GDALGetDriverCount' => [] => 'int' );
+    $ffi->attach( 'GDALGetDriver' => ['int'] => 'opaque' );
+    $ffi->attach( 'GDALGetDriverByName' => ['string'] => 'opaque' );
+    $ffi->attach( 'GDALCreate' => ['opaque', 'string', 'int', 'int', 'int', 'int', 'opaque'] => 'opaque' );
+    $ffi->attach( 'GDALVersionInfo' => ['string'] => 'string' );
+    $ffi->attach( 'GDALOpen' => ['string', 'int'] => 'opaque' );
+    $ffi->attach( 'GDALOpenEx' => ['string', 'unsigned int', 'opaque', 'opaque', 'opaque'] => 'opaque' );
+    $ffi->attach( 'GDALGetRasterXSize' => ['opaque'] => 'int' );
+    $ffi->attach( 'GDALDatasetGetLayer' => ['opaque', 'int'] => 'opaque' );
+    $ffi->attach( 'OGR_L_ResetReading' => ['opaque'] => 'void' );
+    $ffi->attach( 'OGR_L_GetNextFeature' => ['opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_G_CreateGeometry' => ['int'] => 'opaque' );
+    $ffi->attach( 'OGR_G_ExportToWkt' => ['opaque', 'string_pointer'] => 'int' );
+    my $self = {ffi => $ffi};
+    return bless $self, $class;
+}
+
+sub PushErrorHandler {
+    my ($self, $handler) = @_;
+    $self->{CPLErrorHandler} = $self->{ffi}->closure($handler);
+    CPLPushErrorHandler($self->{CPLErrorHandler});
 }
 
 *AllRegister = *GDALAllRegister;
@@ -109,6 +129,9 @@ our %data_type = (
     );
 
 package Geo::GDAL::FFI::Driver;
+use v5.10;
+use strict;
+use warnings;
 use Carp;
 
 sub GetDescription {
@@ -127,13 +150,15 @@ sub Create {
     for my $key (keys %$options) {
         $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options->{$key}");
     }
-    say STDERR "$width, $height, $bands, $dt";
     my $ds = Geo::GDAL::FFI::GDALCreate($$self, $name, $width, $height, $bands, $dt, $o);
     # how is error raised?
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
 
 package Geo::GDAL::FFI::Dataset;
+use v5.10;
+use strict;
+use warnings;
 use Carp;
 
 sub Width {
@@ -162,6 +187,109 @@ sub GetNextFeature {
 }
 
 package Geo::GDAL::FFI::Feature;
+use v5.10;
+use strict;
+use warnings;
 use Carp;
+
+package Geo::GDAL::FFI::Geometry;
+use v5.10;
+use strict;
+use warnings;
+use Carp;
+
+our %geometry_type = (
+    Unknown => 0,
+    Point => 1,
+    LineString => 2,
+    Polygon => 3,
+    MultiPoint => 4,
+    MultiLineString => 5,
+    MultiPolygon => 6,
+    GeometryCollection => 7,
+    CircularString => 8,
+    CompoundCurve => 9,
+    CurvePolygon => 10,
+    MultiCurve => 11,
+    MultiSurface => 12,
+    Curve => 13,
+    Surface => 14,
+    PolyhedralSurface => 15,
+    TIN => 16,
+    Triangle => 17,
+    None => 100,
+    LinearRing => 101,
+    CircularStringZ => 1008,
+    CompoundCurveZ => 1009,
+    CurvePolygonZ => 1010,
+    MultiCurveZ => 1011,
+    MultiSurfaceZ => 1012,
+    CurveZ => 1013,
+    SurfaceZ => 1014,
+    PolyhedralSurfaceZ => 1015,
+    TINZ => 1016,
+    TriangleZ => 1017,
+    PointM => 2001,
+    LineStringM => 2002,
+    PolygonM => 2003,
+    MultiPointM => 2004,
+    MultiLineStringM => 2005,
+    MultiPolygonM => 2006,
+    GeometryCollectionM => 2007,
+    CircularStringM => 2008,
+    CompoundCurveM => 2009,
+    CurvePolygonM => 2010,
+    MultiCurveM => 2011,
+    MultiSurfaceM => 2012,
+    CurveM => 2013,
+    SurfaceM => 2014,
+    PolyhedralSurfaceM => 2015,
+    TINM => 2016,
+    TriangleM => 2017,
+    PointZM => 3001,
+    LineStringZM => 3002,
+    PolygonZM => 3003,
+    MultiPointZM => 3004,
+    MultiLineStringZM => 3005,
+    MultiPolygonZM => 3006,
+    GeometryCollectionZM => 3007,
+    CircularStringZM => 3008,
+    CompoundCurveZM => 3009,
+    CurvePolygonZM => 3010,
+    MultiCurveZM => 3011,
+    MultiSurfaceZM => 3012,
+    CurveZM => 3013,
+    SurfaceZM => 3014,
+    PolyhedralSurfaceZM => 3015,
+    TINZM => 3016,
+    TriangleZM => 3017,
+    Point25D => 0x80000001,
+    LineString25D => 0x80000002,
+    Polygon25D => 0x80000003,
+    MultiPoint25D => 0x80000004,
+    MultiLineString25D => 0x80000005,
+    MultiPolygon25D => 0x80000006,
+    GeometryCollection25D => 0x80000007
+    );
+
+sub new {
+    my ($class, $type) = @_;
+    my $tmp = $geometry_type{$type};
+    confess "Unknown constant: $type\n" unless defined $tmp;
+    $type = $tmp;
+    my $g = Geo::GDAL::FFI::OGR_G_CreateGeometry($type);
+    return bless \$g, $class;
+}
+
+sub ExportToWkt {
+    my ($self) = @_;
+    #my $wkt = Geo::GDAL::FFI::CPLStringPointer();
+    my $wkt = '';
+    Geo::GDAL::FFI::OGR_G_ExportToWkt($$self, \$wkt);
+    #my $retval = Geo::GDAL::FFI::CPLStringPointer2String($wkt);
+    #Geo::GDAL::FFI::CPLStringPointerFree($wkt);
+    #return $retval;
+    return $wkt;
+}
 
 1;
