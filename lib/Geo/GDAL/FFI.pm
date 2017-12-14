@@ -7,6 +7,8 @@ use Carp;
 use Alien::gdal;
 use FFI::Platypus;
 
+our @errors;
+
 sub new {
     my $class = shift;
     my $ffi = FFI::Platypus->new;
@@ -33,20 +35,39 @@ sub new {
     $ffi->attach( 'GDALVersionInfo' => ['string'] => 'string' );
     $ffi->attach( 'GDALOpen' => ['string', 'int'] => 'opaque' );
     $ffi->attach( 'GDALOpenEx' => ['string', 'unsigned int', 'opaque', 'opaque', 'opaque'] => 'opaque' );
+    $ffi->attach( 'GDALClose' => ['opaque'] => 'void' );
     $ffi->attach( 'GDALGetRasterXSize' => ['opaque'] => 'int' );
+    $ffi->attach( 'OSRNewSpatialReference' => ['string'] => 'opaque' );
+
+    $ffi->attach( 'OSRDestroySpatialReference' => ['opaque'] => 'void' );
+    $ffi->attach( 'OSRRelease' => ['opaque'] => 'void' );
+    $ffi->attach( 'OSRClone' => ['opaque'] => 'opaque' );
+    
+    $ffi->attach( 'OSRImportFromEPSG' => ['opaque', 'int'] => 'int' );
     $ffi->attach( 'GDALDatasetGetLayer' => ['opaque', 'int'] => 'opaque' );
+    $ffi->attach( 'GDALDatasetCreateLayer' => ['opaque', 'string', 'opaque', 'int', 'opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_L_SyncToDisk' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_L_GetLayerDefn' => ['opaque'] => 'opaque' );
     $ffi->attach( 'OGR_L_ResetReading' => ['opaque'] => 'void' );
     $ffi->attach( 'OGR_L_GetNextFeature' => ['opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_L_CreateFeature' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_FD_Create' => ['string'] => 'opaque' );
+    $ffi->attach( 'OGR_FD_Release' => ['opaque'] => 'void' );
+    $ffi->attach( 'OGR_FD_GetGeomType' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_F_Create' => ['opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_F_Destroy' => ['opaque'] => 'void' );
     $ffi->attach( 'OGR_G_CreateGeometry' => ['int'] => 'opaque' );
+    $ffi->attach( 'OGR_G_DestroyGeometry' => ['opaque'] => 'void' );
     $ffi->attach( 'OGR_G_ExportToWkt' => ['opaque', 'string_pointer'] => 'int' );
-    my $self = {ffi => $ffi};
-    return bless $self, $class;
-}
-
-sub PushErrorHandler {
-    my ($self, $handler) = @_;
-    $self->{CPLErrorHandler} = $self->{ffi}->closure($handler);
+    my $self = {};
+    $self->{ffi} = $ffi;
+    $self->{CPLErrorHandler} = $ffi->closure(
+        sub { 
+            my ($err, $err_num, $msg) = @_;
+            push @errors, $msg;
+        });
     CPLPushErrorHandler($self->{CPLErrorHandler});
+    return bless $self, $class;
 }
 
 *AllRegister = *GDALAllRegister;
@@ -82,9 +103,14 @@ sub Open {
     my ($name, $access) = @_;
     $access //= 'ReadOnly';
     my $tmp = $access{$access};
-    confess "Unknown constant: $access\n" unless defined $tmp;
+    croak "Unknown constant: $access\n" unless defined $tmp;
     $access = $tmp;
     my $ds = GDALOpen($name, $access);
+    if (@errors) {
+        my $msg = join("\n", @errors);
+        @errors = ();
+        croak $msg;
+    }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
 
@@ -110,10 +136,15 @@ sub OpenEx {
     $options //= 0;
     $files //= 0;
     my $ds = GDALOpenEx($name, $flags, $drivers, $options, $files);
+    if (@errors) {
+        my $msg = join("\n", @errors);
+        @errors = ();
+        croak $msg;
+    }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
 
-our %data_type = (
+our %data_types = (
     Unknown => 0,
     Byte => 1,
     UInt16 => 2,
@@ -143,7 +174,7 @@ sub Create {
     my $self = shift;
     my ($name, $width, $height, $bands, $dt, $options) = @_;
     $dt //= 'Byte';
-    my $tmp = $Geo::GDAL::FFI::data_type{$dt};
+    my $tmp = $Geo::GDAL::FFI::data_types{$dt};
     confess "Unknown constant: $dt\n" unless defined $tmp;
     $dt = $tmp;
     my $o = 0;
@@ -151,8 +182,45 @@ sub Create {
         $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options->{$key}");
     }
     my $ds = Geo::GDAL::FFI::GDALCreate($$self, $name, $width, $height, $bands, $dt, $o);
-    # how is error raised?
+    if (@errors) {
+        my $msg = join("\n", @errors);
+        @errors = ();
+        croak $msg;
+    }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
+}
+
+package Geo::GDAL::FFI::SpatialReference;
+use v5.10;
+use strict;
+use warnings;
+use Carp;
+
+sub new {
+    my ($class, $wkt) = @_;
+    my $sr = Geo::GDAL::FFI::OSRNewSpatialReference($wkt);
+    if (@errors) {
+        my $msg = join("\n", @errors);
+        @errors = ();
+        croak $msg;
+    }
+    return bless \$sr, $class;
+}
+
+sub DESTROY {
+    my $self = shift;
+    Geo::GDAL::FFI::OSRDestroySpatialReference($$self);
+}
+
+sub Clone {
+    my $self = shift;
+    my $s = Geo::GDAL::FFI::OSRClone($$self);
+    return bless \$s, 'Geo::GDAL::FFI::SpatialReference';
+}
+
+sub ImportFromEPSG {
+    my ($self, $code) = @_;
+    Geo::GDAL::FFI::OSRImportFromEPSG($$self, $code);
 }
 
 package Geo::GDAL::FFI::Dataset;
@@ -160,6 +228,11 @@ use v5.10;
 use strict;
 use warnings;
 use Carp;
+
+sub DESTROY {
+    my $self = shift;
+    Geo::GDAL::FFI::GDALClose($$self);
+}
 
 sub Width {
     my $self = shift;
@@ -172,8 +245,42 @@ sub GetLayer {
     return bless \$l, 'Geo::GDAL::FFI::Layer';
 }
 
+sub CreateLayer {
+    my ($self, $name, $sr, $gt, $options) = @_;
+    my $tmp = $Geo::GDAL::FFI::Geometry::types{$gt};
+    confess "Unknown constant: $gt\n" unless defined $tmp;
+    $gt = $tmp;
+    my $o = 0;
+    for my $key (keys %$options) {
+        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options->{$key}");
+    }
+    $sr = Geo::GDAL::FFI::OSRClone($$sr);
+    my $l = Geo::GDAL::FFI::GDALDatasetCreateLayer($$self, $name, $sr, $gt, $o);
+    Geo::GDAL::FFI::OSRRelease($sr);
+    if (@errors) {
+        my $msg = join("\n", @errors);
+        @errors = ();
+        croak $msg;
+    }
+    return bless \$l, 'Geo::GDAL::FFI::Layer';
+}
+
 package Geo::GDAL::FFI::Layer;
+use v5.10;
+use strict;
+use warnings;
 use Carp;
+
+sub DESTROY {
+    my $self = shift;
+    Geo::GDAL::FFI::OGR_L_SyncToDisk($$self);
+}
+
+sub GetDefn {
+    my $self = shift;
+    my $d = Geo::GDAL::FFI::OGR_L_GetLayerDefn($$self);
+    return bless \$d, 'Geo::GDAL::FFI::FeatureDefn';
+}
 
 sub ResetReading {
     my $self = shift;
@@ -186,11 +293,53 @@ sub GetNextFeature {
     return bless \$f, 'Geo::GDAL::FFI::Feature';
 }
 
+sub CreateFeature {
+    my ($self, $f) = @_;
+    Geo::GDAL::FFI::OGR_L_CreateFeature($$self, $$f);
+}
+
+package Geo::GDAL::FFI::FeatureDefn;
+use v5.10;
+use strict;
+use warnings;
+use Carp;
+
+sub new {
+    my ($class, $name) = @_;
+    my $f = Geo::GDAL::FFI::OGR_FD_Create($name);
+    return bless \$f, $class;
+}
+
+sub DESTROY {
+    my $self = shift;
+    #Geo::GDAL::FFI::OGR_FD_Release($$self);
+}
+
+sub GetGeomType {
+    my $self = shift;
+    my $t = Geo::GDAL::FFI::OGR_FD_GetGeomType($$self);
+    return $Geo::GDAL::FFI::Geometry::types_reverse{$t};
+}
+
 package Geo::GDAL::FFI::Feature;
 use v5.10;
 use strict;
 use warnings;
 use Carp;
+
+our %defns = ();
+
+sub new {
+    my ($class, $def) = @_;
+    $defns{$def} = $def;
+    my $f = Geo::GDAL::FFI::OGR_F_Create($$def);
+    return bless \$f, $class;
+}
+
+sub DESTROY {
+    my $self = shift;
+    Geo::GDAL::FFI::OGR_F_Destroy($$self);
+}
 
 package Geo::GDAL::FFI::Geometry;
 use v5.10;
@@ -198,7 +347,7 @@ use strict;
 use warnings;
 use Carp;
 
-our %geometry_type = (
+our %types = (
     Unknown => 0,
     Point => 1,
     LineString => 2,
@@ -272,13 +421,20 @@ our %geometry_type = (
     GeometryCollection25D => 0x80000007
     );
 
+our %types_reverse = reverse %types;
+
 sub new {
     my ($class, $type) = @_;
-    my $tmp = $geometry_type{$type};
+    my $tmp = $types{$type};
     confess "Unknown constant: $type\n" unless defined $tmp;
     $type = $tmp;
     my $g = Geo::GDAL::FFI::OGR_G_CreateGeometry($type);
     return bless \$g, $class;
+}
+
+sub DESTROY {
+    my ($self) = @_;
+    Geo::GDAL::FFI::OGR_G_DestroyGeometry($$self);
 }
 
 sub ExportToWkt {
