@@ -7,6 +7,10 @@ use Carp;
 use Alien::gdal;
 use FFI::Platypus;
 
+use constant Warning => 2;
+use constant Failure => 3;
+use constant Fatal => 4;
+
 our @errors;
 
 sub new {
@@ -23,10 +27,20 @@ sub new {
     #$ffi->attach( 'CPLStringPointer' => [] => 'opaque' );
     #$ffi->attach( 'CPLStringPointer2String' => ['opaque'] => 'string' );
     #$ffi->attach( 'CPLStringPointerFree' => ['opaque'] => 'void' );
-    
-    $ffi->attach( 'CSLAddString' => ['opaque', 'string'] => 'opaque' );
 
+    $ffi->attach( 'CSLDestroy' => ['opaque'] => 'void' );
+    $ffi->attach( 'CSLAddString' => ['opaque', 'string'] => 'opaque' );
+    $ffi->attach( 'CSLCount' => ['opaque'] => 'int' );
+    $ffi->attach( 'CSLGetField' => ['opaque', 'int'] => 'string' );
+    
     $ffi->attach( 'GDALAllRegister' => [] => 'void' );
+
+    $ffi->attach( 'GDALGetMetadataDomainList' => ['opaque'] => 'opaque' );
+    $ffi->attach( 'GDALGetMetadata' => ['opaque', 'string'] => 'opaque' );
+    $ffi->attach( 'GDALSetMetadata' => ['opaque', 'opaque', 'string'] => 'int' );
+    $ffi->attach( 'GDALGetMetadataItem' => ['opaque', 'string', 'string'] => 'string' );
+    $ffi->attach( 'GDALSetMetadataItem' => ['opaque', 'string', 'string', 'string'] => 'int' );
+
     $ffi->attach( 'GDALGetDescription' => ['opaque'] => 'string' );
     $ffi->attach( 'GDALGetDriverCount' => [] => 'int' );
     $ffi->attach( 'GDALGetDriver' => ['int'] => 'opaque' );
@@ -38,14 +52,14 @@ sub new {
     $ffi->attach( 'GDALClose' => ['opaque'] => 'void' );
     $ffi->attach( 'GDALGetRasterXSize' => ['opaque'] => 'int' );
     $ffi->attach( 'OSRNewSpatialReference' => ['string'] => 'opaque' );
-
     $ffi->attach( 'OSRDestroySpatialReference' => ['opaque'] => 'void' );
     $ffi->attach( 'OSRRelease' => ['opaque'] => 'void' );
     $ffi->attach( 'OSRClone' => ['opaque'] => 'opaque' );
-    
     $ffi->attach( 'OSRImportFromEPSG' => ['opaque', 'int'] => 'int' );
+    
     $ffi->attach( 'GDALDatasetGetLayer' => ['opaque', 'int'] => 'opaque' );
     $ffi->attach( 'GDALDatasetCreateLayer' => ['opaque', 'string', 'opaque', 'int', 'opaque'] => 'opaque' );
+    
     $ffi->attach( 'OGR_L_SyncToDisk' => ['opaque'] => 'int' );
     $ffi->attach( 'OGR_L_GetLayerDefn' => ['opaque'] => 'opaque' );
     $ffi->attach( 'OGR_L_ResetReading' => ['opaque'] => 'void' );
@@ -159,11 +173,69 @@ our %data_types = (
     CFloat64 => 11
     );
 
+package Geo::GDAL::FFI::Object;
+use v5.10;
+use strict;
+use warnings;
+use Carp;
+
+sub GetMetadataDomainList {
+    my ($self) = @_;
+    my $csl = Geo::GDAL::FFI::GDALGetMetadataDomainList($$self);
+    my @list;
+    for my $i (0..Geo::GDAL::FFI::CSLCount($csl)-1) {
+        push @list, Geo::GDAL::FFI::CSLGetField($csl, $i);
+    }
+    Geo::GDAL::FFI::CSLDestroy($csl);
+    return wantarray ? @list : \@list;
+}
+
+sub GetMetadata {
+    my ($self, $domain) = @_;
+    $domain //= "";
+    my $csl = Geo::GDAL::FFI::GDALGetMetadata($$self, $domain);
+    my %md;
+    for my $i (0..Geo::GDAL::FFI::CSLCount($csl)-1) {
+        my ($name, $value) = split /=/, Geo::GDAL::FFI::CSLGetField($csl, $i);
+        $md{$name} = $value;
+    }
+    #Geo::GDAL::FFI::CSLDestroy($csl);
+    return wantarray ? %md : \%md;
+}
+
+sub SetMetadata {
+    my ($self, $metadata, $domain) = @_;
+    my $csl = 0;
+    for my $name (keys %$metadata) {
+        $csl = Geo::GDAL::FFI::CSLAddString($csl, "$name=$metadata->{$name}");
+    }
+    $domain //= "";
+    my $err = Geo::GDAL::FFI::GDALSetMetadata($$self, $csl, $domain);
+    croak "" if $err == Geo::GDAL::FFI::Failure;
+    warn "" if $err == Geo::GDAL::FFI::Warning;
+}
+
+sub GetMetadataItem {
+    my ($self, $name, $domain) = @_;
+    return Geo::GDAL::FFI::GDALGetMetadataItem($$self, $name, $domain);
+}
+
+sub SetMetadataItem {
+    my ($self, $name, $value, $domain) = @_;
+    Geo::GDAL::FFI::GDALSetMetadataItem($$self, $name, $value, $domain);
+    if (@errors) {
+        my $msg = join("\n", @errors);
+        @errors = ();
+        croak $msg;
+    }
+}
+
 package Geo::GDAL::FFI::Driver;
 use v5.10;
 use strict;
 use warnings;
 use Carp;
+use base 'Geo::GDAL::FFI::Object';
 
 sub GetDescription {
     my $self = shift;
@@ -173,6 +245,9 @@ sub GetDescription {
 sub Create {
     my $self = shift;
     my ($name, $width, $height, $bands, $dt, $options) = @_;
+    $width //= 256;
+    $height //= 256;
+    $bands //= 1;
     $dt //= 'Byte';
     my $tmp = $Geo::GDAL::FFI::data_types{$dt};
     confess "Unknown constant: $dt\n" unless defined $tmp;
@@ -228,6 +303,7 @@ use v5.10;
 use strict;
 use warnings;
 use Carp;
+use base 'Geo::GDAL::FFI::Object';
 
 sub DESTROY {
     my $self = shift;
@@ -270,6 +346,7 @@ use v5.10;
 use strict;
 use warnings;
 use Carp;
+use base 'Geo::GDAL::FFI::Object';
 
 sub DESTROY {
     my $self = shift;

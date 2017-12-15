@@ -19,8 +19,13 @@ if(1){
 
 # test CSL
 if(1){
+    ok(Geo::GDAL::FFI::CSLCount(0) == 0, "empty CSL");
+    my @list;
     my $csl = Geo::GDAL::FFI::CSLAddString(0, 'foo');
-    # actual test missing
+    for my $i (0..Geo::GDAL::FFI::CSLCount($csl)-1) {
+        push @list, Geo::GDAL::FFI::CSLGetField($csl, $i);
+    }
+    ok(@list == 1 && $list[0] eq 'foo', "list with one string: '@list'");
 }
 
 # test VersionInfo
@@ -36,6 +41,20 @@ if(1){
     for my $i (0..$n-1) {
         #say STDERR $gdal->GetDriver($i)->GetDescription;
     }
+}
+
+# test metadata
+if(1){
+    my $dr = $gdal->GetDriverByName('NITF');
+    my $ds = $dr->Create('/vsimem/test.nitf');
+    my @d = $ds->GetMetadataDomainList;
+    ok(@d > 0, "GetMetadataDomainList");
+    @d = $ds->GetMetadata('NITF_METADATA');
+    ok(@d > 0, "GetMetadata");
+    $ds->SetMetadata({a => 'b'});
+    @d = $ds->GetMetadata();
+    ok("@d" eq "a b", "GetMetadata");
+    #say STDERR join(',', @d);
 }
 
 # test creating a shapefile
