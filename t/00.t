@@ -57,6 +57,19 @@ if(1){
     #say STDERR join(',', @d);
 }
 
+# test band
+if(1){
+    my $dr = $gdal->GetDriverByName('GTiff');
+    my $ds = $dr->Create('/vsimem/test.tiff');
+    my $b = $ds->GetBand;
+    #say STDERR $b;
+    my @size = $b->GetBlockSize;
+    #say STDERR "block size = @size";
+    ok($size[0] == 256 && $size[1] == 32, "Band block size.");
+}
+#done_testing();
+#exit;
+
 # test creating a shapefile
 if(1){
     my $dr = $gdal->GetDriverByName('ESRI Shapefile');

@@ -11,6 +11,9 @@ use constant Warning => 2;
 use constant Failure => 3;
 use constant Fatal => 4;
 
+use constant Read => 0;
+use constant Write => 1;
+
 our @errors;
 
 sub new {
@@ -51,6 +54,14 @@ sub new {
     $ffi->attach( 'GDALOpenEx' => ['string', 'unsigned int', 'opaque', 'opaque', 'opaque'] => 'opaque' );
     $ffi->attach( 'GDALClose' => ['opaque'] => 'void' );
     $ffi->attach( 'GDALGetRasterXSize' => ['opaque'] => 'int' );
+    $ffi->attach( 'GDALGetRasterYSize' => ['opaque'] => 'int' );
+    $ffi->attach( 'GDALGetRasterCount' => ['opaque'] => 'int' );
+    $ffi->attach( 'GDALGetRasterBand' => ['opaque', 'int'] => 'opaque' );
+
+    $ffi->attach( 'GDALGetRasterDataType' => ['opaque'] => 'int' );
+    $ffi->attach( 'GDALGetBlockSize' => ['opaque', 'int*', 'int*'] => 'void' );
+    $ffi->attach( 'GDALRasterIO' => ['opaque', 'int', 'int', 'int', 'int', 'int', 'opaque', 'int', 'int', 'int', 'int', 'int'] => 'int' );
+    
     $ffi->attach( 'OSRNewSpatialReference' => ['string'] => 'opaque' );
     $ffi->attach( 'OSRDestroySpatialReference' => ['opaque'] => 'void' );
     $ffi->attach( 'OSRRelease' => ['opaque'] => 'void' );
@@ -315,6 +326,23 @@ sub Width {
     return Geo::GDAL::FFI::GDALGetRasterXSize($$self);
 }
 
+sub Height {
+    my $self = shift;
+    return Geo::GDAL::FFI::GDALGetRasterYSize($$self);
+}
+
+sub GetBandCount {
+    my $self = shift;
+    return Geo::GDAL::FFI::GDALGetRasterCount($$self);
+}
+
+sub GetBand {
+    my ($self, $i) = @_;
+    $i //= 1;
+    my $b = Geo::GDAL::FFI::GDALGetRasterBand($$self, $i);
+    return bless \$b, 'Geo::GDAL::FFI::Band';
+}
+
 sub GetLayer {
     my ($self, $i) = @_;
     my $l = Geo::GDAL::FFI::GDALDatasetGetLayer($$self, $i);
@@ -339,6 +367,43 @@ sub CreateLayer {
         croak $msg;
     }
     return bless \$l, 'Geo::GDAL::FFI::Layer';
+}
+
+package Geo::GDAL::FFI::Band;
+use v5.10;
+use strict;
+use warnings;
+use Carp;
+
+sub GetDataType {
+    my $self = shift;
+    Geo::GDAL::FFI::GDALGetRasterDataType($$self);
+}
+
+sub GetBlockSize {
+    my $self = shift;
+    my ($w, $h);
+    Geo::GDAL::FFI::GDALGetBlockSize($$self, \$w, \$h);
+    return ($w, $h);
+}
+
+sub Read {
+    my ($self, $xoff, $yoff, $xsize, $ysize, $bufxsize, $bufysize) = @_;
+    my $data;
+    unless (defined $xsize) {
+        Geo::GDAL::FFI::GDALReadBlock($$self, $xoff, $yoff, $data);
+    } else {
+        my $t = Geo::GDAL::FFI::GDALGetRasterDataType($$self);
+        $bufxsize = $xsize;
+        $bufysize = $ysize;
+        Geo::GDAL::FFI::GDALRasterIO($$self, Geo::GDAL::FFI::Read, $xoff, $yoff, $xsize, $ysize, $data, $bufxsize, $bufysize, $t, 0, 0);
+    }
+}
+
+sub Write {
+    my ($self, $xoff, $yoff, $xsize, $ysize, $data, $bufxsize, $bufysize) = @_;
+    my $t = Geo::GDAL::FFI::GDALGetRasterDataType($$self);
+    Geo::GDAL::FFI::GDALRasterIO($$self, Geo::GDAL::FFI::Write, $xoff, $yoff, $xsize, $ysize, $data, $bufxsize, $bufysize, $t, 0, 0);
 }
 
 package Geo::GDAL::FFI::Layer;
