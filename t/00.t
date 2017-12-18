@@ -4,6 +4,7 @@ use warnings;
 use Carp;
 use Geo::GDAL::FFI;
 use Test::More;
+use Data::Dumper;
 
 my $gdal = Geo::GDAL::FFI->new();
 
@@ -66,6 +67,24 @@ if(1){
     my @size = $b->GetBlockSize;
     #say STDERR "block size = @size";
     ok($size[0] == 256 && $size[1] == 32, "Band block size.");
+    my @data = (
+        [1, 2, 3],
+        [4, 5, 6]
+        );
+    $b->Write(\@data);
+    my $data = $b->Read(0, 0, 3, 2);
+    is_deeply(\@data, $data, "Raster i/o");
+
+    $ds->FlushCache;
+    my $block = $b->ReadBlock();
+    for my $ln (@$block) {
+        #say STDERR "@$ln";
+    }
+    ok(@{$block->[0]} == 256 && @$block == 32 && $block->[1][2] == 6, "Read block ($block->[1][2])");
+    $block->[1][2] = 7;
+    $b->WriteBlock($block);
+    $block = $b->ReadBlock();
+    ok($block->[1][2] == 7, "Write block ($block->[1][2])");
 }
 #done_testing();
 #exit;
