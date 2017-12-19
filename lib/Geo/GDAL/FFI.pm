@@ -25,12 +25,6 @@ sub new {
     $ffi->type('(int,int,string)->void' => 'CPLErrorHandler');
     $ffi->attach('CPLPushErrorHandler' => ['CPLErrorHandler'] => 'void' );
 
-    # these should come from a type helper (TBD)
-    # perhaps the string_pointer is good for this?
-    #$ffi->attach( 'CPLStringPointer' => [] => 'opaque' );
-    #$ffi->attach( 'CPLStringPointer2String' => ['opaque'] => 'string' );
-    #$ffi->attach( 'CPLStringPointerFree' => ['opaque'] => 'void' );
-
     $ffi->attach( 'CSLDestroy' => ['opaque'] => 'void' );
     $ffi->attach( 'CSLAddString' => ['opaque', 'string'] => 'opaque' );
     $ffi->attach( 'CSLCount' => ['opaque'] => 'int' );
@@ -59,11 +53,16 @@ sub new {
     $ffi->attach( 'GDALGetRasterBand' => ['opaque', 'int'] => 'opaque' );
     $ffi->attach( 'GDALFlushCache' => ['opaque'] => 'void' );
 
+    $ffi->attach( 'GDALGetProjectionRef' => ['opaque'] => 'string' );
+    $ffi->attach( 'GDALSetProjection' => ['opaque', 'string'] => 'int' );
+    $ffi->attach( 'GDALGetGeoTransform' => ['opaque', 'double[6]'] => 'int' );
+    $ffi->attach( 'GDALSetGeoTransform' => ['opaque', 'double[6]'] => 'int' );
+
     $ffi->attach( 'GDALGetRasterDataType' => ['opaque'] => 'int' );
     $ffi->attach( 'GDALGetBlockSize' => ['opaque', 'int*', 'int*'] => 'void' );
     $ffi->attach( 'GDALReadBlock' => ['opaque', 'int', 'int', 'string'] => 'int' );
     $ffi->attach( 'GDALWriteBlock' => ['opaque', 'int', 'int', 'string'] => 'int' );
-    $ffi->attach( 'GDALRasterIO' => ['opaque', 'int', 'int', 'int', 'int', 'int', 'string', 'int', 'int', 'int', 'int', 'int'] => 'int' );
+    $ffi->attach( 'GDALRasterIO' => [qw/opaque int int int int int string int int int int int/] => 'int' );
 
     $ffi->attach( 'OSRNewSpatialReference' => ['string'] => 'opaque' );
     $ffi->attach( 'OSRDestroySpatialReference' => ['opaque'] => 'void' );
@@ -337,6 +336,34 @@ sub Width {
 sub Height {
     my $self = shift;
     return Geo::GDAL::FFI::GDALGetRasterYSize($$self);
+}
+
+sub GetProjectionString {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::GDALGetProjectionRef($$self);
+}
+
+sub SetProjectionString {
+    my ($self, $proj) = @_;
+    my $e = Geo::GDAL::FFI::GDALSetProjection($$self, $proj);
+    if ($e != 0) {
+        my $msg = join("\n", @errors);
+        @errors = ();
+        croak $msg;
+    }
+}
+
+sub GetGeoTransform {
+    my ($self) = @_;
+    my $t = [0,0,0,0,0,0];
+    Geo::GDAL::FFI::GDALGetGeoTransform($$self, $t);
+    return wantarray ? @$t : $t;
+}
+
+sub SetGeoTransform {
+    my $self = shift;
+    my $t = @_ > 1 ? [@_] : shift;
+    Geo::GDAL::FFI::GDALSetGeoTransform($$self, $t);
 }
 
 sub GetBandCount {
@@ -649,12 +676,8 @@ sub DESTROY {
 
 sub ExportToWkt {
     my ($self) = @_;
-    #my $wkt = Geo::GDAL::FFI::CPLStringPointer();
     my $wkt = '';
     Geo::GDAL::FFI::OGR_G_ExportToWkt($$self, \$wkt);
-    #my $retval = Geo::GDAL::FFI::CPLStringPointer2String($wkt);
-    #Geo::GDAL::FFI::CPLStringPointerFree($wkt);
-    #return $retval;
     return $wkt;
 }
 

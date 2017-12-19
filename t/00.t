@@ -58,6 +58,28 @@ if(1){
     #say STDERR join(',', @d);
 }
 
+# test dataset
+
+if(1){
+    my $dr = $gdal->GetDriverByName('GTiff');
+    my $ds = $dr->Create('/vsimem/test.tiff');
+    my $ogc_wkt = 
+        'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS84",6378137,298.257223563,'.
+        'AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,'.
+        'AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,'.
+        'AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]';
+    $ds->SetProjectionString($ogc_wkt);
+    my $p = $ds->GetProjectionString;
+    ok($p eq $ogc_wkt, "Set/get projection string");
+    my $transform = [10,2,0,20,0,3];
+    $ds->SetGeoTransform($transform);
+    my $t = $ds->GetGeoTransform;
+    is_deeply($t, $transform, "Set/get geotransform");
+    
+}
+#done_testing();
+#exit;
+
 # test band
 if(1){
     my $dr = $gdal->GetDriverByName('GTiff');
@@ -86,8 +108,6 @@ if(1){
     $block = $b->ReadBlock();
     ok($block->[1][2] == 7, "Write block ($block->[1][2])");
 }
-#done_testing();
-#exit;
 
 # test creating a shapefile
 if(1){
