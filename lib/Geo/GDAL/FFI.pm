@@ -238,7 +238,52 @@ sub new {
 
     $ffi->attach( 'OGR_G_CreateGeometry' => ['int'] => 'opaque' );
     $ffi->attach( 'OGR_G_DestroyGeometry' => ['opaque'] => 'void' );
+    $ffi->attach( 'OGR_G_GetGeometryType' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_GetPointCount' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Is3D' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_IsMeasured' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_GetPointZM' => [qw/opaque int double* double* double* double*/] => 'void' );
+    $ffi->attach( 'OGR_G_SetPointZM' => [qw/opaque int double double double double/] => 'void' );
+    $ffi->attach( 'OGR_G_SetPointM' => [qw/opaque int double double double/] => 'void' );
+    $ffi->attach( 'OGR_G_SetPoint' => [qw/opaque int double double double/] => 'void' );
+    $ffi->attach( 'OGR_G_SetPoint_2D' => [qw/opaque int double double/] => 'void' );
+    $ffi->attach( 'OGR_G_ImportFromWkt' => ['opaque', 'string_pointer'] => 'int' );
     $ffi->attach( 'OGR_G_ExportToWkt' => ['opaque', 'string_pointer'] => 'int' );
+    $ffi->attach( 'OGR_G_TransformTo' => ['opaque', 'opaque'] => 'int' );
+
+    $ffi->attach( 'OGR_G_Segmentize' => ['opaque', 'double'] => 'void' );
+    $ffi->attach( 'OGR_G_Intersects' => [ 'opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Equals' => [ 'opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Disjoint' => [ 'opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Touches' => [ 'opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Crosses' => [ 'opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Within' => [ 'opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Contains' => [ 'opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Overlaps' => [ 'opaque', 'opaque'] => 'int' );
+
+    $ffi->attach( 'OGR_G_Boundary' => [ 'opaque' ] => 'opaque' );
+    $ffi->attach( 'OGR_G_ConvexHull' => [ 'opaque' ] => 'opaque' );
+    $ffi->attach( 'OGR_G_Buffer' => [ 'opaque', 'double', 'int' ] => 'opaque' );
+    $ffi->attach( 'OGR_G_Intersection' => [ 'opaque', 'opaque' ] => 'opaque' );
+    $ffi->attach( 'OGR_G_Union' => [ 'opaque', 'opaque' ] => 'opaque' );
+    $ffi->attach( 'OGR_G_UnionCascaded' => [ 'opaque' ] => 'opaque' );
+    $ffi->attach( 'OGR_G_PointOnSurface' => [ 'opaque' ] => 'opaque' );
+
+    $ffi->attach( 'OGR_G_Difference' => [ 'opaque', 'opaque' ] => 'opaque' );
+    $ffi->attach( 'OGR_G_SymDifference' => [ 'opaque', 'opaque' ] => 'opaque' );
+    $ffi->attach( 'OGR_G_Distance' => [ 'opaque', 'opaque'] => 'double' );
+    $ffi->attach( 'OGR_G_Distance3D' => [ 'opaque', 'opaque'] => 'double' );
+    $ffi->attach( 'OGR_G_Length' => [ 'opaque'] => 'double' );
+    $ffi->attach( 'OGR_G_Area' => [ 'opaque'] => 'double' );
+    $ffi->attach( 'OGR_G_Centroid' => [ 'opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Value' => [ 'opaque', 'double' ] => 'opaque' );
+
+    $ffi->attach( 'OGR_G_Empty' => [ 'opaque'] => 'void' );
+    $ffi->attach( 'OGR_G_IsEmpty' => [ 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_IsValid' => [ 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_IsSimple' => [ 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_IsRing' => [ 'opaque'] => 'int' );
+
 
     my $self = {};
     $self->{ffi} = $ffi;
@@ -378,6 +423,7 @@ sub GetDescription {
 sub Create {
     my $self = shift;
     my ($name, $width, $height, $bands, $dt, $options) = @_;
+    $name //= '';
     $width //= 256;
     $height //= 256;
     $bands //= 1;
@@ -751,7 +797,7 @@ sub DESTROY {
 sub GetGeomType {
     my $self = shift;
     my $t = Geo::GDAL::FFI::OGR_FD_GetGeomType($$self);
-    return $Geo::GDAL::FFI::Geometry::types_reverse{$t};
+    return $geometry_types_reverse{$t};
 }
 
 package Geo::GDAL::FFI::Feature;
@@ -792,6 +838,57 @@ sub new {
 sub DESTROY {
     my ($self) = @_;
     Geo::GDAL::FFI::OGR_G_DestroyGeometry($$self);
+}
+
+sub GetPointCount {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_G_GetPointCount($$self);
+}
+
+sub SetPoint {
+    my $self = shift;
+    my ($i, $x, $y, $z, $m);
+    $i = shift if Geo::GDAL::FFI::OGR_G_GetPointCount($$self) > 1;
+    if (@_ > 1) {
+        ($x, $y, $z, $m) = @_;
+    } elsif (@_) {
+        ($x, $y, $z, $m) = @{$_[0]};
+    }
+    $x //= 0;
+    $y //= 0;
+    my $is3d = Geo::GDAL::FFI::OGR_G_Is3D($$self);
+    my $ism = Geo::GDAL::FFI::OGR_G_IsMeasured($$self);
+    if ($is3d && $ism) {
+        $z //= 0;
+        $m //= 0;
+        Geo::GDAL::FFI::OGR_G_SetPointZM($$self, $i, $x, $y, $z, $m);
+    } elsif ($ism) {
+        $m //= 0;
+        Geo::GDAL::FFI::OGR_G_SetPointM($$self, $i, $x, $y, $m);
+    } elsif ($is3d) {
+        $z //= 0;
+        Geo::GDAL::FFI::OGR_G_SetPoint($$self, $i, $x, $y, $z);
+    } else {
+        Geo::GDAL::FFI::OGR_G_SetPoint_2D($$self, $i, $x, $y);
+    }
+}
+
+sub GetPoint {
+    my ($self, $i) = @_;
+    $i //= 0;
+    my ($x, $y, $z, $m) = (0, 0, 0, 0);
+    Geo::GDAL::FFI::OGR_G_GetPointZM($$self, $i, \$x, \$y, \$z, \$m);
+    my @point = ($x, $y);
+    push @point, $z if Geo::GDAL::FFI::OGR_G_Is3D($$self);
+    push @point, $m if Geo::GDAL::FFI::OGR_G_IsMeasured($$self);
+    return wantarray ? @point : \@point;
+}
+
+sub ImportFromWkt {
+    my ($self, $wkt) = @_;
+    $wkt //= '';
+    Geo::GDAL::FFI::OGR_G_ImportFromWkt($$self, \$wkt);
+    return $wkt;
 }
 
 sub ExportToWkt {

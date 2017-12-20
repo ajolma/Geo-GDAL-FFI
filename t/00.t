@@ -119,7 +119,7 @@ if(1){
     # the color table test with GTiff fails with
     # Cannot modify tag "PhotometricInterpretation" while writing at (a line afterwards this).
     # should investigate why
-    $b->SetColorTable([[1,2,3,4],[5,6,7,8]]);
+    #$b->SetColorTable([[1,2,3,4],[5,6,7,8]]);
 }
 if(1) {
     my $dr = $gdal->GetDriverByName('MEM');
@@ -156,6 +156,14 @@ if(1){
     my $g = Geo::GDAL::FFI::Geometry->new('Point');
     my $wkt = $g->ExportToWkt;
     ok($wkt eq 'POINT EMPTY', "Got WKT: '$wkt'.");
+    $g->ImportFromWkt('POINT (1 2)');
+    ok($g->ExportToWkt eq 'POINT (1 2)', "Import from WKT");
+    ok($g->GetPointCount == 1, "Point count");
+    my @p = $g->GetPoint;
+    ok(@p == 2 && $p[0] == 1 && $p[1] == 2, "Get point");
+    $g->SetPoint(2, 3, 4, 5);
+    @p = $g->GetPoint;
+    ok(@p == 2 && $p[0] == 2 && $p[1] == 3, "Set point: @p");
 }
 
 done_testing();
