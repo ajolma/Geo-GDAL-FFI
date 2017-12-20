@@ -231,13 +231,59 @@ sub new {
 
     $ffi->attach( 'OGR_FD_Create' => ['string'] => 'opaque' );
     $ffi->attach( 'OGR_FD_Release' => ['opaque'] => 'void' );
+    $ffi->attach( 'OGR_FD_GetGeomFieldCount' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_FD_GetFieldDefn' => ['opaque', 'int'] => 'opaque' );
+    $ffi->attach( 'OGR_FD_GetGeomFieldDefn' => ['opaque', 'int'] => 'opaque' );
+    $ffi->attach( 'OGR_FD_GetFieldIndex' => ['opaque', 'string'] => 'int' );
+    $ffi->attach( 'OGR_FD_AddFieldDefn' => ['opaque', 'opaque'] => 'void' );
+    $ffi->attach( 'OGR_FD_AddGeomFieldDefn' => ['opaque', 'opaque'] => 'void' );
+    $ffi->attach( 'OGR_FD_DeleteFieldDefn' => ['opaque', 'int'] => 'int' );
+    $ffi->attach( 'OGR_FD_DeleteGeomFieldDefn' => ['opaque', 'int'] => 'int' );
     $ffi->attach( 'OGR_FD_GetGeomType' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_FD_SetGeomType' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_FD_IsGeometryIgnored' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_FD_SetGeometryIgnored' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_FD_IsStyleIgnored' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_FD_SetStyleIgnored' => ['opaque', 'int'] => 'void' );
 
     $ffi->attach( 'OGR_F_Create' => ['opaque'] => 'opaque' );
     $ffi->attach( 'OGR_F_Destroy' => ['opaque'] => 'void' );
 
+    $ffi->attach( 'OGR_Fld_Create' => ['string', 'int'] => 'opaque' );
+    $ffi->attach( 'OGR_Fld_Destroy' => ['opaque'] => 'void' );
+    $ffi->attach( 'OGR_Fld_SetName' => ['opaque', 'string'] => 'void' );
+    $ffi->attach( 'OGR_Fld_GetNameRef' => ['opaque'] => 'string' );
+    $ffi->attach( 'OGR_Fld_GetType' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_Fld_SetType' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_Fld_GetSubType' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_Fld_SetSubType' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_Fld_GetJustify' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_Fld_SetJustify' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_Fld_GetWidth' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_Fld_SetWidth' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_Fld_GetPrecision' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_Fld_SetPrecision' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_Fld_IsIgnored' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_Fld_SetIgnored' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_Fld_IsNullable' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_Fld_SetNullable' => ['opaque', 'int'] => 'void' );
+
+    $ffi->attach( 'OGR_GFld_Create' => ['string', 'int'] => 'opaque' );
+    $ffi->attach( 'OGR_GFld_Destroy' => ['opaque'] => 'void' );
+    $ffi->attach( 'OGR_GFld_SetName' => ['opaque', 'string'] => 'void' );
+    $ffi->attach( 'OGR_GFld_GetNameRef' => ['opaque'] => 'string' );
+    $ffi->attach( 'OGR_GFld_GetType' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_GFld_SetType' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_GFld_GetSpatialRef' => ['opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_GFld_SetSpatialRef' => ['opaque', 'opaque'] => 'void' );
+    $ffi->attach( 'OGR_GFld_IsNullable' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_GFld_SetNullable' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_GFld_IsIgnored' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_GFld_SetIgnored' => ['opaque', 'int'] => 'void' );
+
     $ffi->attach( 'OGR_G_CreateGeometry' => ['int'] => 'opaque' );
     $ffi->attach( 'OGR_G_DestroyGeometry' => ['opaque'] => 'void' );
+    $ffi->attach( 'OGR_G_Clone' => ['opaque'] => 'opaque' );
     $ffi->attach( 'OGR_G_GetGeometryType' => ['opaque'] => 'int' );
     $ffi->attach( 'OGR_G_GetPointCount' => ['opaque'] => 'int' );
     $ffi->attach( 'OGR_G_Is3D' => ['opaque'] => 'int' );
@@ -247,42 +293,48 @@ sub new {
     $ffi->attach( 'OGR_G_SetPointM' => [qw/opaque int double double double/] => 'void' );
     $ffi->attach( 'OGR_G_SetPoint' => [qw/opaque int double double double/] => 'void' );
     $ffi->attach( 'OGR_G_SetPoint_2D' => [qw/opaque int double double/] => 'void' );
+
+    $ffi->attach( 'OGR_G_GetGeometryCount' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_GetGeometryRef' => ['opaque', 'int'] => 'opaque' );
+    $ffi->attach( 'OGR_G_AddGeometry' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_RemoveGeometry' => ['opaque', 'int', 'int'] => 'int' );
+
     $ffi->attach( 'OGR_G_ImportFromWkt' => ['opaque', 'string_pointer'] => 'int' );
     $ffi->attach( 'OGR_G_ExportToWkt' => ['opaque', 'string_pointer'] => 'int' );
     $ffi->attach( 'OGR_G_TransformTo' => ['opaque', 'opaque'] => 'int' );
 
     $ffi->attach( 'OGR_G_Segmentize' => ['opaque', 'double'] => 'void' );
-    $ffi->attach( 'OGR_G_Intersects' => [ 'opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Equals' => [ 'opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Disjoint' => [ 'opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Touches' => [ 'opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Crosses' => [ 'opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Within' => [ 'opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Contains' => [ 'opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Overlaps' => [ 'opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Intersects' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Equals' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Disjoint' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Touches' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Crosses' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Within' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Contains' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Overlaps' => ['opaque', 'opaque'] => 'int' );
 
-    $ffi->attach( 'OGR_G_Boundary' => [ 'opaque' ] => 'opaque' );
-    $ffi->attach( 'OGR_G_ConvexHull' => [ 'opaque' ] => 'opaque' );
-    $ffi->attach( 'OGR_G_Buffer' => [ 'opaque', 'double', 'int' ] => 'opaque' );
-    $ffi->attach( 'OGR_G_Intersection' => [ 'opaque', 'opaque' ] => 'opaque' );
-    $ffi->attach( 'OGR_G_Union' => [ 'opaque', 'opaque' ] => 'opaque' );
-    $ffi->attach( 'OGR_G_UnionCascaded' => [ 'opaque' ] => 'opaque' );
-    $ffi->attach( 'OGR_G_PointOnSurface' => [ 'opaque' ] => 'opaque' );
+    $ffi->attach( 'OGR_G_Boundary' => ['opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_G_ConvexHull' => ['opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_G_Buffer' => ['opaque', 'double', 'int'] => 'opaque' );
+    $ffi->attach( 'OGR_G_Intersection' => ['opaque', 'opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_G_Union' => ['opaque', 'opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_G_UnionCascaded' => ['opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_G_PointOnSurface' => ['opaque'] => 'opaque' );
 
-    $ffi->attach( 'OGR_G_Difference' => [ 'opaque', 'opaque' ] => 'opaque' );
-    $ffi->attach( 'OGR_G_SymDifference' => [ 'opaque', 'opaque' ] => 'opaque' );
-    $ffi->attach( 'OGR_G_Distance' => [ 'opaque', 'opaque'] => 'double' );
-    $ffi->attach( 'OGR_G_Distance3D' => [ 'opaque', 'opaque'] => 'double' );
-    $ffi->attach( 'OGR_G_Length' => [ 'opaque'] => 'double' );
-    $ffi->attach( 'OGR_G_Area' => [ 'opaque'] => 'double' );
-    $ffi->attach( 'OGR_G_Centroid' => [ 'opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Value' => [ 'opaque', 'double' ] => 'opaque' );
+    $ffi->attach( 'OGR_G_Difference' => ['opaque', 'opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_G_SymDifference' => ['opaque', 'opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_G_Distance' => ['opaque', 'opaque'] => 'double' );
+    $ffi->attach( 'OGR_G_Distance3D' => ['opaque', 'opaque'] => 'double' );
+    $ffi->attach( 'OGR_G_Length' => ['opaque'] => 'double' );
+    $ffi->attach( 'OGR_G_Area' => ['opaque'] => 'double' );
+    $ffi->attach( 'OGR_G_Centroid' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Value' => ['opaque', 'double'] => 'opaque' );
 
-    $ffi->attach( 'OGR_G_Empty' => [ 'opaque'] => 'void' );
-    $ffi->attach( 'OGR_G_IsEmpty' => [ 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_IsValid' => [ 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_IsSimple' => [ 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_IsRing' => [ 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Empty' => ['opaque'] => 'void' );
+    $ffi->attach( 'OGR_G_IsEmpty' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_IsValid' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_IsSimple' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_IsRing' => ['opaque'] => 'int' );
 
 
     my $self = {};
@@ -882,6 +934,35 @@ sub GetPoint {
     push @point, $z if Geo::GDAL::FFI::OGR_G_Is3D($$self);
     push @point, $m if Geo::GDAL::FFI::OGR_G_IsMeasured($$self);
     return wantarray ? @point : \@point;
+}
+
+sub GetCount {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_G_GetGeometryCount($$self);
+}
+
+sub GetGeometry {
+    my ($self, $i) = @_;
+    my $g = Geo::GDAL::FFI::OGR_G_Clone(Geo::GDAL::FFI::OGR_G_GetGeometryRef($$self, $i));
+    return bless \$g, 'Geo::GDAL::FFI::Geometry';
+}
+
+sub AddGeometry {
+    my ($self, $g) = @_;
+    my $e = Geo::GDAL::FFI::OGR_G_GetGeometryRef($$self, $$g);
+    return unless $e;
+    my $msg = join("\n", @errors);
+    @errors = ();
+    croak $msg;
+}
+
+sub RemoveGeometry {
+    my ($self, $i) = @_;
+    my $e = Geo::GDAL::FFI::OGR_G_GetGeometryRef($$self, $i, 1);
+    return unless $e;
+    my $msg = join("\n", @errors);
+    @errors = ();
+    croak $msg;
 }
 
 sub ImportFromWkt {
