@@ -16,6 +16,136 @@ use constant Write => 1;
 
 our @errors;
 
+our %access = (
+    ReadOnly => 0,
+    Update => 1
+    );
+
+our %open_flags = (
+    READONLY => 0x00,
+    UPDATE   => 0x01,
+    ALL      => 0x00,
+    RASTER   => 0x02,
+    VECTOR   => 0x04,
+    GNM      => 0x08,
+    SHARED   => 0x20,
+    VERBOSE_ERROR =>  0x40,
+    INTERNAL      =>  0x80,
+    ARRAY_BLOCK_ACCESS   =>    0x100,
+    HASHSET_BLOCK_ACCESS =>    0x200,
+    );
+
+our %data_types = (
+    Unknown => 0,
+    Byte => 1,
+    UInt16 => 2,
+    Int16 => 3,
+    UInt32 => 4,
+    Int32 => 5,
+    Float32 => 6,
+    Float64 => 7,
+    CInt16 => 8,
+    CInt32 => 9,
+    CFloat32 => 10,
+    CFloat64 => 11
+    );
+
+our %color_interpretations = (
+    Undefined => 0,
+    GrayIndex => 1,
+    PaletteIndex => 2,
+    RedBand => 3,
+    GreenBand => 4,
+    BlueBand => 5,
+    AlphaBand => 6,
+    HueBand => 7,
+    SaturationBand => 8,
+    LightnessBand => 9,
+    CyanBand => 10,
+    MagentaBand => 11,
+    YellowBand => 12,
+    BlackBand => 13,
+    YCbCr_YBand => 14,
+    YCbCr_CbBand => 15,
+    YCbCr_CrBand => 16,
+    );
+our %color_interpretations_reverse = reverse %color_interpretations;
+
+our %geometry_types = (
+    Unknown => 0,
+    Point => 1,
+    LineString => 2,
+    Polygon => 3,
+    MultiPoint => 4,
+    MultiLineString => 5,
+    MultiPolygon => 6,
+    GeometryCollection => 7,
+    CircularString => 8,
+    CompoundCurve => 9,
+    CurvePolygon => 10,
+    MultiCurve => 11,
+    MultiSurface => 12,
+    Curve => 13,
+    Surface => 14,
+    PolyhedralSurface => 15,
+    TIN => 16,
+    Triangle => 17,
+    None => 100,
+    LinearRing => 101,
+    CircularStringZ => 1008,
+    CompoundCurveZ => 1009,
+    CurvePolygonZ => 1010,
+    MultiCurveZ => 1011,
+    MultiSurfaceZ => 1012,
+    CurveZ => 1013,
+    SurfaceZ => 1014,
+    PolyhedralSurfaceZ => 1015,
+    TINZ => 1016,
+    TriangleZ => 1017,
+    PointM => 2001,
+    LineStringM => 2002,
+    PolygonM => 2003,
+    MultiPointM => 2004,
+    MultiLineStringM => 2005,
+    MultiPolygonM => 2006,
+    GeometryCollectionM => 2007,
+    CircularStringM => 2008,
+    CompoundCurveM => 2009,
+    CurvePolygonM => 2010,
+    MultiCurveM => 2011,
+    MultiSurfaceM => 2012,
+    CurveM => 2013,
+    SurfaceM => 2014,
+    PolyhedralSurfaceM => 2015,
+    TINM => 2016,
+    TriangleM => 2017,
+    PointZM => 3001,
+    LineStringZM => 3002,
+    PolygonZM => 3003,
+    MultiPointZM => 3004,
+    MultiLineStringZM => 3005,
+    MultiPolygonZM => 3006,
+    GeometryCollectionZM => 3007,
+    CircularStringZM => 3008,
+    CompoundCurveZM => 3009,
+    CurvePolygonZM => 3010,
+    MultiCurveZM => 3011,
+    MultiSurfaceZM => 3012,
+    CurveZM => 3013,
+    SurfaceZM => 3014,
+    PolyhedralSurfaceZM => 3015,
+    TINZM => 3016,
+    TriangleZM => 3017,
+    Point25D => 0x80000001,
+    LineString25D => 0x80000002,
+    Polygon25D => 0x80000003,
+    MultiPoint25D => 0x80000004,
+    MultiLineString25D => 0x80000005,
+    MultiPolygon25D => 0x80000006,
+    GeometryCollection25D => 0x80000007
+    );
+our %geometry_types_reverse = reverse %geometry_types;
+
 sub new {
     my $class = shift;
     my $ffi = FFI::Platypus->new;
@@ -59,10 +189,28 @@ sub new {
     $ffi->attach( 'GDALSetGeoTransform' => ['opaque', 'double[6]'] => 'int' );
 
     $ffi->attach( 'GDALGetRasterDataType' => ['opaque'] => 'int' );
+    $ffi->attach( 'GDALGetRasterBandXSize' => ['opaque'] => 'int' );
+    $ffi->attach( 'GDALGetRasterBandYSize' => ['opaque'] => 'int' );
+    $ffi->attach( 'GDALGetRasterNoDataValue' => ['opaque', 'int*'] => 'double' );
+    $ffi->attach( 'GDALSetRasterNoDataValue' => ['opaque', 'double'] => 'int' );
+    $ffi->attach( 'GDALDeleteRasterNoDataValue' => ['opaque'] => 'int' );
+    $ffi->attach( 'GDALGetRasterColorTable' => ['opaque'] => 'opaque' );
+    $ffi->attach( 'GDALSetRasterColorTable' => ['opaque', 'opaque'] => 'int' );
     $ffi->attach( 'GDALGetBlockSize' => ['opaque', 'int*', 'int*'] => 'void' );
     $ffi->attach( 'GDALReadBlock' => ['opaque', 'int', 'int', 'string'] => 'int' );
     $ffi->attach( 'GDALWriteBlock' => ['opaque', 'int', 'int', 'string'] => 'int' );
     $ffi->attach( 'GDALRasterIO' => [qw/opaque int int int int int string int int int int int/] => 'int' );
+
+    $ffi->attach( 'GDALGetRasterColorInterpretation' => ['opaque'] => 'int' );
+    $ffi->attach( 'GDALSetRasterColorInterpretation' => ['opaque', 'int'] => 'int' );
+    $ffi->attach( 'GDALCreateColorTable' => ['int'] => 'opaque' );
+    $ffi->attach( 'GDALDestroyColorTable' => ['opaque'] => 'void' );
+    $ffi->attach( 'GDALCloneColorTable' => ['opaque'] => 'opaque' );
+    $ffi->attach( 'GDALGetPaletteInterpretation' => ['opaque'] => 'int' );
+    $ffi->attach( 'GDALGetColorEntryCount' => ['opaque'] => 'int' );
+    $ffi->attach( 'GDALGetColorEntry' => ['opaque', 'int'] => 'short[4]' );
+    $ffi->attach( 'GDALSetColorEntry' => ['opaque', 'int', 'short[4]'] => 'void' );
+    $ffi->attach( 'GDALCreateColorRamp' => ['opaque', 'int', 'short[4]', 'int', 'short[4]'] => 'void' );
 
     $ffi->attach( 'OSRNewSpatialReference' => ['string'] => 'opaque' );
     $ffi->attach( 'OSRDestroySpatialReference' => ['opaque'] => 'void' );
@@ -72,20 +220,26 @@ sub new {
 
     $ffi->attach( 'GDALDatasetGetLayer' => ['opaque', 'int'] => 'opaque' );
     $ffi->attach( 'GDALDatasetCreateLayer' => ['opaque', 'string', 'opaque', 'int', 'opaque'] => 'opaque' );
+    $ffi->attach( 'GDALDatasetExecuteSQL' => ['opaque', 'string', 'opaque', 'string'] => 'opaque' );
+    $ffi->attach( 'GDALDatasetReleaseResultSet' => ['opaque', 'opaque'] => 'void' );
 
     $ffi->attach( 'OGR_L_SyncToDisk' => ['opaque'] => 'int' );
     $ffi->attach( 'OGR_L_GetLayerDefn' => ['opaque'] => 'opaque' );
     $ffi->attach( 'OGR_L_ResetReading' => ['opaque'] => 'void' );
     $ffi->attach( 'OGR_L_GetNextFeature' => ['opaque'] => 'opaque' );
     $ffi->attach( 'OGR_L_CreateFeature' => ['opaque', 'opaque'] => 'int' );
+
     $ffi->attach( 'OGR_FD_Create' => ['string'] => 'opaque' );
     $ffi->attach( 'OGR_FD_Release' => ['opaque'] => 'void' );
     $ffi->attach( 'OGR_FD_GetGeomType' => ['opaque'] => 'int' );
+
     $ffi->attach( 'OGR_F_Create' => ['opaque'] => 'opaque' );
     $ffi->attach( 'OGR_F_Destroy' => ['opaque'] => 'void' );
+
     $ffi->attach( 'OGR_G_CreateGeometry' => ['int'] => 'opaque' );
     $ffi->attach( 'OGR_G_DestroyGeometry' => ['opaque'] => 'void' );
     $ffi->attach( 'OGR_G_ExportToWkt' => ['opaque', 'string_pointer'] => 'int' );
+
     my $self = {};
     $self->{ffi} = $ffi;
     $self->{CPLErrorHandler} = $ffi->closure(
@@ -120,11 +274,6 @@ sub GetDriverByName {
     return bless \$d, 'Geo::GDAL::FFI::Driver';
 }
 
-our %access = (
-    ReadOnly => 0,
-    Update => 1
-    );
-
 sub Open {
     shift;
     my ($name, $access) = @_;
@@ -141,20 +290,6 @@ sub Open {
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
 
-our %open_flags = (
-    READONLY => 0x00,
-    UPDATE   => 0x01,
-    ALL      => 0x00,
-    RASTER   => 0x02,
-    VECTOR   => 0x04,
-    GNM      => 0x08,
-    SHARED   => 0x20,
-    VERBOSE_ERROR =>  0x40,
-    INTERNAL      =>  0x80,
-    ARRAY_BLOCK_ACCESS   =>    0x100,
-    HASHSET_BLOCK_ACCESS =>    0x200,
-    );
-
 sub OpenEx {
     shift;
     my ($name, $flags, $drivers, $options, $files) = @_;
@@ -170,21 +305,6 @@ sub OpenEx {
     }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
-
-our %data_types = (
-    Unknown => 0,
-    Byte => 1,
-    UInt16 => 2,
-    Int16 => 3,
-    UInt32 => 4,
-    Int32 => 5,
-    Float32 => 6,
-    Float64 => 7,
-    CInt16 => 8,
-    CInt32 => 9,
-    CFloat32 => 10,
-    CFloat64 => 11
-    );
 
 package Geo::GDAL::FFI::Object;
 use v5.10;
@@ -262,7 +382,7 @@ sub Create {
     $height //= 256;
     $bands //= 1;
     $dt //= 'Byte';
-    my $tmp = $Geo::GDAL::FFI::data_types{$dt};
+    my $tmp = $data_types{$dt};
     confess "Unknown constant: $dt\n" unless defined $tmp;
     $dt = $tmp;
     my $o = 0;
@@ -386,7 +506,7 @@ sub GetLayer {
 
 sub CreateLayer {
     my ($self, $name, $sr, $gt, $options) = @_;
-    my $tmp = $Geo::GDAL::FFI::Geometry::types{$gt};
+    my $tmp = $geometry_types{$gt};
     confess "Unknown constant: $gt\n" unless defined $tmp;
     $gt = $tmp;
     my $o = 0;
@@ -413,6 +533,39 @@ use Carp;
 sub GetDataType {
     my $self = shift;
     Geo::GDAL::FFI::GDALGetRasterDataType($$self);
+}
+
+sub Width {
+    my $self = shift;
+    Geo::GDAL::FFI::GDALGetRasterBandXSize($$self);
+}
+
+sub Height {
+    my $self = shift;
+    Geo::GDAL::FFI::GDALGetRasterBandYSize($$self);
+}
+
+sub GetNoDataValue {
+    my $self = shift;
+    my $b = 0;
+    my $v = Geo::GDAL::FFI::GDALGetRasterNoDataValue($$self, \$b);
+    return unless $b;
+    return $v;
+}
+
+sub SetNoDataValue {
+    my $self = shift;
+    unless (@_) {
+        Geo::GDAL::FFI::GDALDeleteRasterNoDataValue($$self);
+        return;
+    }
+    my $v = shift;
+    my $e = Geo::GDAL::FFI::GDALSetRasterNoDataValue($$self, $v);
+    return unless $e;
+    croak "SetNoDataValue not supported by the driver." unless @errors;
+    my $msg = join("\n", @errors);
+    @errors = ();
+    croak $msg;
 }
 
 sub GetBlockSize {
@@ -501,6 +654,49 @@ sub WriteBlock {
     Geo::GDAL::FFI::GDALWriteBlock($$self, $xoff, $yoff, $buf);
 }
 
+sub GetColorInterpretation {
+    my $self = shift;
+    return $color_interpretations_reverse{
+        Geo::GDAL::FFI::GDALGetRasterColorInterpretation($$self)
+    };
+}
+
+sub SetColorInterpretation {
+    my ($self, $i) = @_;
+    my $tmp = $color_interpretations{$i};
+    confess "Unknown constant: $i\n" unless defined $tmp;
+    $i = $tmp;
+    Geo::GDAL::FFI::GDALSetRasterColorInterpretation($$self, $i);
+}
+
+sub GetColorTable {
+    my $self = shift;
+    my $ct = Geo::GDAL::FFI::GDALGetRasterColorTable($$self);
+    return unless $ct;
+    # color table is a table of [c1...c4]
+    # the interpretation of colors is from next method
+    my @table;
+    for my $i (0..Geo::GDAL::FFI::GDALGetColorEntryCount($ct)-1) {
+        my $c = Geo::GDAL::FFI::GDALGetColorEntry($ct, $i);
+        push @table, $c;
+    }
+    return wantarray ? @table : \@table;
+}
+
+sub GetPaletteInterp {
+    my $self = shift;
+}
+
+sub SetColorTable {
+    my ($self, $table) = @_;
+    my $ct = Geo::GDAL::FFI::GDALCreateColorTable();
+    for my $i (0..$#$table) {
+        Geo::GDAL::FFI::GDALSetColorEntry($ct, $i, $table->[$i]);
+    }
+    Geo::GDAL::FFI::GDALSetRasterColorTable($$self, $ct);
+    Geo::GDAL::FFI::GDALDestroyColorTable($ct);
+}
+
 package Geo::GDAL::FFI::Layer;
 use v5.10;
 use strict;
@@ -584,85 +780,9 @@ use strict;
 use warnings;
 use Carp;
 
-our %types = (
-    Unknown => 0,
-    Point => 1,
-    LineString => 2,
-    Polygon => 3,
-    MultiPoint => 4,
-    MultiLineString => 5,
-    MultiPolygon => 6,
-    GeometryCollection => 7,
-    CircularString => 8,
-    CompoundCurve => 9,
-    CurvePolygon => 10,
-    MultiCurve => 11,
-    MultiSurface => 12,
-    Curve => 13,
-    Surface => 14,
-    PolyhedralSurface => 15,
-    TIN => 16,
-    Triangle => 17,
-    None => 100,
-    LinearRing => 101,
-    CircularStringZ => 1008,
-    CompoundCurveZ => 1009,
-    CurvePolygonZ => 1010,
-    MultiCurveZ => 1011,
-    MultiSurfaceZ => 1012,
-    CurveZ => 1013,
-    SurfaceZ => 1014,
-    PolyhedralSurfaceZ => 1015,
-    TINZ => 1016,
-    TriangleZ => 1017,
-    PointM => 2001,
-    LineStringM => 2002,
-    PolygonM => 2003,
-    MultiPointM => 2004,
-    MultiLineStringM => 2005,
-    MultiPolygonM => 2006,
-    GeometryCollectionM => 2007,
-    CircularStringM => 2008,
-    CompoundCurveM => 2009,
-    CurvePolygonM => 2010,
-    MultiCurveM => 2011,
-    MultiSurfaceM => 2012,
-    CurveM => 2013,
-    SurfaceM => 2014,
-    PolyhedralSurfaceM => 2015,
-    TINM => 2016,
-    TriangleM => 2017,
-    PointZM => 3001,
-    LineStringZM => 3002,
-    PolygonZM => 3003,
-    MultiPointZM => 3004,
-    MultiLineStringZM => 3005,
-    MultiPolygonZM => 3006,
-    GeometryCollectionZM => 3007,
-    CircularStringZM => 3008,
-    CompoundCurveZM => 3009,
-    CurvePolygonZM => 3010,
-    MultiCurveZM => 3011,
-    MultiSurfaceZM => 3012,
-    CurveZM => 3013,
-    SurfaceZM => 3014,
-    PolyhedralSurfaceZM => 3015,
-    TINZM => 3016,
-    TriangleZM => 3017,
-    Point25D => 0x80000001,
-    LineString25D => 0x80000002,
-    Polygon25D => 0x80000003,
-    MultiPoint25D => 0x80000004,
-    MultiLineString25D => 0x80000005,
-    MultiPolygon25D => 0x80000006,
-    GeometryCollection25D => 0x80000007
-    );
-
-our %types_reverse = reverse %types;
-
 sub new {
     my ($class, $type) = @_;
-    my $tmp = $types{$type};
+    my $tmp = $geometry_types{$type};
     confess "Unknown constant: $type\n" unless defined $tmp;
     $type = $tmp;
     my $g = Geo::GDAL::FFI::OGR_G_CreateGeometry($type);

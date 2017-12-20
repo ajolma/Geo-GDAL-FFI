@@ -107,6 +107,30 @@ if(1){
     $b->WriteBlock($block);
     $block = $b->ReadBlock();
     ok($block->[1][2] == 7, "Write block ($block->[1][2])");
+
+    my $v = $b->GetNoDataValue;
+    ok(!defined($v), "Get nodata value.");
+    $b->SetNoDataValue(13);
+    $v = $b->GetNoDataValue;
+    ok($v == 13, "Set nodata value.");
+    $b->SetNoDataValue();
+    $v = $b->GetNoDataValue;
+    ok(!defined($v), "Delete nodata value.");
+    # the color table test with GTiff fails with
+    # Cannot modify tag "PhotometricInterpretation" while writing at (a line afterwards this).
+    # should investigate why
+    $b->SetColorTable([[1,2,3,4],[5,6,7,8]]);
+}
+if(1) {
+    my $dr = $gdal->GetDriverByName('MEM');
+    my $ds = $dr->Create();
+    my $b = $ds->GetBand;
+    my $table = [[1,2,3,4],[5,6,7,8]];
+    $b->SetColorTable($table);
+    my $t = $b->GetColorTable;
+    is_deeply($t, $table, "Set/get color table");
+    $b->SetColorInterpretation('PaletteIndex');
+    $ds->FlushCache;
 }
 
 # test creating a shapefile
