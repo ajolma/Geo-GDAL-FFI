@@ -2,6 +2,7 @@ use v5.10;
 use strict;
 use warnings;
 use Carp;
+use Encode qw(decode encode);
 use Geo::GDAL::FFI;
 use Test::More;
 use Data::Dumper;
@@ -293,24 +294,88 @@ if(1){
     ok($h->ExportToWkt('ISO') eq 'LINESTRING (5 6,7 8)', "2nd geom field");
 }
 
-done_testing();
-exit;
+# test setting field
+if(1){
+    my $types = \%Geo::GDAL::FFI::field_types;
+    my $d = Geo::GDAL::FFI::FeatureDefn->new('test');
+    for my $t (sort {$types->{$a} <=> $types->{$b}} keys %$types) {
+        $d->AddField(Geo::GDAL::FFI::FieldDefn->new($t => $t));
+    }
+    my $f = Geo::GDAL::FFI::Feature->new($d);
+    ok($f->GetFieldCount == 14, "Nr field types is ".$f->GetFieldCount);
+    for my $t (sort {$types->{$a} <=> $types->{$b}} keys %$types) {
+        my $i = $types->{$t};
+        ok($f->GetFieldDefn($i)->Type eq $t, "Feature.GetFieldDefn, got ".$f->GetFieldDefn($i)->Type."=$i");
+        ok($f->GetFieldIndex($t) == $i, "Feature.GetFieldIndex");
+    }
+    my $t = 'Integer';
+    my $i = $types->{$t};
+    my $x;
+    $f->UnsetField($i);
+    $f->SetFieldNull($i);
+    $x = $f->IsFieldSet($i) ? 'set' : 'not set';
+    ok($x eq 'set', "Null 1");
+    $x = $f->IsFieldNull($i) ? 'null' : 'not null';
+    ok($x eq 'null', "Null 2");
+    $x = $f->IsFieldSetAndNotNull($i) ? 'set and not null' : 'not set or null';
+    ok($x eq 'not set or null', "Null 3");
+    
+    $f->SetFieldInteger($i, 1);
+    $x = $f->IsFieldSet($i) ? 'set' : 'not set';
+    ok($x eq 'set', "Set 1");
+    $x = $f->IsFieldNull($i) ? 'null' : 'not null';
+    ok($x eq 'not null', "Set 2");
+    $x = $f->IsFieldSetAndNotNull($i) ? 'set and not null' : 'not set or null';
+    ok($x eq 'set and not null', "Set 3");
 
-my $ds = $gdal->Open('/home/ajolma/data/SmartSea/eusm2016-EPSG2393.tiff', 'ReadOnly');
-say STDERR "Width = ",$ds->Width;
+    $f->UnsetField($i);
+    $x = $f->IsFieldSet($i) ? 'set' : 'not set';
+    ok($x eq 'not set', "Unset 1");
+    $x = $f->IsFieldNull($i) ? 'null' : 'not null';
+    ok($x eq 'not null', "Unset 2");
+    $x = $f->IsFieldSetAndNotNull($i) ? 'set and not null' : 'not set or null';
+    ok($x eq 'not set or null', "Unset 3");
 
-my $dr = $gdal->GetDriverByName('GTiff');
-$ds = $dr->Create('test.tiff', 20, 10, 2, 'UInt32', {TFW => 'YES'});
-say STDERR $ds;
+    $f->SetFieldNull($i);
+    $x = $f->IsFieldSet($i) ? 'set' : 'not set';
+    ok($x eq 'set', "Null 2.1");
+    $x = $f->IsFieldNull($i) ? 'null' : 'not null';
+    ok($x eq 'null', "Null 2.2");
+    $x = $f->IsFieldSetAndNotNull($i) ? 'set and not null' : 'not set or null';
+    ok($x eq 'not set or null', "Null 2.3");
 
-my $f;
-{
-    my $ds = $gdal->OpenEx('/home/ajolma/data/SmartSea/Liikennevirasto/vaylaalueet.shp2');
-    my $l = $ds->GetLayer;
-    $l->ResetReading;
-    say STDERR $l;
-    $f = $l->GetNextFeature;
+    # scalar types
+    $f->SetFieldInteger($types->{Integer}, 13);
+    $x = $f->GetFieldAsInteger($types->{Integer});
+    ok($x == 13, "Set/get Integer field: $x");
+        
+    $f->SetFieldInteger64($types->{Integer64}, 0x90000001);
+    $x = $f->GetFieldAsInteger64($types->{Integer64});
+    ok($x == 0x90000001, "Set/get Integer64 field: $x");
+    
+    $f->SetFieldDouble($types->{Real}, 1.123);
+    $x = $f->GetFieldAsDouble($types->{Real});
+    ok($x == 1.123, "Set/get Real field: $x");
+
+    my $s = decode utf8 => 'åäö';
+    $f->SetFieldString($types->{String}, $s);
+    $x = $f->GetFieldAsString($types->{String}, 'utf8');
+    ok($x eq $s, "Set/get String field: $x");
+
+    # WideString not tested
+    
+    #$f->SetFieldBinary($types->{Binary}, 1);
+        
+#    IntegerList => 1,
+#    RealList => 3,
+#    StringList => 5,
+#    WideString => 6,
+#    WideStringList => 7,
+#    Binary => 8,
+#    Date => 9,
+#    Time => 10,
+#    DateTime => 11,
+#    Integer64List 13
 }
-say STDERR $f;
 
 done_testing();

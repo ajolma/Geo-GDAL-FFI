@@ -58,8 +58,8 @@ our %field_types = (
     RealList => 3,
     String => 4,
     StringList => 5,
-    WideString => 6,
-    WideStringList => 7,
+    WideString => 6,     # do not use
+    WideStringList => 7, # do not use
     Binary => 8,
     Date => 9,
     Time => 10,
@@ -296,24 +296,25 @@ sub new {
     $ffi->attach( 'OGR_F_IsFieldSetAndNotNull' => ['opaque', 'int'] => 'int');
     $ffi->attach( 'OGR_F_SetFieldNull' => ['opaque', 'int'] => 'void');
     $ffi->attach( 'OGR_F_GetFieldAsInteger' => ['opaque', 'int'] => 'int');
-    $ffi->attach( 'OGR_F_GetFieldAsInteger64' => ['opaque', 'int'] => 'long long');
+    $ffi->attach( 'OGR_F_GetFieldAsInteger64' => ['opaque', 'int'] => 'sint64');
     $ffi->attach( 'OGR_F_GetFieldAsDouble' => ['opaque', 'int'] => 'double');
     $ffi->attach( 'OGR_F_GetFieldAsString' => ['opaque', 'int'] => 'string');
-    $ffi->attach( 'OGR_F_GetFieldAsIntegerList' => ['opaque', 'int', 'int*'] => 'void');
-    $ffi->attach( 'OGR_F_GetFieldAsInteger64List' => ['opaque', 'int', 'int *'] => 'void');
-    $ffi->attach( 'OGR_F_GetFieldAsDoubleList' => ['opaque', 'int', 'int *'] => 'void');
+    $ffi->attach( 'OGR_F_GetFieldAsIntegerList' => ['opaque', 'int', 'int*'] => 'int[]');
+    $ffi->attach( 'OGR_F_GetFieldAsInteger64List' => ['opaque', 'int', 'int*'] => 'sint64[]');
+    $ffi->attach( 'OGR_F_GetFieldAsDoubleList' => ['opaque', 'int', 'int*'] => 'double[]');
     $ffi->attach( 'OGR_F_GetFieldAsStringList' => ['opaque', 'int'] => 'void');
-    $ffi->attach( 'OGR_F_GetFieldAsBinary' => ['opaque', 'int', 'int *'] => 'void');
+    $ffi->attach( 'OGR_F_GetFieldAsBinary' => ['opaque', 'int', 'int*'] => 'char*');
     $ffi->attach( 'OGR_F_GetFieldAsDateTime' => [qw/opaque int int* int* int* int* int* int* int*/]  => 'int');
     $ffi->attach( 'OGR_F_GetFieldAsDateTimeEx' => [qw/opaque int int* int* int* int* int* float* int*/] => 'int');
     $ffi->attach( 'OGR_F_SetFieldInteger' => ['opaque', 'int', 'int'] => 'void');
-    $ffi->attach( 'OGR_F_SetFieldInteger64' => ['opaque', 'int', 'long long'] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldInteger64' => ['opaque', 'int', 'sint64'] => 'void');
     $ffi->attach( 'OGR_F_SetFieldDouble' => [qw/opaque int double/] => 'void');
     $ffi->attach( 'OGR_F_SetFieldString' => [qw/opaque int string/] => 'void');
     $ffi->attach( 'OGR_F_SetFieldIntegerList' => [qw/opaque int int int*/] => 'void');
     $ffi->attach( 'OGR_F_SetFieldInteger64List' => ['opaque', 'int', 'int', 'long long[]'] => 'void');
     $ffi->attach( 'OGR_F_SetFieldDoubleList' => ['opaque', 'int', 'int', 'double[]'] => 'void');
     $ffi->attach( 'OGR_F_SetFieldStringList' => ['opaque', 'int', 'opaque'] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldBinary' => [qw/opaque int int char*/] => 'void');
     $ffi->attach( 'OGR_F_SetFieldDateTime' => [qw/opaque int int int int int int int int/] => 'void');
     $ffi->attach( 'OGR_F_SetFieldDateTimeEx' => [qw/opaque int int int int int int float int/] => 'void');
     $ffi->attach( 'OGR_F_GetGeomFieldCount' => ['opaque'] => 'int');
@@ -1257,6 +1258,7 @@ use v5.10;
 use strict;
 use warnings;
 use Carp;
+use Encode qw(decode encode);
 
 sub new {
     my ($class, $def) = @_;
@@ -1276,6 +1278,7 @@ sub GetFID {
 
 sub SetFID {
     my ($self, $fid) = @_;
+    $fid //= 0;
     Geo::GDAL::FFI::OGR_F_GetFID($$self, $fid);
 }
 
@@ -1289,126 +1292,192 @@ sub GetDefn {
 
 sub Clone {
     my ($self) = @_;
+    my $f = Geo::GDAL::FFI::OGR_F_Clone($$self);
+    return bless \$f, 'Geo::GDAL::FFI::Feature';
 }
 
 sub Equal {
-    my ($self) = @_;
+    my ($self, $f) = @_;
+    return Geo::GDAL::FFI::OGR_F_Equal($$self, $$f);
 }
 
 sub GetFieldCount {
     my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_F_GetFieldCount($$self);
 }
 
-sub GetFieldDefnRef {
-    my ($self) = @_;
+sub GetFieldDefn {
+    my ($self, $i) = @_;
+    $i //= 0;
+    my $d = Geo::GDAL::FFI::OGR_F_GetFieldDefnRef($$self, $i);
+    croak unless $d;
+    ++$immutable{$d};
+    return bless \$d, 'Geo::GDAL::FFI::FieldDefn';
 }
 
 sub GetFieldIndex {
-    my ($self) = @_;
+    my ($self, $name) = @_;
+    $name //= '';
+    return Geo::GDAL::FFI::OGR_F_GetFieldIndex($$self, $name);
 }
 
 sub IsFieldSet {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_IsFieldSet($$self, $i);
 }
 
 sub UnsetField {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    Geo::GDAL::FFI::OGR_F_UnsetField($$self, $i);
 }
 
 sub IsFieldNull {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_IsFieldNull($$self, $i);
 }
 
 sub IsFieldSetAndNotNull {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_IsFieldSetAndNotNull($$self, $i);
 }
 
 sub SetFieldNull {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    Geo::GDAL::FFI::OGR_F_SetFieldNull($$self, $i);
 }
 
 sub GetFieldAsInteger {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsInteger($$self, $i);
 }
 
 sub GetFieldAsInteger64 {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsInteger64($$self, $i);
 }
 
 sub GetFieldAsDouble {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsDouble($$self, $i);
 }
 
 sub GetFieldAsString {
-    my ($self) = @_;
+    my ($self, $i, $encoding) = @_;
+    $i //= 0;
+    my $retval = Geo::GDAL::FFI::OGR_F_GetFieldAsString($$self, $i);
+    $retval = decode $encoding => $retval if defined $encoding;
+    return $retval;
 }
 
 sub GetFieldAsIntegerList {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsIntegerList($$self, $i);
 }
 
 sub GetFieldAsInteger64List {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsInteger64List($$self, $i);
 }
 
 sub GetFieldAsDoubleList {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsDoubleList($$self, $i);
 }
 
 sub GetFieldAsStringList {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsStringList($$self, $i);
 }
 
 sub GetFieldAsBinary {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsBinary($$self, $i);
 }
 
 sub GetFieldAsDateTime {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsDateTime($$self, $i);
 }
 
 sub GetFieldAsDateTimeEx {
-    my ($self) = @_;
+    my ($self, $i) = @_;
+    $i //= 0;
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsDateTimeEx($$self, $i);
 }
 
 sub SetFieldInteger {
-    my ($self) = @_;
+    my ($self, $i, $value) = @_;
+    $i //= 0;
+    $value //= 0;
+    Geo::GDAL::FFI::OGR_F_SetFieldInteger($$self, $i, $value);
 }
 
 sub SetFieldInteger64 {
-    my ($self) = @_;
+    my ($self, $i, $value) = @_;
+    $i //= 0;
+    Geo::GDAL::FFI::OGR_F_SetFieldInteger64($$self, $i, $value);
 }
 
 sub SetFieldDouble {
-    my ($self) = @_;
+    my ($self, $i, $value) = @_;
+    $i //= 0;
+    Geo::GDAL::FFI::OGR_F_SetFieldDouble($$self, $i, $value);
 }
 
 sub SetFieldString {
-    my ($self) = @_;
+    my ($self, $i, $value) = @_;
+    $i //= 0;
+    Geo::GDAL::FFI::OGR_F_SetFieldString($$self, $i, $value);
 }
 
 sub SetFieldIntegerList {
-    my ($self) = @_;
+    my ($self, $i, $value) = @_;
+    $i //= 0;
+    Geo::GDAL::FFI::OGR_F_SetFieldIntegerList($$self, $i, $value);
 }
 
 sub SetFieldInteger64List {
-    my ($self) = @_;
+    my ($self, $i, $value) = @_;
+    $i //= 0;
+    Geo::GDAL::FFI::OGR_F_SetFieldInteger64List($$self, $i, $value);
 }
 
 sub SetFieldDoubleList {
-    my ($self) = @_;
+    my ($self, $i, $value) = @_;
+    $i //= 0;
+    Geo::GDAL::FFI::OGR_F_SetFieldDoubleList($$self, $i, $value);
 }
 
 sub SetFieldStringList {
-    my ($self) = @_;
+    my ($self, $i, $value) = @_;
+    $i //= 0;
+    Geo::GDAL::FFI::OGR_F_SetFieldStringList($$self, $i, $value);
 }
 
 sub SetFieldDateTime {
-    my ($self) = @_;
+    my ($self, $i, $value) = @_;
+    $i //= 0;
+    Geo::GDAL::FFI::OGR_F_SetFieldDateTime($$self, $i, $value);
 }
 
 sub SetFieldDateTimeEx {
-    my ($self) = @_;
+    my ($self, $i, $value) = @_;
+    $i //= 0;
+    Geo::GDAL::FFI::OGR_F_SetFieldDateTimeEx($$self, $i, $value);
 }
 
 sub GetGeometryCount {
@@ -1418,11 +1487,13 @@ sub GetGeometryCount {
 
 sub GetGeometryIndex {
     my ($self, $name) = @_;
+    $name //= '';
     return Geo::GDAL::FFI::OGR_F_GetGeomFieldIndex($$self, $name);
 }
 
-sub GetGeomFieldDefnRef {
-    my ($self) = @_;
+sub GetGeomFieldDefn {
+    my ($self, $i) = @_;
+    $i //= 0;
 }
 
 sub GetGeometry {
