@@ -59,7 +59,6 @@ if(1){
 }
 
 # test dataset
-
 if(1){
     my $dr = $gdal->GetDriverByName('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff');
@@ -77,8 +76,6 @@ if(1){
     is_deeply($t, $transform, "Set/get geotransform");
     
 }
-#done_testing();
-#exit;
 
 # test band
 if(1){
@@ -259,6 +256,41 @@ if(1){
     $g->SetPoint(2, 3, 4, 5);
     @p = $g->GetPoint;
     ok(@p == 2 && $p[0] == 2 && $p[1] == 3, "Set point: @p");
+
+    $g = Geo::GDAL::FFI::Geometry->new('PointZM');
+    ok($g->Type eq 'PointZM', "Geom constructor respects M & Z");
+    $g = Geo::GDAL::FFI::Geometry->new('Point25D');
+    ok($g->Type eq 'Point25D', "Geom constructor respects M & Z");
+    $g = Geo::GDAL::FFI::Geometry->new('PointM');
+    ok($g->Type eq 'PointM', "Geom constructor respects M & Z");
+    $wkt = $g->ExportToWkt('ISO');
+    ok($wkt eq 'POINT M EMPTY', "Got WKT: '$wkt'.");
+    $g->ImportFromWkt('POINTM (1 2 3)');
+    ok($g->ExportToWkt('ISO') eq 'POINT M (1 2 3)', "Import PointM from WKT");
+}
+
+# test features
+if(1){
+    my $d = Geo::GDAL::FFI::FeatureDefn->new('test');
+    # geometry type checking is not implemented in GDAL
+    #$d->SetGeomType('PointM');
+    $d->AddGeomField(Geo::GDAL::FFI::GeomFieldDefn->new(test2 => 'LineString'));
+    my $f = Geo::GDAL::FFI::Feature->new($d);
+    ok($f->GetGeometryCount == 2, "GetGeometryCount");
+    ok($f->GetGeometryIndex('test2') == 1, "GetGeometryIndex");
+    #GetGeomFieldDefnRef
+    my $g = Geo::GDAL::FFI::Geometry->new('PointM');
+    $g->SetPoint(1,2,3,4);
+    $f->SetGeometry($g);
+    my $h = $f->GetGeometry();
+    ok($h->ExportToWkt('ISO') eq 'POINT M (1 2 4)', "GetGeometry");
+    
+    $g = Geo::GDAL::FFI::Geometry->new('LineString');
+    $g->SetPoint(0, 5,6,7,8);
+    $g->SetPoint(1, [7,8]);
+    $f->SetGeometry($g, 1);
+    $h = $f->GetGeometry(1);
+    ok($h->ExportToWkt('ISO') eq 'LINESTRING (5 6,7 8)', "2nd geom field");
 }
 
 done_testing();

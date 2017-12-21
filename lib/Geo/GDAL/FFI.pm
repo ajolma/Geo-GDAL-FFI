@@ -15,7 +15,7 @@ use constant Read => 0;
 use constant Write => 1;
 
 our @errors;
-our %unmutable;
+our %immutable;
 
 our %access = (
     ReadOnly => 0,
@@ -275,8 +275,8 @@ sub new {
     $ffi->attach( 'OGR_FD_AddGeomFieldDefn' => ['opaque', 'opaque'] => 'void');
     $ffi->attach( 'OGR_FD_DeleteFieldDefn' => ['opaque', 'int'] => 'int');
     $ffi->attach( 'OGR_FD_DeleteGeomFieldDefn' => ['opaque', 'int'] => 'int');
-    $ffi->attach( 'OGR_FD_GetGeomType' => ['opaque'] => 'int');
-    $ffi->attach( 'OGR_FD_SetGeomType' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_FD_GetGeomType' => ['opaque'] => 'unsigned int');
+    $ffi->attach( 'OGR_FD_SetGeomType' => ['opaque', 'unsigned int'] => 'void');
     $ffi->attach( 'OGR_FD_IsGeometryIgnored' => ['opaque'] => 'int');
     $ffi->attach( 'OGR_FD_SetGeometryIgnored' => ['opaque', 'int'] => 'void');
     $ffi->attach( 'OGR_FD_IsStyleIgnored' => ['opaque'] => 'int');
@@ -285,10 +285,6 @@ sub new {
     $ffi->attach( 'OGR_F_Create' => ['opaque'] => 'opaque');
     $ffi->attach( 'OGR_F_Destroy' => ['opaque'] => 'void');
     $ffi->attach( 'OGR_F_GetDefnRef' => ['opaque'] => 'opaque');
-    $ffi->attach( 'OGR_F_SetGeometryDirectly' => ['opaque', 'opaque'] => 'int');
-    $ffi->attach( 'OGR_F_SetGeometry' => ['opaque', 'opaque'] => 'int');
-    $ffi->attach( 'OGR_F_GetGeometryRef' => ['opaque'] => 'opaque');
-    $ffi->attach( 'OGR_F_StealGeometry' => ['opaque'] => 'opaque');
     $ffi->attach( 'OGR_F_Clone' => ['opaque'] => 'opaque');
     $ffi->attach( 'OGR_F_Equal' => ['opaque', 'opaque'] => 'int');
     $ffi->attach( 'OGR_F_GetFieldCount' => ['opaque'] => 'int');
@@ -327,8 +323,7 @@ sub new {
     $ffi->attach( 'OGR_F_SetGeomFieldDirectly' => ['opaque', 'int', 'opaque'] => 'int');
     $ffi->attach( 'OGR_F_SetGeomField' => ['opaque', 'int', 'opaque'] => 'int');
     $ffi->attach( 'OGR_F_GetFID' => ['opaque'] => 'void');
-    $ffi->attach( 'OGR_F_SetFID' => ['opaque', 'long long'] => 'int');
-    
+    $ffi->attach( 'OGR_F_SetFID' => ['opaque', 'long long'] => 'int');    
     
     $ffi->attach( 'OGR_Fld_Create' => ['string', 'int'] => 'opaque');
     $ffi->attach( 'OGR_Fld_Destroy' => ['opaque'] => 'void');
@@ -362,13 +357,15 @@ sub new {
     $ffi->attach( 'OGR_GFld_IsIgnored' => ['opaque'] => 'int');
     $ffi->attach( 'OGR_GFld_SetIgnored' => ['opaque', 'int'] => 'void');
 
-    $ffi->attach( 'OGR_G_CreateGeometry' => ['int'] => 'opaque');
+    $ffi->attach( 'OGR_G_CreateGeometry' => ['unsigned int'] => 'opaque');
     $ffi->attach( 'OGR_G_DestroyGeometry' => ['opaque'] => 'void');
     $ffi->attach( 'OGR_G_Clone' => ['opaque'] => 'opaque');
-    $ffi->attach( 'OGR_G_GetGeometryType' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_G_GetGeometryType' => ['opaque'] => 'unsigned int');
     $ffi->attach( 'OGR_G_GetPointCount' => ['opaque'] => 'int');
     $ffi->attach( 'OGR_G_Is3D' => ['opaque'] => 'int');
     $ffi->attach( 'OGR_G_IsMeasured' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_G_Set3D' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_G_SetMeasured' => ['opaque', 'int'] => 'void');
     $ffi->attach( 'OGR_G_GetPointZM' => [qw/opaque int double* double* double* double*/] => 'void');
     $ffi->attach( 'OGR_G_SetPointZM' => [qw/opaque int double double double double/] => 'void');
     $ffi->attach( 'OGR_G_SetPointM' => [qw/opaque int double double double/] => 'void');
@@ -382,6 +379,7 @@ sub new {
 
     $ffi->attach( 'OGR_G_ImportFromWkt' => ['opaque', 'string_pointer'] => 'int');
     $ffi->attach( 'OGR_G_ExportToWkt' => ['opaque', 'string_pointer'] => 'int');
+    $ffi->attach( 'OGR_G_ExportToIsoWkt' => ['opaque', 'string_pointer'] => 'int');
     $ffi->attach( 'OGR_G_TransformTo' => ['opaque', 'opaque'] => 'int');
 
     $ffi->attach( 'OGR_G_Segmentize' => ['opaque', 'double'] => 'void');
@@ -417,6 +415,7 @@ sub new {
     $ffi->attach( 'OGR_G_IsSimple' => ['opaque'] => 'int');
     $ffi->attach( 'OGR_G_IsRing' => ['opaque'] => 'int');
 
+    $ffi->attach( 'OGR_GT_Flatten' => ['unsigned int'] => 'unsigned int');
 
     my $self = {};
     $self->{ffi} = $ffi;
@@ -937,21 +936,21 @@ sub GetGeomFieldCount {
     return Geo::GDAL::FFI::OGR_FD_GetGeomFieldCount($$self);
 }
 
-sub GetFieldDefn {
+sub GetField {
     my ($self, $i) = @_;
     my $d = Geo::GDAL::FFI::OGR_FD_GetFieldDefn($$self, $i);
     croak "No such field: $i" unless $d;
-    $unmutable{$d} = 1;
-    #say STDERR "$d unmutable";
+    $immutable{$d} = exists $immutable{$d} ? $immutable{$d} + 1 : 1;
+    #say STDERR "$d immutable";
     return bless \$d, 'Geo::GDAL::FFI::FieldDefn';
 }
 
-sub GetGeomFieldDefn {
+sub GetGeomField {
     my ($self, $i) = @_;
     my $d = Geo::GDAL::FFI::OGR_FD_GetGeomFieldDefn($$self, $i);
     croak "No such field: $i" unless $d;
-    $unmutable{$d} = 1;
-    #say STDERR "$d unmutable";
+    $immutable{$d} = exists $immutable{$d} ? $immutable{$d} + 1 : 1;
+    #say STDERR "$d immutable";
     return bless \$d, 'Geo::GDAL::FFI::GeomFieldDefn';
 }
 
@@ -965,22 +964,22 @@ sub GetGeomFieldIndex {
     return Geo::GDAL::FFI::OGR_FD_GetGeomFieldIndex($$self, $name);
 }
 
-sub AddFieldDefn {
+sub AddField {
     my ($self, $d) = @_;
     Geo::GDAL::FFI::OGR_FD_AddFieldDefn($$self, $$d);
 }
 
-sub AddGeomFieldDefn {
+sub AddGeomField {
     my ($self, $d) = @_;
     Geo::GDAL::FFI::OGR_FD_AddGeomFieldDefn($$self, $$d);
 }
 
-sub DeleteFieldDefn {
+sub DeleteField {
     my ($self, $i) = @_;
     Geo::GDAL::FFI::OGR_FD_DeleteFieldDefn($$self, $i);
 }
 
-sub DeleteGeomFieldDefn {
+sub DeleteGeomField {
     my ($self, $i) = @_;
     Geo::GDAL::FFI::OGR_FD_DeleteGeomFieldDefn($$self, $i);
 }
@@ -1040,9 +1039,10 @@ sub new {
 sub DESTROY {
     my $self = shift;
     #say STDERR "destroy $self => $$self";
-    if ($unmutable{$$self}) {
-        #say STDERR "remove it from unmutable";
-        delete $unmutable{$$self};
+    if ($immutable{$$self}) {
+        #say STDERR "remove it from immutable";
+        $immutable{$$self}--;
+        delete $immutable{$$self} if $immutable{$$self} == 0;
     } else {
         #say STDERR "destroy it";
         Geo::GDAL::FFI::OGR_Fld_Destroy($$self);
@@ -1051,7 +1051,7 @@ sub DESTROY {
 
 sub SetName {
     my ($self, $name) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $name //= '';
     Geo::GDAL::FFI::OGR_Fld_SetName($$self, $name);
 }
@@ -1064,7 +1064,7 @@ sub GetName {
 
 sub SetType {
     my ($self, $type) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $type //= 'String';
     my $tmp = $field_types{$type};
     confess "Unknown constant: $type\n" unless defined $tmp;
@@ -1080,7 +1080,7 @@ sub GetType {
 
 sub SetSubtype {
     my ($self, $subtype) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $subtype //= 'None';
     my $tmp = $field_subtypes{$subtype};
     confess "Unknown constant: $subtype\n" unless defined $tmp;
@@ -1096,7 +1096,7 @@ sub GetSubtype {
 
 sub SetJustify {
     my ($self, $justify) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $justify //= 'Undefined';
     my $tmp = $justification{$justify};
     confess "Unknown constant: $justify\n" unless defined $tmp;
@@ -1112,7 +1112,7 @@ sub GetJustify {
 
 sub SetWidth {
     my ($self, $width) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $width //= '';
     Geo::GDAL::FFI::OGR_Fld_SetWidth($$self, $width);
 }
@@ -1125,7 +1125,7 @@ sub GetWidth {
 
 sub SetPrecision {
     my ($self, $precision) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $precision //= '';
     Geo::GDAL::FFI::OGR_Fld_SetPrecision($$self, $precision);
 }
@@ -1138,7 +1138,7 @@ sub GetPrecision {
 
 sub SetIgnored {
     my ($self, $ignored) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $ignored //= 0;
     Geo::GDAL::FFI::OGR_Fld_SetIgnored($$self, $ignored);
 }
@@ -1150,7 +1150,7 @@ sub IsIgnored {
 
 sub SetNullable {
     my ($self, $nullable) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $nullable //= 0;
     Geo::GDAL::FFI::OGR_Fld_SetNullable($$self, $nullable);
 }
@@ -1179,8 +1179,9 @@ sub new {
 
 sub DESTROY {
     my $self = shift;
-    if ($unmutable{$$self}) {
-        delete $unmutable{$$self};
+    if ($immutable{$$self}) {
+        $immutable{$$self}--;
+        delete $immutable{$$self} if $immutable{$$self} == 0;
     } else {
         Geo::GDAL::FFI::OGR_GFld_Destroy($$self);
     }
@@ -1188,7 +1189,7 @@ sub DESTROY {
 
 sub SetName {
     my ($self, $name) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $name //= '';
     Geo::GDAL::FFI::OGR_GFld_SetName($$self, $name);
 }
@@ -1201,7 +1202,7 @@ sub GetName {
 
 sub SetType {
     my ($self, $type) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $type //= 'String';
     my $tmp = $geometry_types{$type};
     confess "Unknown constant: $type\n" unless defined $tmp;
@@ -1217,7 +1218,7 @@ sub GetType {
 
 sub SetSpatialRef {
     my ($self, $sr) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     Geo::GDAL::FFI::OGR_GFld_SetSpatialRef($$self, $sr);
 }
 
@@ -1229,7 +1230,7 @@ sub GetSpatialRef {
 
 sub SetIgnored {
     my ($self, $ignored) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $ignored //= 0;
     Geo::GDAL::FFI::OGR_GFld_SetIgnored($$self, $ignored);
 }
@@ -1241,7 +1242,7 @@ sub IsIgnored {
 
 sub SetNullable {
     my ($self, $nullable) = @_;
-    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $nullable //= 0;
     Geo::GDAL::FFI::OGR_GFld_SetNullable($$self, $nullable);
 }
@@ -1257,11 +1258,8 @@ use strict;
 use warnings;
 use Carp;
 
-our %defns = ();
-
 sub new {
     my ($class, $def) = @_;
-    $defns{$def} = $def;
     my $f = Geo::GDAL::FFI::OGR_F_Create($$def);
     return bless \$f, $class;
 }
@@ -1271,6 +1269,181 @@ sub DESTROY {
     Geo::GDAL::FFI::OGR_F_Destroy($$self);
 }
 
+sub GetFID {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_F_GetFID($$self);
+}
+
+sub SetFID {
+    my ($self, $fid) = @_;
+    Geo::GDAL::FFI::OGR_F_GetFID($$self, $fid);
+}
+
+sub GetDefn {
+    my ($self) = @_;
+    my $d = Geo::GDAL::FFI::OGR_F_GetDefnRef($$self);
+    $immutable{$d} = exists $immutable{$d} ? $immutable{$d} + 1 : 1;
+    #say STDERR "$d immutable";
+    return bless \$d, 'Geo::GDAL::FFI::FeatureDefn';
+}
+
+sub Clone {
+    my ($self) = @_;
+}
+
+sub Equal {
+    my ($self) = @_;
+}
+
+sub GetFieldCount {
+    my ($self) = @_;
+}
+
+sub GetFieldDefnRef {
+    my ($self) = @_;
+}
+
+sub GetFieldIndex {
+    my ($self) = @_;
+}
+
+sub IsFieldSet {
+    my ($self) = @_;
+}
+
+sub UnsetField {
+    my ($self) = @_;
+}
+
+sub IsFieldNull {
+    my ($self) = @_;
+}
+
+sub IsFieldSetAndNotNull {
+    my ($self) = @_;
+}
+
+sub SetFieldNull {
+    my ($self) = @_;
+}
+
+sub GetFieldAsInteger {
+    my ($self) = @_;
+}
+
+sub GetFieldAsInteger64 {
+    my ($self) = @_;
+}
+
+sub GetFieldAsDouble {
+    my ($self) = @_;
+}
+
+sub GetFieldAsString {
+    my ($self) = @_;
+}
+
+sub GetFieldAsIntegerList {
+    my ($self) = @_;
+}
+
+sub GetFieldAsInteger64List {
+    my ($self) = @_;
+}
+
+sub GetFieldAsDoubleList {
+    my ($self) = @_;
+}
+
+sub GetFieldAsStringList {
+    my ($self) = @_;
+}
+
+sub GetFieldAsBinary {
+    my ($self) = @_;
+}
+
+sub GetFieldAsDateTime {
+    my ($self) = @_;
+}
+
+sub GetFieldAsDateTimeEx {
+    my ($self) = @_;
+}
+
+sub SetFieldInteger {
+    my ($self) = @_;
+}
+
+sub SetFieldInteger64 {
+    my ($self) = @_;
+}
+
+sub SetFieldDouble {
+    my ($self) = @_;
+}
+
+sub SetFieldString {
+    my ($self) = @_;
+}
+
+sub SetFieldIntegerList {
+    my ($self) = @_;
+}
+
+sub SetFieldInteger64List {
+    my ($self) = @_;
+}
+
+sub SetFieldDoubleList {
+    my ($self) = @_;
+}
+
+sub SetFieldStringList {
+    my ($self) = @_;
+}
+
+sub SetFieldDateTime {
+    my ($self) = @_;
+}
+
+sub SetFieldDateTimeEx {
+    my ($self) = @_;
+}
+
+sub GetGeometryCount {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_F_GetGeomFieldCount($$self);
+}
+
+sub GetGeometryIndex {
+    my ($self, $name) = @_;
+    return Geo::GDAL::FFI::OGR_F_GetGeomFieldIndex($$self, $name);
+}
+
+sub GetGeomFieldDefnRef {
+    my ($self) = @_;
+}
+
+sub GetGeometry {
+    my ($self, $i) = @_;
+    $i //= 0;
+    my $g = Geo::GDAL::FFI::OGR_F_GetGeomFieldRef($$self, $i);
+    croak "No such field: $i" unless $g;
+    $immutable{$g} = exists $immutable{$g} ? $immutable{$g} + 1 : 1;
+    #say STDERR "$g immutable";
+    return bless \$g, 'Geo::GDAL::FFI::Geometry';
+}
+
+sub SetGeometry {
+    my ($self, $g, $i) = @_;
+    $i //= 0;
+    $immutable{$$g} = exists $immutable{$$g} ? $immutable{$$g} + 1 : 1;
+    #say STDERR "$$g immutable";
+    Geo::GDAL::FFI::OGR_F_SetGeomFieldDirectly($$self, $i, $$g);
+}
+
+
 package Geo::GDAL::FFI::Geometry;
 use v5.10;
 use strict;
@@ -1279,16 +1452,37 @@ use Carp;
 
 sub new {
     my ($class, $type) = @_;
+    $type //= 'Unknown';
+    my $m = $type =~ /M$/;
+    my $z = $type =~ /ZM$/ || $type =~ /25D$/;
     my $tmp = $geometry_types{$type};
     confess "Unknown constant: $type\n" unless defined $tmp;
     $type = $tmp;
     my $g = Geo::GDAL::FFI::OGR_G_CreateGeometry($type);
+    Geo::GDAL::FFI::OGR_G_SetMeasured($g, 1) if $m;
+    Geo::GDAL::FFI::OGR_G_Set3D($g, 1) if $z;
     return bless \$g, $class;
 }
 
 sub DESTROY {
     my ($self) = @_;
-    Geo::GDAL::FFI::OGR_G_DestroyGeometry($$self);
+    if ($immutable{$$self}) {
+        #say STDERR "forget $$self $immutable{$$self}";
+        $immutable{$$self}--;
+        delete $immutable{$$self} if $immutable{$$self} == 0;
+    } else {
+        #say STDERR "destroy $$self";
+        Geo::GDAL::FFI::OGR_G_DestroyGeometry($$self);
+    }
+}
+
+sub Type {
+    my ($self, $mode) = @_;
+    $mode //= '';
+    my $t = Geo::GDAL::FFI::OGR_G_GetGeometryType($$self);
+    Geo::GDAL::FFI::OGR_GT_Flatten($t) if $mode =~ /flatten/i;
+    #say STDERR "type is $t";
+    return $geometry_types_reverse{$t};
 }
 
 sub GetPointCount {
@@ -1298,8 +1492,11 @@ sub GetPointCount {
 
 sub SetPoint {
     my $self = shift;
+    croak "Can't modify an immutable object." if $immutable{$$self};
     my ($i, $x, $y, $z, $m);
-    $i = shift if Geo::GDAL::FFI::OGR_G_GetPointCount($$self) > 1;
+    $i = shift if 
+        Geo::GDAL::FFI::OGR_GT_Flatten(
+            Geo::GDAL::FFI::OGR_G_GetGeometryType($$self)) != 1; # a point
     if (@_ > 1) {
         ($x, $y, $z, $m) = @_;
     } elsif (@_) {
@@ -1348,6 +1545,7 @@ sub GetGeometry {
 
 sub AddGeometry {
     my ($self, $g) = @_;
+    croak "Can't modify an immutable object." if $immutable{$$self};
     my $e = Geo::GDAL::FFI::OGR_G_GetGeometryRef($$self, $$g);
     return unless $e;
     my $msg = join("\n", @errors);
@@ -1357,6 +1555,7 @@ sub AddGeometry {
 
 sub RemoveGeometry {
     my ($self, $i) = @_;
+    croak "Can't modify an immutable object." if $immutable{$$self};
     my $e = Geo::GDAL::FFI::OGR_G_GetGeometryRef($$self, $i, 1);
     return unless $e;
     my $msg = join("\n", @errors);
@@ -1366,15 +1565,21 @@ sub RemoveGeometry {
 
 sub ImportFromWkt {
     my ($self, $wkt) = @_;
+    croak "Can't modify an immutable object." if $immutable{$$self};
     $wkt //= '';
     Geo::GDAL::FFI::OGR_G_ImportFromWkt($$self, \$wkt);
     return $wkt;
 }
 
 sub ExportToWkt {
-    my ($self) = @_;
+    my ($self, $mode) = @_;
+    $mode //= '';
     my $wkt = '';
-    Geo::GDAL::FFI::OGR_G_ExportToWkt($$self, \$wkt);
+    if ($mode =~ /ISO/i) {
+        Geo::GDAL::FFI::OGR_G_ExportToIsoWkt($$self, \$wkt);
+    } else {
+        Geo::GDAL::FFI::OGR_G_ExportToWkt($$self, \$wkt);
+    }
     return $wkt;
 }
 
