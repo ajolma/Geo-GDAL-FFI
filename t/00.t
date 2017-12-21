@@ -226,20 +226,20 @@ if(1){
     $d->SetGeomType('Polygon');
     ok($d->GetGeomType eq 'Polygon', "GeomType");
 
-    $d->AddFieldDefn(Geo::GDAL::FFI::FieldDefn->new(test => 'Integer'));
+    $d->AddField(Geo::GDAL::FFI::FieldDefn->new(test => 'Integer'));
     ok($d->GetFieldCount == 1, "GetFieldCount");
-    my $f = $d->GetFieldDefn(0);
+    my $f = $d->GetField(0);
     ok($f->Name eq 'test', "GetFieldDefn ".$f->Name);
     ok($d->GetFieldIndex('test') == 0, "GetFieldIndex");
-    $d->DeleteFieldDefn(0);
+    $d->DeleteField(0);
     ok($d->GetFieldCount == 0, "DeleteFieldDefn");
 
-    $d->AddGeomFieldDefn(Geo::GDAL::FFI::GeomFieldDefn->new(test => 'Point'));
+    $d->AddGeomField(Geo::GDAL::FFI::GeomFieldDefn->new(test => 'Point'));
     ok($d->GetGeomFieldCount == 2, "GetGeomFieldCount");
-    $f = $d->GetGeomFieldDefn(1);
+    $f = $d->GetGeomField(1);
     ok($f->Name eq 'test', "GetGeomFieldDefn");
     ok($d->GetGeomFieldIndex('test') == 1, "GetGeomFieldIndex");
-    $d->DeleteGeomFieldDefn(1);
+    $d->DeleteGeomField(1);
     ok($d->GetGeomFieldCount == 1, "DeleteGeomFieldDefn");
 }
 

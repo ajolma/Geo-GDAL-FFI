@@ -940,7 +940,7 @@ sub GetField {
     my ($self, $i) = @_;
     my $d = Geo::GDAL::FFI::OGR_FD_GetFieldDefn($$self, $i);
     croak "No such field: $i" unless $d;
-    $immutable{$d} = exists $immutable{$d} ? $immutable{$d} + 1 : 1;
+    ++$immutable{$d};
     #say STDERR "$d immutable";
     return bless \$d, 'Geo::GDAL::FFI::FieldDefn';
 }
@@ -949,7 +949,7 @@ sub GetGeomField {
     my ($self, $i) = @_;
     my $d = Geo::GDAL::FFI::OGR_FD_GetGeomFieldDefn($$self, $i);
     croak "No such field: $i" unless $d;
-    $immutable{$d} = exists $immutable{$d} ? $immutable{$d} + 1 : 1;
+    ++$immutable{$d};
     #say STDERR "$d immutable";
     return bless \$d, 'Geo::GDAL::FFI::GeomFieldDefn';
 }
@@ -1282,7 +1282,7 @@ sub SetFID {
 sub GetDefn {
     my ($self) = @_;
     my $d = Geo::GDAL::FFI::OGR_F_GetDefnRef($$self);
-    $immutable{$d} = exists $immutable{$d} ? $immutable{$d} + 1 : 1;
+    ++$immutable{$d};
     #say STDERR "$d immutable";
     return bless \$d, 'Geo::GDAL::FFI::FeatureDefn';
 }
