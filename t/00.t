@@ -121,7 +121,7 @@ if(1){
     # should investigate why
     #$b->SetColorTable([[1,2,3,4],[5,6,7,8]]);
 }
-if(1) {
+if(1){
     my $dr = $gdal->GetDriverByName('MEM');
     my $ds = $dr->Create();
     my $b = $ds->GetBand;
@@ -149,6 +149,101 @@ if(1){
     my $l = $ds->GetLayer;
     my $d = $l->GetDefn();
     ok($d->GetGeomType eq 'Point', "Create point shapefile and open it.");
+}
+
+# test field definitions
+if(1){
+    my $f = Geo::GDAL::FFI::FieldDefn->new(test => 'Integer');
+    ok($f->GetName eq 'test', "Field definition: get name");
+    ok($f->Type eq 'Integer', "Field definition: get type");
+    
+    $f->SetName('test2');
+    ok($f->Name eq 'test2', "Field definition: name");
+    
+    $f->SetType('Real');
+    ok($f->Type eq 'Real', "Field definition: type");
+    
+    $f->SetSubtype('Float32');
+    ok($f->Subtype eq 'Float32', "Field definition: subtype");
+    
+    $f->SetJustify('Left');
+    ok($f->Justify eq 'Left', "Field definition: Justify");
+
+    $f->SetWidth(10);
+    ok($f->Width == 10, "Field definition: Width");
+
+    $f->SetPrecision(10);
+    ok($f->Precision == 10, "Field definition: Precision");
+
+    $f->SetIgnored(1);
+    ok($f->IsIgnored, "Field definition: Ignored");
+
+    $f->SetNullable(1);
+    ok($f->IsNullable, "Field definition: Nullable");
+
+    $f->SetIgnored;
+    ok(!$f->IsIgnored, "Field definition: Ignored");
+
+    $f->SetNullable;
+    ok(!$f->IsNullable, "Field definition: Nullable");
+
+    $f = Geo::GDAL::FFI::GeomFieldDefn->new(test => 'Point');
+    ok($f->GetName eq 'test', "Geometry field definition: get name");
+    ok($f->Type eq 'Point', "Geometry field definition: get type");
+    
+    $f->SetName('test2');
+    ok($f->Name eq 'test2', "Geometry field definition: name");
+    
+    $f->SetType('LineString');
+    ok($f->Type eq 'LineString', "Geometry field definition: type");
+    
+    $f->SetIgnored(1);
+    ok($f->IsIgnored, "Geometry field definition: Ignored");
+
+    $f->SetNullable(1);
+    ok($f->IsNullable, "Geometry field definition: Nullable");
+
+    $f->SetIgnored;
+    ok(!$f->IsIgnored, "Geometry field definition: Ignored");
+
+    $f->SetNullable;
+    ok(!$f->IsNullable, "Geometry field definition: Nullable");
+}
+
+# test feature definitions
+if(1){
+    my $d = Geo::GDAL::FFI::FeatureDefn->new('test');
+    ok($d->GetFieldCount == 0, "GetFieldCount");
+    ok($d->GetGeomFieldCount == 1, "GetGeomFieldCount");
+
+    $d->SetGeometryIgnored(1);
+    ok($d->IsGeometryIgnored, "IsGeometryIgnored");
+    $d->SetGeometryIgnored(0);
+    ok(!$d->IsGeometryIgnored, "IsGeometryIgnored");
+
+    $d->SetStyleIgnored(1);
+    ok($d->IsStyleIgnored, "IsStyleIgnored");
+    $d->SetStyleIgnored(0);
+    ok(!$d->IsStyleIgnored, "IsStyleIgnored");
+
+    $d->SetGeomType('Polygon');
+    ok($d->GetGeomType eq 'Polygon', "GeomType");
+
+    $d->AddFieldDefn(Geo::GDAL::FFI::FieldDefn->new(test => 'Integer'));
+    ok($d->GetFieldCount == 1, "GetFieldCount");
+    my $f = $d->GetFieldDefn(0);
+    ok($f->Name eq 'test', "GetFieldDefn ".$f->Name);
+    ok($d->GetFieldIndex('test') == 0, "GetFieldIndex");
+    $d->DeleteFieldDefn(0);
+    ok($d->GetFieldCount == 0, "DeleteFieldDefn");
+
+    $d->AddGeomFieldDefn(Geo::GDAL::FFI::GeomFieldDefn->new(test => 'Point'));
+    ok($d->GetGeomFieldCount == 2, "GetGeomFieldCount");
+    $f = $d->GetGeomFieldDefn(1);
+    ok($f->Name eq 'test', "GetGeomFieldDefn");
+    ok($d->GetGeomFieldIndex('test') == 1, "GetGeomFieldIndex");
+    $d->DeleteGeomFieldDefn(1);
+    ok($d->GetGeomFieldCount == 1, "DeleteGeomFieldDefn");
 }
 
 # test creating a geometry object

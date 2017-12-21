@@ -15,6 +15,7 @@ use constant Read => 0;
 use constant Write => 1;
 
 our @errors;
+our %unmutable;
 
 our %access = (
     ReadOnly => 0,
@@ -49,6 +50,39 @@ our %data_types = (
     CFloat32 => 10,
     CFloat64 => 11
     );
+
+our %field_types = (
+    Integer => 0,
+    IntegerList => 1,
+    Real => 2,
+    RealList => 3,
+    String => 4,
+    StringList => 5,
+    WideString => 6,
+    WideStringList => 7,
+    Binary => 8,
+    Date => 9,
+    Time => 10,
+    DateTime => 11,
+    Integer64 => 12,
+    Integer64List => 13,
+    );
+our %field_types_reverse = reverse %field_types;
+
+our %field_subtypes = (
+    None => 0,
+    Boolean => 1,
+    Int16 => 2,
+    Float32 => 3
+    );
+our %field_subtypes_reverse = reverse %field_subtypes;
+
+our %justification = (
+    Undefined => 0,
+    Left => 1,
+    Right => 2
+    );
+our %justification_reverse = reverse %justification;
 
 our %color_interpretations = (
     Undefined => 0,
@@ -153,188 +187,235 @@ sub new {
     $ffi->lib(Alien::gdal->dynamic_libs);
 
     $ffi->type('(int,int,string)->void' => 'CPLErrorHandler');
-    $ffi->attach('CPLPushErrorHandler' => ['CPLErrorHandler'] => 'void' );
+    $ffi->attach('CPLPushErrorHandler' => ['CPLErrorHandler'] => 'void');
 
-    $ffi->attach( 'CSLDestroy' => ['opaque'] => 'void' );
-    $ffi->attach( 'CSLAddString' => ['opaque', 'string'] => 'opaque' );
-    $ffi->attach( 'CSLCount' => ['opaque'] => 'int' );
-    $ffi->attach( 'CSLGetField' => ['opaque', 'int'] => 'string' );
+    $ffi->attach( 'CSLDestroy' => ['opaque'] => 'void');
+    $ffi->attach( 'CSLAddString' => ['opaque', 'string'] => 'opaque');
+    $ffi->attach( 'CSLCount' => ['opaque'] => 'int');
+    $ffi->attach( 'CSLGetField' => ['opaque', 'int'] => 'string');
 
-    $ffi->attach( 'GDALAllRegister' => [] => 'void' );
+    $ffi->attach( 'GDALAllRegister' => [] => 'void');
 
-    $ffi->attach( 'GDALGetMetadataDomainList' => ['opaque'] => 'opaque' );
-    $ffi->attach( 'GDALGetMetadata' => ['opaque', 'string'] => 'opaque' );
-    $ffi->attach( 'GDALSetMetadata' => ['opaque', 'opaque', 'string'] => 'int' );
-    $ffi->attach( 'GDALGetMetadataItem' => ['opaque', 'string', 'string'] => 'string' );
-    $ffi->attach( 'GDALSetMetadataItem' => ['opaque', 'string', 'string', 'string'] => 'int' );
+    $ffi->attach( 'GDALGetMetadataDomainList' => ['opaque'] => 'opaque');
+    $ffi->attach( 'GDALGetMetadata' => ['opaque', 'string'] => 'opaque');
+    $ffi->attach( 'GDALSetMetadata' => ['opaque', 'opaque', 'string'] => 'int');
+    $ffi->attach( 'GDALGetMetadataItem' => ['opaque', 'string', 'string'] => 'string');
+    $ffi->attach( 'GDALSetMetadataItem' => ['opaque', 'string', 'string', 'string'] => 'int');
 
-    $ffi->attach( 'GDALGetDescription' => ['opaque'] => 'string' );
-    $ffi->attach( 'GDALGetDriverCount' => [] => 'int' );
-    $ffi->attach( 'GDALGetDriver' => ['int'] => 'opaque' );
-    $ffi->attach( 'GDALGetDriverByName' => ['string'] => 'opaque' );
-    $ffi->attach( 'GDALCreate' => ['opaque', 'string', 'int', 'int', 'int', 'int', 'opaque'] => 'opaque' );
-    $ffi->attach( 'GDALVersionInfo' => ['string'] => 'string' );
-    $ffi->attach( 'GDALOpen' => ['string', 'int'] => 'opaque' );
-    $ffi->attach( 'GDALOpenEx' => ['string', 'unsigned int', 'opaque', 'opaque', 'opaque'] => 'opaque' );
-    $ffi->attach( 'GDALClose' => ['opaque'] => 'void' );
-    $ffi->attach( 'GDALGetRasterXSize' => ['opaque'] => 'int' );
-    $ffi->attach( 'GDALGetRasterYSize' => ['opaque'] => 'int' );
-    $ffi->attach( 'GDALGetRasterCount' => ['opaque'] => 'int' );
-    $ffi->attach( 'GDALGetRasterBand' => ['opaque', 'int'] => 'opaque' );
-    $ffi->attach( 'GDALFlushCache' => ['opaque'] => 'void' );
+    $ffi->attach( 'GDALGetDescription' => ['opaque'] => 'string');
+    $ffi->attach( 'GDALGetDriverCount' => [] => 'int');
+    $ffi->attach( 'GDALGetDriver' => ['int'] => 'opaque');
+    $ffi->attach( 'GDALGetDriverByName' => ['string'] => 'opaque');
+    $ffi->attach( 'GDALCreate' => ['opaque', 'string', 'int', 'int', 'int', 'int', 'opaque'] => 'opaque');
+    $ffi->attach( 'GDALVersionInfo' => ['string'] => 'string');
+    $ffi->attach( 'GDALOpen' => ['string', 'int'] => 'opaque');
+    $ffi->attach( 'GDALOpenEx' => ['string', 'unsigned int', 'opaque', 'opaque', 'opaque'] => 'opaque');
+    $ffi->attach( 'GDALClose' => ['opaque'] => 'void');
+    $ffi->attach( 'GDALGetRasterXSize' => ['opaque'] => 'int');
+    $ffi->attach( 'GDALGetRasterYSize' => ['opaque'] => 'int');
+    $ffi->attach( 'GDALGetRasterCount' => ['opaque'] => 'int');
+    $ffi->attach( 'GDALGetRasterBand' => ['opaque', 'int'] => 'opaque');
+    $ffi->attach( 'GDALFlushCache' => ['opaque'] => 'void');
 
-    $ffi->attach( 'GDALGetProjectionRef' => ['opaque'] => 'string' );
-    $ffi->attach( 'GDALSetProjection' => ['opaque', 'string'] => 'int' );
-    $ffi->attach( 'GDALGetGeoTransform' => ['opaque', 'double[6]'] => 'int' );
-    $ffi->attach( 'GDALSetGeoTransform' => ['opaque', 'double[6]'] => 'int' );
+    $ffi->attach( 'GDALGetProjectionRef' => ['opaque'] => 'string');
+    $ffi->attach( 'GDALSetProjection' => ['opaque', 'string'] => 'int');
+    $ffi->attach( 'GDALGetGeoTransform' => ['opaque', 'double[6]'] => 'int');
+    $ffi->attach( 'GDALSetGeoTransform' => ['opaque', 'double[6]'] => 'int');
 
-    $ffi->attach( 'GDALGetRasterDataType' => ['opaque'] => 'int' );
-    $ffi->attach( 'GDALGetRasterBandXSize' => ['opaque'] => 'int' );
-    $ffi->attach( 'GDALGetRasterBandYSize' => ['opaque'] => 'int' );
-    $ffi->attach( 'GDALGetRasterNoDataValue' => ['opaque', 'int*'] => 'double' );
-    $ffi->attach( 'GDALSetRasterNoDataValue' => ['opaque', 'double'] => 'int' );
-    $ffi->attach( 'GDALDeleteRasterNoDataValue' => ['opaque'] => 'int' );
-    $ffi->attach( 'GDALGetRasterColorTable' => ['opaque'] => 'opaque' );
-    $ffi->attach( 'GDALSetRasterColorTable' => ['opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'GDALGetBlockSize' => ['opaque', 'int*', 'int*'] => 'void' );
-    $ffi->attach( 'GDALReadBlock' => ['opaque', 'int', 'int', 'string'] => 'int' );
-    $ffi->attach( 'GDALWriteBlock' => ['opaque', 'int', 'int', 'string'] => 'int' );
-    $ffi->attach( 'GDALRasterIO' => [qw/opaque int int int int int string int int int int int/] => 'int' );
+    $ffi->attach( 'GDALGetRasterDataType' => ['opaque'] => 'int');
+    $ffi->attach( 'GDALGetRasterBandXSize' => ['opaque'] => 'int');
+    $ffi->attach( 'GDALGetRasterBandYSize' => ['opaque'] => 'int');
+    $ffi->attach( 'GDALGetRasterNoDataValue' => ['opaque', 'int*'] => 'double');
+    $ffi->attach( 'GDALSetRasterNoDataValue' => ['opaque', 'double'] => 'int');
+    $ffi->attach( 'GDALDeleteRasterNoDataValue' => ['opaque'] => 'int');
+    $ffi->attach( 'GDALGetRasterColorTable' => ['opaque'] => 'opaque');
+    $ffi->attach( 'GDALSetRasterColorTable' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'GDALGetBlockSize' => ['opaque', 'int*', 'int*'] => 'void');
+    $ffi->attach( 'GDALReadBlock' => ['opaque', 'int', 'int', 'string'] => 'int');
+    $ffi->attach( 'GDALWriteBlock' => ['opaque', 'int', 'int', 'string'] => 'int');
+    $ffi->attach( 'GDALRasterIO' => [qw/opaque int int int int int string int int int int int/] => 'int');
 
-    $ffi->attach( 'GDALGetRasterColorInterpretation' => ['opaque'] => 'int' );
-    $ffi->attach( 'GDALSetRasterColorInterpretation' => ['opaque', 'int'] => 'int' );
-    $ffi->attach( 'GDALCreateColorTable' => ['int'] => 'opaque' );
-    $ffi->attach( 'GDALDestroyColorTable' => ['opaque'] => 'void' );
-    $ffi->attach( 'GDALCloneColorTable' => ['opaque'] => 'opaque' );
-    $ffi->attach( 'GDALGetPaletteInterpretation' => ['opaque'] => 'int' );
-    $ffi->attach( 'GDALGetColorEntryCount' => ['opaque'] => 'int' );
-    $ffi->attach( 'GDALGetColorEntry' => ['opaque', 'int'] => 'short[4]' );
-    $ffi->attach( 'GDALSetColorEntry' => ['opaque', 'int', 'short[4]'] => 'void' );
-    $ffi->attach( 'GDALCreateColorRamp' => ['opaque', 'int', 'short[4]', 'int', 'short[4]'] => 'void' );
+    $ffi->attach( 'GDALGetRasterColorInterpretation' => ['opaque'] => 'int');
+    $ffi->attach( 'GDALSetRasterColorInterpretation' => ['opaque', 'int'] => 'int');
+    $ffi->attach( 'GDALCreateColorTable' => ['int'] => 'opaque');
+    $ffi->attach( 'GDALDestroyColorTable' => ['opaque'] => 'void');
+    $ffi->attach( 'GDALCloneColorTable' => ['opaque'] => 'opaque');
+    $ffi->attach( 'GDALGetPaletteInterpretation' => ['opaque'] => 'int');
+    $ffi->attach( 'GDALGetColorEntryCount' => ['opaque'] => 'int');
+    $ffi->attach( 'GDALGetColorEntry' => ['opaque', 'int'] => 'short[4]');
+    $ffi->attach( 'GDALSetColorEntry' => ['opaque', 'int', 'short[4]'] => 'void');
+    $ffi->attach( 'GDALCreateColorRamp' => ['opaque', 'int', 'short[4]', 'int', 'short[4]'] => 'void');
 
-    $ffi->attach( 'OSRNewSpatialReference' => ['string'] => 'opaque' );
-    $ffi->attach( 'OSRDestroySpatialReference' => ['opaque'] => 'void' );
-    $ffi->attach( 'OSRRelease' => ['opaque'] => 'void' );
-    $ffi->attach( 'OSRClone' => ['opaque'] => 'opaque' );
-    $ffi->attach( 'OSRImportFromEPSG' => ['opaque', 'int'] => 'int' );
+    $ffi->attach( 'OSRNewSpatialReference' => ['string'] => 'opaque');
+    $ffi->attach( 'OSRDestroySpatialReference' => ['opaque'] => 'void');
+    $ffi->attach( 'OSRRelease' => ['opaque'] => 'void');
+    $ffi->attach( 'OSRClone' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OSRImportFromEPSG' => ['opaque', 'int'] => 'int');
 
-    $ffi->attach( 'GDALDatasetGetLayer' => ['opaque', 'int'] => 'opaque' );
-    $ffi->attach( 'GDALDatasetCreateLayer' => ['opaque', 'string', 'opaque', 'int', 'opaque'] => 'opaque' );
-    $ffi->attach( 'GDALDatasetExecuteSQL' => ['opaque', 'string', 'opaque', 'string'] => 'opaque' );
-    $ffi->attach( 'GDALDatasetReleaseResultSet' => ['opaque', 'opaque'] => 'void' );
+    $ffi->attach( 'GDALDatasetGetLayer' => ['opaque', 'int'] => 'opaque');
+    $ffi->attach( 'GDALDatasetCreateLayer' => ['opaque', 'string', 'opaque', 'int', 'opaque'] => 'opaque');
+    $ffi->attach( 'GDALDatasetExecuteSQL' => ['opaque', 'string', 'opaque', 'string'] => 'opaque');
+    $ffi->attach( 'GDALDatasetReleaseResultSet' => ['opaque', 'opaque'] => 'void');
 
-    $ffi->attach( 'OGR_L_SyncToDisk' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_L_GetLayerDefn' => ['opaque'] => 'opaque' );
-    $ffi->attach( 'OGR_L_ResetReading' => ['opaque'] => 'void' );
-    $ffi->attach( 'OGR_L_GetNextFeature' => ['opaque'] => 'opaque' );
-    $ffi->attach( 'OGR_L_CreateFeature' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_L_SyncToDisk' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_L_GetLayerDefn' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_L_ResetReading' => ['opaque'] => 'void');
+    $ffi->attach( 'OGR_L_GetNextFeature' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_L_CreateFeature' => ['opaque', 'opaque'] => 'int');
 
-    $ffi->attach( 'OGR_FD_Create' => ['string'] => 'opaque' );
-    $ffi->attach( 'OGR_FD_Release' => ['opaque'] => 'void' );
-    $ffi->attach( 'OGR_FD_GetGeomFieldCount' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_FD_GetFieldDefn' => ['opaque', 'int'] => 'opaque' );
-    $ffi->attach( 'OGR_FD_GetGeomFieldDefn' => ['opaque', 'int'] => 'opaque' );
-    $ffi->attach( 'OGR_FD_GetFieldIndex' => ['opaque', 'string'] => 'int' );
-    $ffi->attach( 'OGR_FD_AddFieldDefn' => ['opaque', 'opaque'] => 'void' );
-    $ffi->attach( 'OGR_FD_AddGeomFieldDefn' => ['opaque', 'opaque'] => 'void' );
-    $ffi->attach( 'OGR_FD_DeleteFieldDefn' => ['opaque', 'int'] => 'int' );
-    $ffi->attach( 'OGR_FD_DeleteGeomFieldDefn' => ['opaque', 'int'] => 'int' );
-    $ffi->attach( 'OGR_FD_GetGeomType' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_FD_SetGeomType' => ['opaque', 'int'] => 'void' );
-    $ffi->attach( 'OGR_FD_IsGeometryIgnored' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_FD_SetGeometryIgnored' => ['opaque', 'int'] => 'void' );
-    $ffi->attach( 'OGR_FD_IsStyleIgnored' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_FD_SetStyleIgnored' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_FD_Create' => ['string'] => 'opaque');
+    $ffi->attach( 'OGR_FD_Release' => ['opaque'] => 'void');
+    $ffi->attach( 'OGR_FD_GetFieldCount' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_FD_GetGeomFieldCount' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_FD_GetFieldDefn' => ['opaque', 'int'] => 'opaque');
+    $ffi->attach( 'OGR_FD_GetGeomFieldDefn' => ['opaque', 'int'] => 'opaque');
+    $ffi->attach( 'OGR_FD_GetFieldIndex' => ['opaque', 'string'] => 'int');
+    $ffi->attach( 'OGR_FD_GetGeomFieldIndex' => ['opaque', 'string'] => 'int');
+    $ffi->attach( 'OGR_FD_AddFieldDefn' => ['opaque', 'opaque'] => 'void');
+    $ffi->attach( 'OGR_FD_AddGeomFieldDefn' => ['opaque', 'opaque'] => 'void');
+    $ffi->attach( 'OGR_FD_DeleteFieldDefn' => ['opaque', 'int'] => 'int');
+    $ffi->attach( 'OGR_FD_DeleteGeomFieldDefn' => ['opaque', 'int'] => 'int');
+    $ffi->attach( 'OGR_FD_GetGeomType' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_FD_SetGeomType' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_FD_IsGeometryIgnored' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_FD_SetGeometryIgnored' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_FD_IsStyleIgnored' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_FD_SetStyleIgnored' => ['opaque', 'int'] => 'void');
 
-    $ffi->attach( 'OGR_F_Create' => ['opaque'] => 'opaque' );
-    $ffi->attach( 'OGR_F_Destroy' => ['opaque'] => 'void' );
+    $ffi->attach( 'OGR_F_Create' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_F_Destroy' => ['opaque'] => 'void');
+    $ffi->attach( 'OGR_F_GetDefnRef' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_F_SetGeometryDirectly' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_F_SetGeometry' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_F_GetGeometryRef' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_F_StealGeometry' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_F_Clone' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_F_Equal' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_F_GetFieldCount' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_F_GetFieldDefnRef' => ['opaque', 'int'] => 'opaque');
+    $ffi->attach( 'OGR_F_GetFieldIndex' => ['opaque', 'string'] => 'int');
+    $ffi->attach( 'OGR_F_IsFieldSet' => ['opaque', 'int'] => 'int');
+    $ffi->attach( 'OGR_F_UnsetField' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_F_IsFieldNull' => ['opaque', 'int'] => 'int');
+    $ffi->attach( 'OGR_F_IsFieldSetAndNotNull' => ['opaque', 'int'] => 'int');
+    $ffi->attach( 'OGR_F_SetFieldNull' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_F_GetFieldAsInteger' => ['opaque', 'int'] => 'int');
+    $ffi->attach( 'OGR_F_GetFieldAsInteger64' => ['opaque', 'int'] => 'long long');
+    $ffi->attach( 'OGR_F_GetFieldAsDouble' => ['opaque', 'int'] => 'double');
+    $ffi->attach( 'OGR_F_GetFieldAsString' => ['opaque', 'int'] => 'string');
+    $ffi->attach( 'OGR_F_GetFieldAsIntegerList' => ['opaque', 'int', 'int*'] => 'void');
+    $ffi->attach( 'OGR_F_GetFieldAsInteger64List' => ['opaque', 'int', 'int *'] => 'void');
+    $ffi->attach( 'OGR_F_GetFieldAsDoubleList' => ['opaque', 'int', 'int *'] => 'void');
+    $ffi->attach( 'OGR_F_GetFieldAsStringList' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_F_GetFieldAsBinary' => ['opaque', 'int', 'int *'] => 'void');
+    $ffi->attach( 'OGR_F_GetFieldAsDateTime' => [qw/opaque int int* int* int* int* int* int* int*/]  => 'int');
+    $ffi->attach( 'OGR_F_GetFieldAsDateTimeEx' => [qw/opaque int int* int* int* int* int* float* int*/] => 'int');
+    $ffi->attach( 'OGR_F_SetFieldInteger' => ['opaque', 'int', 'int'] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldInteger64' => ['opaque', 'int', 'long long'] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldDouble' => [qw/opaque int double/] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldString' => [qw/opaque int string/] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldIntegerList' => [qw/opaque int int int*/] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldInteger64List' => ['opaque', 'int', 'int', 'long long[]'] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldDoubleList' => ['opaque', 'int', 'int', 'double[]'] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldStringList' => ['opaque', 'int', 'opaque'] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldDateTime' => [qw/opaque int int int int int int int int/] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldDateTimeEx' => [qw/opaque int int int int int int float int/] => 'void');
+    $ffi->attach( 'OGR_F_GetGeomFieldCount' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_F_GetGeomFieldDefnRef' => ['opaque', 'int'] => 'opaque');
+    $ffi->attach( 'OGR_F_GetGeomFieldIndex' => ['opaque', 'string'] => 'int');
+    $ffi->attach( 'OGR_F_GetGeomFieldRef' => ['opaque', 'int'] => 'opaque');
+    $ffi->attach( 'OGR_F_SetGeomFieldDirectly' => ['opaque', 'int', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_F_SetGeomField' => ['opaque', 'int', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_F_GetFID' => ['opaque'] => 'void');
+    $ffi->attach( 'OGR_F_SetFID' => ['opaque', 'long long'] => 'int');
+    
+    
+    $ffi->attach( 'OGR_Fld_Create' => ['string', 'int'] => 'opaque');
+    $ffi->attach( 'OGR_Fld_Destroy' => ['opaque'] => 'void');
+    $ffi->attach( 'OGR_Fld_SetName' => ['opaque', 'string'] => 'void');
+    $ffi->attach( 'OGR_Fld_GetNameRef' => ['opaque'] => 'string');
+    $ffi->attach( 'OGR_Fld_GetType' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_Fld_SetType' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_Fld_GetSubType' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_Fld_SetSubType' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_Fld_GetJustify' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_Fld_SetJustify' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_Fld_GetWidth' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_Fld_SetWidth' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_Fld_GetPrecision' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_Fld_SetPrecision' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_Fld_IsIgnored' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_Fld_SetIgnored' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_Fld_IsNullable' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_Fld_SetNullable' => ['opaque', 'int'] => 'void');
 
-    $ffi->attach( 'OGR_Fld_Create' => ['string', 'int'] => 'opaque' );
-    $ffi->attach( 'OGR_Fld_Destroy' => ['opaque'] => 'void' );
-    $ffi->attach( 'OGR_Fld_SetName' => ['opaque', 'string'] => 'void' );
-    $ffi->attach( 'OGR_Fld_GetNameRef' => ['opaque'] => 'string' );
-    $ffi->attach( 'OGR_Fld_GetType' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_Fld_SetType' => ['opaque', 'int'] => 'void' );
-    $ffi->attach( 'OGR_Fld_GetSubType' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_Fld_SetSubType' => ['opaque', 'int'] => 'void' );
-    $ffi->attach( 'OGR_Fld_GetJustify' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_Fld_SetJustify' => ['opaque', 'int'] => 'void' );
-    $ffi->attach( 'OGR_Fld_GetWidth' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_Fld_SetWidth' => ['opaque', 'int'] => 'void' );
-    $ffi->attach( 'OGR_Fld_GetPrecision' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_Fld_SetPrecision' => ['opaque', 'int'] => 'void' );
-    $ffi->attach( 'OGR_Fld_IsIgnored' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_Fld_SetIgnored' => ['opaque', 'int'] => 'void' );
-    $ffi->attach( 'OGR_Fld_IsNullable' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_Fld_SetNullable' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_GFld_Create' => ['string', 'int'] => 'opaque');
+    $ffi->attach( 'OGR_GFld_Destroy' => ['opaque'] => 'void');
+    $ffi->attach( 'OGR_GFld_SetName' => ['opaque', 'string'] => 'void');
+    $ffi->attach( 'OGR_GFld_GetNameRef' => ['opaque'] => 'string');
+    $ffi->attach( 'OGR_GFld_GetType' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_GFld_SetType' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_GFld_GetSpatialRef' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_GFld_SetSpatialRef' => ['opaque', 'opaque'] => 'void');
+    $ffi->attach( 'OGR_GFld_IsNullable' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_GFld_SetNullable' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_GFld_IsIgnored' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_GFld_SetIgnored' => ['opaque', 'int'] => 'void');
 
-    $ffi->attach( 'OGR_GFld_Create' => ['string', 'int'] => 'opaque' );
-    $ffi->attach( 'OGR_GFld_Destroy' => ['opaque'] => 'void' );
-    $ffi->attach( 'OGR_GFld_SetName' => ['opaque', 'string'] => 'void' );
-    $ffi->attach( 'OGR_GFld_GetNameRef' => ['opaque'] => 'string' );
-    $ffi->attach( 'OGR_GFld_GetType' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_GFld_SetType' => ['opaque', 'int'] => 'void' );
-    $ffi->attach( 'OGR_GFld_GetSpatialRef' => ['opaque'] => 'opaque' );
-    $ffi->attach( 'OGR_GFld_SetSpatialRef' => ['opaque', 'opaque'] => 'void' );
-    $ffi->attach( 'OGR_GFld_IsNullable' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_GFld_SetNullable' => ['opaque', 'int'] => 'void' );
-    $ffi->attach( 'OGR_GFld_IsIgnored' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_GFld_SetIgnored' => ['opaque', 'int'] => 'void' );
+    $ffi->attach( 'OGR_G_CreateGeometry' => ['int'] => 'opaque');
+    $ffi->attach( 'OGR_G_DestroyGeometry' => ['opaque'] => 'void');
+    $ffi->attach( 'OGR_G_Clone' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_G_GetGeometryType' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_G_GetPointCount' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_G_Is3D' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_G_IsMeasured' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_G_GetPointZM' => [qw/opaque int double* double* double* double*/] => 'void');
+    $ffi->attach( 'OGR_G_SetPointZM' => [qw/opaque int double double double double/] => 'void');
+    $ffi->attach( 'OGR_G_SetPointM' => [qw/opaque int double double double/] => 'void');
+    $ffi->attach( 'OGR_G_SetPoint' => [qw/opaque int double double double/] => 'void');
+    $ffi->attach( 'OGR_G_SetPoint_2D' => [qw/opaque int double double/] => 'void');
 
-    $ffi->attach( 'OGR_G_CreateGeometry' => ['int'] => 'opaque' );
-    $ffi->attach( 'OGR_G_DestroyGeometry' => ['opaque'] => 'void' );
-    $ffi->attach( 'OGR_G_Clone' => ['opaque'] => 'opaque' );
-    $ffi->attach( 'OGR_G_GetGeometryType' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_GetPointCount' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Is3D' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_IsMeasured' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_GetPointZM' => [qw/opaque int double* double* double* double*/] => 'void' );
-    $ffi->attach( 'OGR_G_SetPointZM' => [qw/opaque int double double double double/] => 'void' );
-    $ffi->attach( 'OGR_G_SetPointM' => [qw/opaque int double double double/] => 'void' );
-    $ffi->attach( 'OGR_G_SetPoint' => [qw/opaque int double double double/] => 'void' );
-    $ffi->attach( 'OGR_G_SetPoint_2D' => [qw/opaque int double double/] => 'void' );
+    $ffi->attach( 'OGR_G_GetGeometryCount' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_G_GetGeometryRef' => ['opaque', 'int'] => 'opaque');
+    $ffi->attach( 'OGR_G_AddGeometry' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_G_RemoveGeometry' => ['opaque', 'int', 'int'] => 'int');
 
-    $ffi->attach( 'OGR_G_GetGeometryCount' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_GetGeometryRef' => ['opaque', 'int'] => 'opaque' );
-    $ffi->attach( 'OGR_G_AddGeometry' => ['opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_RemoveGeometry' => ['opaque', 'int', 'int'] => 'int' );
+    $ffi->attach( 'OGR_G_ImportFromWkt' => ['opaque', 'string_pointer'] => 'int');
+    $ffi->attach( 'OGR_G_ExportToWkt' => ['opaque', 'string_pointer'] => 'int');
+    $ffi->attach( 'OGR_G_TransformTo' => ['opaque', 'opaque'] => 'int');
 
-    $ffi->attach( 'OGR_G_ImportFromWkt' => ['opaque', 'string_pointer'] => 'int' );
-    $ffi->attach( 'OGR_G_ExportToWkt' => ['opaque', 'string_pointer'] => 'int' );
-    $ffi->attach( 'OGR_G_TransformTo' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Segmentize' => ['opaque', 'double'] => 'void');
+    $ffi->attach( 'OGR_G_Intersects' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_G_Equals' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_G_Disjoint' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_G_Touches' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_G_Crosses' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_G_Within' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_G_Contains' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_G_Overlaps' => ['opaque', 'opaque'] => 'int');
 
-    $ffi->attach( 'OGR_G_Segmentize' => ['opaque', 'double'] => 'void' );
-    $ffi->attach( 'OGR_G_Intersects' => ['opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Equals' => ['opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Disjoint' => ['opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Touches' => ['opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Crosses' => ['opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Within' => ['opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Contains' => ['opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Overlaps' => ['opaque', 'opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Boundary' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_G_ConvexHull' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_G_Buffer' => ['opaque', 'double', 'int'] => 'opaque');
+    $ffi->attach( 'OGR_G_Intersection' => ['opaque', 'opaque'] => 'opaque');
+    $ffi->attach( 'OGR_G_Union' => ['opaque', 'opaque'] => 'opaque');
+    $ffi->attach( 'OGR_G_UnionCascaded' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_G_PointOnSurface' => ['opaque'] => 'opaque');
 
-    $ffi->attach( 'OGR_G_Boundary' => ['opaque'] => 'opaque' );
-    $ffi->attach( 'OGR_G_ConvexHull' => ['opaque'] => 'opaque' );
-    $ffi->attach( 'OGR_G_Buffer' => ['opaque', 'double', 'int'] => 'opaque' );
-    $ffi->attach( 'OGR_G_Intersection' => ['opaque', 'opaque'] => 'opaque' );
-    $ffi->attach( 'OGR_G_Union' => ['opaque', 'opaque'] => 'opaque' );
-    $ffi->attach( 'OGR_G_UnionCascaded' => ['opaque'] => 'opaque' );
-    $ffi->attach( 'OGR_G_PointOnSurface' => ['opaque'] => 'opaque' );
+    $ffi->attach( 'OGR_G_Difference' => ['opaque', 'opaque'] => 'opaque');
+    $ffi->attach( 'OGR_G_SymDifference' => ['opaque', 'opaque'] => 'opaque');
+    $ffi->attach( 'OGR_G_Distance' => ['opaque', 'opaque'] => 'double');
+    $ffi->attach( 'OGR_G_Distance3D' => ['opaque', 'opaque'] => 'double');
+    $ffi->attach( 'OGR_G_Length' => ['opaque'] => 'double');
+    $ffi->attach( 'OGR_G_Area' => ['opaque'] => 'double');
+    $ffi->attach( 'OGR_G_Centroid' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_G_Value' => ['opaque', 'double'] => 'opaque');
 
-    $ffi->attach( 'OGR_G_Difference' => ['opaque', 'opaque'] => 'opaque' );
-    $ffi->attach( 'OGR_G_SymDifference' => ['opaque', 'opaque'] => 'opaque' );
-    $ffi->attach( 'OGR_G_Distance' => ['opaque', 'opaque'] => 'double' );
-    $ffi->attach( 'OGR_G_Distance3D' => ['opaque', 'opaque'] => 'double' );
-    $ffi->attach( 'OGR_G_Length' => ['opaque'] => 'double' );
-    $ffi->attach( 'OGR_G_Area' => ['opaque'] => 'double' );
-    $ffi->attach( 'OGR_G_Centroid' => ['opaque', 'opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_Value' => ['opaque', 'double'] => 'opaque' );
-
-    $ffi->attach( 'OGR_G_Empty' => ['opaque'] => 'void' );
-    $ffi->attach( 'OGR_G_IsEmpty' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_IsValid' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_IsSimple' => ['opaque'] => 'int' );
-    $ffi->attach( 'OGR_G_IsRing' => ['opaque'] => 'int' );
+    $ffi->attach( 'OGR_G_Empty' => ['opaque'] => 'void');
+    $ffi->attach( 'OGR_G_IsEmpty' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_G_IsValid' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_G_IsSimple' => ['opaque'] => 'int');
+    $ffi->attach( 'OGR_G_IsRing' => ['opaque'] => 'int');
 
 
     my $self = {};
@@ -846,10 +927,328 @@ sub DESTROY {
     #Geo::GDAL::FFI::OGR_FD_Release($$self);
 }
 
+sub GetFieldCount {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_FD_GetFieldCount($$self);
+}
+
+sub GetGeomFieldCount {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_FD_GetGeomFieldCount($$self);
+}
+
+sub GetFieldDefn {
+    my ($self, $i) = @_;
+    my $d = Geo::GDAL::FFI::OGR_FD_GetFieldDefn($$self, $i);
+    croak "No such field: $i" unless $d;
+    $unmutable{$d} = 1;
+    #say STDERR "$d unmutable";
+    return bless \$d, 'Geo::GDAL::FFI::FieldDefn';
+}
+
+sub GetGeomFieldDefn {
+    my ($self, $i) = @_;
+    my $d = Geo::GDAL::FFI::OGR_FD_GetGeomFieldDefn($$self, $i);
+    croak "No such field: $i" unless $d;
+    $unmutable{$d} = 1;
+    #say STDERR "$d unmutable";
+    return bless \$d, 'Geo::GDAL::FFI::GeomFieldDefn';
+}
+
+sub GetFieldIndex {
+    my ($self, $name) = @_;
+    return Geo::GDAL::FFI::OGR_FD_GetFieldIndex($$self, $name);
+}
+
+sub GetGeomFieldIndex {
+    my ($self, $name) = @_;
+    return Geo::GDAL::FFI::OGR_FD_GetGeomFieldIndex($$self, $name);
+}
+
+sub AddFieldDefn {
+    my ($self, $d) = @_;
+    Geo::GDAL::FFI::OGR_FD_AddFieldDefn($$self, $$d);
+}
+
+sub AddGeomFieldDefn {
+    my ($self, $d) = @_;
+    Geo::GDAL::FFI::OGR_FD_AddGeomFieldDefn($$self, $$d);
+}
+
+sub DeleteFieldDefn {
+    my ($self, $i) = @_;
+    Geo::GDAL::FFI::OGR_FD_DeleteFieldDefn($$self, $i);
+}
+
+sub DeleteGeomFieldDefn {
+    my ($self, $i) = @_;
+    Geo::GDAL::FFI::OGR_FD_DeleteGeomFieldDefn($$self, $i);
+}
+
 sub GetGeomType {
+    my ($self) = @_;
+    return $geometry_types_reverse{Geo::GDAL::FFI::OGR_FD_GetGeomType($$self)};
+}
+
+sub SetGeomType {
+    my ($self, $type) = @_;
+    $type //= 'String';
+    my $tmp = $geometry_types{$type};
+    confess "Unknown constant: $type\n" unless defined $tmp;
+    $type = $tmp;
+    Geo::GDAL::FFI::OGR_FD_SetGeomType($$self, $type);
+}
+
+sub IsGeometryIgnored {
+    my ($self) = @_;
+    Geo::GDAL::FFI::OGR_FD_IsGeometryIgnored($$self);
+}
+
+sub SetGeometryIgnored {
+    my ($self, $i) = @_;
+    Geo::GDAL::FFI::OGR_FD_SetGeometryIgnored($$self, $i);
+}
+
+sub IsStyleIgnored {
+    my ($self) = @_;
+    Geo::GDAL::FFI::OGR_FD_IsStyleIgnored($$self);
+}
+
+sub SetStyleIgnored {
+    my ($self, $i) = @_;
+    Geo::GDAL::FFI::OGR_FD_SetStyleIgnored($$self, $i);
+}
+
+
+package Geo::GDAL::FFI::FieldDefn;
+use v5.10;
+use strict;
+use warnings;
+use Carp;
+
+sub new {
+    my ($class, $name, $type) = @_;
+    $name //= 'Unnamed';
+    $type //= 'String';
+    my $tmp = $field_types{$type};
+    confess "Unknown constant: $type\n" unless defined $tmp;
+    $type = $tmp;
+    my $f = Geo::GDAL::FFI::OGR_Fld_Create($name, $type);
+    return bless \$f, $class;
+}
+
+sub DESTROY {
     my $self = shift;
-    my $t = Geo::GDAL::FFI::OGR_FD_GetGeomType($$self);
-    return $geometry_types_reverse{$t};
+    #say STDERR "destroy $self => $$self";
+    if ($unmutable{$$self}) {
+        #say STDERR "remove it from unmutable";
+        delete $unmutable{$$self};
+    } else {
+        #say STDERR "destroy it";
+        Geo::GDAL::FFI::OGR_Fld_Destroy($$self);
+    }
+}
+
+sub SetName {
+    my ($self, $name) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    $name //= '';
+    Geo::GDAL::FFI::OGR_Fld_SetName($$self, $name);
+}
+
+sub GetName {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_Fld_GetNameRef($$self);
+}
+*Name = *GetName;
+
+sub SetType {
+    my ($self, $type) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    $type //= 'String';
+    my $tmp = $field_types{$type};
+    confess "Unknown constant: $type\n" unless defined $tmp;
+    $type = $tmp;
+    Geo::GDAL::FFI::OGR_Fld_SetType($$self, $type);
+}
+
+sub GetType {
+    my ($self) = @_;
+    return $field_types_reverse{Geo::GDAL::FFI::OGR_Fld_GetType($$self)};
+}
+*Type = *GetType;
+
+sub SetSubtype {
+    my ($self, $subtype) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    $subtype //= 'None';
+    my $tmp = $field_subtypes{$subtype};
+    confess "Unknown constant: $subtype\n" unless defined $tmp;
+    $subtype = $tmp;
+    Geo::GDAL::FFI::OGR_Fld_SetSubType($$self, $subtype);
+}
+
+sub GetSubtype {
+    my ($self) = @_;
+    return $field_subtypes_reverse{Geo::GDAL::FFI::OGR_Fld_GetSubType($$self)};
+}
+*Subtype = *GetSubtype;
+
+sub SetJustify {
+    my ($self, $justify) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    $justify //= 'Undefined';
+    my $tmp = $justification{$justify};
+    confess "Unknown constant: $justify\n" unless defined $tmp;
+    $justify = $tmp;
+    Geo::GDAL::FFI::OGR_Fld_SetJustify($$self, $justify);
+}
+
+sub GetJustify {
+    my ($self) = @_;
+    return $justification_reverse{Geo::GDAL::FFI::OGR_Fld_GetJustify($$self)};
+}
+*Justify = *GetJustify;
+
+sub SetWidth {
+    my ($self, $width) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    $width //= '';
+    Geo::GDAL::FFI::OGR_Fld_SetWidth($$self, $width);
+}
+
+sub GetWidth {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_Fld_GetWidth($$self);
+}
+*Width = *GetWidth;
+
+sub SetPrecision {
+    my ($self, $precision) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    $precision //= '';
+    Geo::GDAL::FFI::OGR_Fld_SetPrecision($$self, $precision);
+}
+
+sub GetPrecision {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_Fld_GetPrecision($$self);
+}
+*Precision = *GetPrecision;
+
+sub SetIgnored {
+    my ($self, $ignored) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    $ignored //= 0;
+    Geo::GDAL::FFI::OGR_Fld_SetIgnored($$self, $ignored);
+}
+
+sub IsIgnored {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_Fld_IsIgnored($$self);
+}
+
+sub SetNullable {
+    my ($self, $nullable) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    $nullable //= 0;
+    Geo::GDAL::FFI::OGR_Fld_SetNullable($$self, $nullable);
+}
+
+sub IsNullable {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_Fld_IsNullable($$self);
+}
+
+package Geo::GDAL::FFI::GeomFieldDefn;
+use v5.10;
+use strict;
+use warnings;
+use Carp;
+
+sub new {
+    my ($class, $name, $type) = @_;
+    $name //= 'Unnamed';
+    $type //= 'String';
+    my $tmp = $geometry_types{$type};
+    confess "Unknown constant: $type\n" unless defined $tmp;
+    $type = $tmp;
+    my $f = Geo::GDAL::FFI::OGR_GFld_Create($name, $type);
+    return bless \$f, $class;
+}
+
+sub DESTROY {
+    my $self = shift;
+    if ($unmutable{$$self}) {
+        delete $unmutable{$$self};
+    } else {
+        Geo::GDAL::FFI::OGR_GFld_Destroy($$self);
+    }
+}
+
+sub SetName {
+    my ($self, $name) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    $name //= '';
+    Geo::GDAL::FFI::OGR_GFld_SetName($$self, $name);
+}
+
+sub GetName {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_GFld_GetNameRef($$self);
+}
+*Name = *GetName;
+
+sub SetType {
+    my ($self, $type) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    $type //= 'String';
+    my $tmp = $geometry_types{$type};
+    confess "Unknown constant: $type\n" unless defined $tmp;
+    $type = $tmp;
+    Geo::GDAL::FFI::OGR_GFld_SetType($$self, $type);
+}
+
+sub GetType {
+    my ($self) = @_;
+    return $geometry_types_reverse{Geo::GDAL::FFI::OGR_GFld_GetType($$self)};
+}
+*Type = *GetType;
+
+sub SetSpatialRef {
+    my ($self, $sr) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    Geo::GDAL::FFI::OGR_GFld_SetSpatialRef($$self, $sr);
+}
+
+sub GetSpatialRef {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_GFld_GetSpatialRef($$self);
+}
+*SpatialRef = *GetSpatialRef;
+
+sub SetIgnored {
+    my ($self, $ignored) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    $ignored //= 0;
+    Geo::GDAL::FFI::OGR_GFld_SetIgnored($$self, $ignored);
+}
+
+sub IsIgnored {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_GFld_IsIgnored($$self);
+}
+
+sub SetNullable {
+    my ($self, $nullable) = @_;
+    croak "Can't modify an unmutable object." if $unmutable{$$self};
+    $nullable //= 0;
+    Geo::GDAL::FFI::OGR_GFld_SetNullable($$self, $nullable);
+}
+
+sub IsNullable {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_GFld_IsNullable($$self);
 }
 
 package Geo::GDAL::FFI::Feature;
