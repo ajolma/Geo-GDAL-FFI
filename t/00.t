@@ -12,7 +12,7 @@ my $gdal = Geo::GDAL::FFI->new();
 $gdal->AllRegister;
 
 # test error handler:
-if(0){
+if(1){
     eval {
         my $ds = $gdal->Open('itsnotthere.tiff');
     };
@@ -20,7 +20,7 @@ if(0){
 }
 
 # test CSL
-if(0){
+if(1){
     ok(Geo::GDAL::FFI::CSLCount(0) == 0, "empty CSL");
     my @list;
     my $csl = Geo::GDAL::FFI::CSLAddString(0, 'foo');
@@ -31,13 +31,13 @@ if(0){
 }
 
 # test VersionInfo
-if(0){
+if(1){
     my $info = $gdal->VersionInfo;
     ok($info, "Got info: '$info'.");
 }
 
 # test driver count
-if(0){
+if(1){
     my $n = $gdal->GetDriverCount;
     ok($n > 0, "Have $n drivers.");
     for my $i (0..$n-1) {
@@ -46,7 +46,7 @@ if(0){
 }
 
 # test metadata
-if(0){
+if(1){
     my $dr = $gdal->GetDriverByName('NITF');
     my $ds = $dr->Create('/vsimem/test.nitf');
     my @d = $ds->GetMetadataDomainList;
@@ -54,13 +54,13 @@ if(0){
     @d = $ds->GetMetadata('NITF_METADATA');
     ok(@d > 0, "GetMetadata");
     $ds->SetMetadata({a => 'b'});
-    @d = $ds->GetMetadata();
+    @d = $ds->GetMetadata('');
     ok("@d" eq "a b", "GetMetadata");
     #say STDERR join(',', @d);
 }
 
 # test dataset
-if(0){
+if(1){
     my $dr = $gdal->GetDriverByName('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff');
     my $ogc_wkt = 
@@ -79,7 +79,7 @@ if(0){
 }
 
 # test band
-if(0){
+if(1){
     my $dr = $gdal->GetDriverByName('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff');
     my $b = $ds->GetBand;
@@ -119,7 +119,7 @@ if(0){
     # should investigate why
     #$b->SetColorTable([[1,2,3,4],[5,6,7,8]]);
 }
-if(0){
+if(1){
     my $dr = $gdal->GetDriverByName('MEM');
     my $ds = $dr->Create();
     my $b = $ds->GetBand;
@@ -132,7 +132,7 @@ if(0){
 }
 
 # test creating a shapefile
-if(0){
+if(1){
     my $dr = $gdal->GetDriverByName('ESRI Shapefile');
     my $ds = $dr->Create('test.shp');
     my $sr = Geo::GDAL::FFI::SpatialReference->new();
@@ -142,7 +142,7 @@ if(0){
     my $f = Geo::GDAL::FFI::Feature->new($d);
     $l->CreateFeature($f);
 }
-if(0){
+if(1){
     my $ds = $gdal->OpenEx('test.shp');
     my $l = $ds->GetLayer;
     my $d = $l->GetDefn();
@@ -150,7 +150,7 @@ if(0){
 }
 
 # test field definitions
-if(0){
+if(1){
     my $f = Geo::GDAL::FFI::FieldDefn->new(test => 'Integer');
     ok($f->GetName eq 'test', "Field definition: get name");
     ok($f->Type eq 'Integer', "Field definition: get type");
@@ -209,7 +209,7 @@ if(0){
 }
 
 # test feature definitions
-if(0){
+if(1){
     my $d = Geo::GDAL::FFI::FeatureDefn->new('test');
     ok($d->GetFieldCount == 0, "GetFieldCount");
     ok($d->GetGeomFieldCount == 1, "GetGeomFieldCount");
@@ -245,7 +245,7 @@ if(0){
 }
 
 # test creating a geometry object
-if(0){
+if(1){
     my $g = Geo::GDAL::FFI::Geometry->new('Point');
     my $wkt = $g->ExportToWkt;
     ok($wkt eq 'POINT EMPTY', "Got WKT: '$wkt'.");
@@ -271,25 +271,25 @@ if(0){
 }
 
 # test features
-if(0){
+if(1){
     my $d = Geo::GDAL::FFI::FeatureDefn->new('test');
     # geometry type checking is not implemented in GDAL
     #$d->SetGeomType('PointM');
     $d->AddGeomField(Geo::GDAL::FFI::GeomFieldDefn->new(test2 => 'LineString'));
     my $f = Geo::GDAL::FFI::Feature->new($d);
-    ok($f->GetGeometryCount == 2, "GetGeometryCount");
-    ok($f->GetGeometryIndex('test2') == 1, "GetGeometryIndex");
+    ok($f->GetGeomFieldCount == 2, "GetGeometryCount");
+    ok($f->GetGeomFieldIndex('test2') == 1, "GetGeometryIndex");
     #GetGeomFieldDefnRef
     my $g = Geo::GDAL::FFI::Geometry->new('PointM');
     $g->SetPoint(1,2,3,4);
-    $f->SetGeometry($g);
-    my $h = $f->GetGeometry();
+    $f->SetGeomField($g);
+    my $h = $f->GetGeomField();
     ok($h->ExportToWkt('ISO') eq 'POINT M (1 2 4)', "GetGeometry");
     
     $g = Geo::GDAL::FFI::Geometry->new('LineString');
     $g->SetPoint(0, 5,6,7,8);
     $g->SetPoint(1, [7,8]);
-    $f->SetGeometry($g, 1);
+    $f->SetGeomField(1 => $g);
     $h = $f->GetGeometry(1);
     ok($h->ExportToWkt('ISO') eq 'LINESTRING (5 6,7 8)', "2nd geom field");
 }
@@ -385,17 +385,70 @@ if(1){
     $f->SetFieldStringList($types->{StringList}, $s);
     $x = $f->GetFieldAsStringList($types->{StringList});
     is_deeply($x, $s, "Set/get StringList field: @$x");
+
+    $s = [1962, 4, 23, 0, 0, 0, 0];
+    $f->SetFieldDateTimeEx($types->{Date}, $s);
+    $x = $f->GetFieldAsDateTimeEx($types->{Date});
+    is_deeply($x, $s, "Set/get Date field: @$x");
+
+    $s = [0, 0, 0, 15, 23, 23.34, 1];
+    $f->SetFieldDateTimeEx($types->{Time}, $s);
+    $x = $f->GetFieldAsDateTimeEx($types->{Time});
+    is_deeply($x, $s, "Set/get Time field: @$x");
+
+    $s = [1962, 4, 23, 15, 23, 23.34, 1];
+    $f->SetFieldDateTimeEx($types->{DateTime}, $s);
+    $x = $f->GetFieldAsDateTimeEx($types->{DateTime});
+    is_deeply($x, $s, "Set/get DateTime field: @$x");
         
-#    IntegerList => 1,
-#    RealList => 3,
-#    StringList => 5,
-#    WideString => 6,
-#    WideStringList => 7,
 #    Binary => 8,
-#    Date => 9,
-#    Time => 10,
-#    DateTime => 11,
-#    Integer64List 13
+
+    $s = [1962, 4, 23];
+    $f->SetField(Date => $s);
+    $x = $f->GetField('Date');
+    is_deeply($x, $s, "Set/get Date field: @$x");
+}
+
+# test layer feature manipulation
+if(1){
+    for my $driver (sort {$a->Name cmp $b->Name} $gdal->Drivers) {
+        #say STDERR $driver->Name;
+        #my $md = $driver->GetMetadata;
+        #say $driver->Name if $driver->HasCapability('VECTOR');
+        #print STDERR Dumper $md;
+    }
+    
+    my $dr = $gdal->GetDriverByName('Memory');
+    my $ds = $dr->CreateVector('test');
+    my $sr = Geo::GDAL::FFI::SpatialReference->new();
+    $sr->ImportFromEPSG(3067);
+    my $l = $ds->CreateLayer('test', $sr, 'Point');
+    $l->CreateField(Geo::GDAL::FFI::FieldDefn->new(int => 'Integer'));
+    my $d = $l->GetDefn;
+    for my $i (0..$d->GetFieldCount-1) {
+        my $fd = $d->GetField;
+        #say STDERR 'field: ',$fd->Name," ",$fd->Type;
+    }
+    for my $i (0..$d->GetGeomFieldCount-1) {
+        my $fd = $d->GetGeomField;
+        #say STDERR 'geom field: ',$fd->Name," ",$fd->Type;
+    }
+    my $f = Geo::GDAL::FFI::Feature->new($l->GetDefn);
+    $f->SetField(int => 5);
+    my $g = Geo::GDAL::FFI::Geometry->new('Point');
+    $g->SetPoint(3, 5);
+    #$f->SetGeomField('' => $g);
+    $f->SetGeomField($g);
+    $l->CreateFeature($f);
+    my $fid = $f->GetFID;
+    #say STDERR 'fid = ',(defined$fid)?$fid:'undef';
+    ok($fid == 0, "FID of first feature");
+    $f = $l->GetFeature($fid);
+    #say STDERR "int = ",$f->GetField('int');
+    ok($f->GetField('int') == 5, "Field was set");
+    #say STDERR "Geometry = ",$f->GetGeomField('')->ExportToWkt;
+    #say STDERR "Geometry = ",$f->GetGeomField->ExportToWkt;
+    ok($f->GetGeomField->ExportToWkt eq 'POINT (3 5)', "Geom Field was set");
 }
 
 done_testing();

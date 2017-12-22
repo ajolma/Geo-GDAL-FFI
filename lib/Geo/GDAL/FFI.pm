@@ -17,6 +17,21 @@ use constant Write => 1;
 our @errors;
 our %immutable;
 
+our %capabilities = (
+    OPEN => 1,
+    CREATE => 1,
+    CREATECOPY => 1,
+    VIRTUALIO => 1,
+    RASTER => 1,
+    VECTOR => 1,
+    GNM => 1,
+    NOTNULL_FIELDS => 1,
+    DEFAULT_FIELDS => 1,
+    NOTNULL_GEOMFIELDS => 1,
+    NONSPATIAL => 1,
+    FEATURE_STYLES => 1,
+    );
+
 our %access = (
     ReadOnly => 0,
     Update => 1
@@ -259,9 +274,14 @@ sub new {
 
     $ffi->attach( 'OGR_L_SyncToDisk' => ['opaque'] => 'int');
     $ffi->attach( 'OGR_L_GetLayerDefn' => ['opaque'] => 'opaque');
+    $ffi->attach( 'OGR_L_CreateField' => ['opaque', 'opaque', 'int'] => 'opaque');
     $ffi->attach( 'OGR_L_ResetReading' => ['opaque'] => 'void');
     $ffi->attach( 'OGR_L_GetNextFeature' => ['opaque'] => 'opaque');
-    $ffi->attach( 'OGR_L_CreateFeature' => ['opaque', 'opaque'] => 'int');
+    $ffi->attach( 'OGR_L_GetFeature' => [ 'opaque', 'sint64' ] => 'opaque');
+    $ffi->attach( 'OGR_L_SetFeature' => [ 'opaque', 'opaque' ] => 'int');
+    $ffi->attach( 'OGR_L_CreateFeature' => [ 'opaque', 'opaque' ] => 'int');
+    $ffi->attach( 'OGR_L_DeleteFeature' => [ 'opaque', 'sint64' ] => 'int');
+    $ffi->attach( 'OGR_L_GetSpatialRef' => [ 'opaque' ] => 'opaque');
 
     $ffi->attach( 'OGR_FD_Create' => ['string'] => 'opaque');
     $ffi->attach( 'OGR_FD_Release' => ['opaque'] => 'void');
@@ -323,7 +343,7 @@ sub new {
     $ffi->attach( 'OGR_F_GetGeomFieldRef' => ['opaque', 'int'] => 'opaque');
     $ffi->attach( 'OGR_F_SetGeomFieldDirectly' => ['opaque', 'int', 'opaque'] => 'int');
     $ffi->attach( 'OGR_F_SetGeomField' => ['opaque', 'int', 'opaque'] => 'int');
-    $ffi->attach( 'OGR_F_GetFID' => ['opaque'] => 'void');
+    $ffi->attach( 'OGR_F_GetFID' => ['opaque'] => 'sint64');
     $ffi->attach( 'OGR_F_SetFID' => ['opaque', 'long long'] => 'int');    
     
     $ffi->attach( 'OGR_Fld_Create' => ['string', 'int'] => 'opaque');
@@ -446,6 +466,15 @@ sub GetDriver {
     return bless \$d, 'Geo::GDAL::FFI::Driver';
 }
 
+sub Drivers {
+    my $self = shift;
+    my @retval;
+    for my $i (0..$self->GetDriverCount-1) {
+        push @retval, $self->GetDriver($i);
+    }
+    return wantarray ? @retval : \@retval;
+}
+
 sub GetDriverByName {
     shift;
     my $d = GDALGetDriverByName(@_);
@@ -490,6 +519,14 @@ use strict;
 use warnings;
 use Carp;
 
+sub HasCapability {
+    my ($self, $cap) = @_;
+    my $tmp = $capabilities{$cap};
+    croak "Unknown constant: $cap\n" unless defined $tmp;
+    my $md = $self->GetMetadata('');
+    return $md->{'DCAP_'.$cap};
+}
+
 sub GetMetadataDomainList {
     my ($self) = @_;
     my $csl = Geo::GDAL::FFI::GDALGetMetadataDomainList($$self);
@@ -503,14 +540,18 @@ sub GetMetadataDomainList {
 
 sub GetMetadata {
     my ($self, $domain) = @_;
-    $domain //= "";
-    my $csl = Geo::GDAL::FFI::GDALGetMetadata($$self, $domain);
     my %md;
+    unless (defined $domain) {
+        for $domain ($self->GetMetadataDomainList) {
+            $md{$domain} = $self->GetMetadata($domain);
+        }
+        return wantarray ? %md : \%md;
+    }
+    my $csl = Geo::GDAL::FFI::GDALGetMetadata($$self, $domain);    
     for my $i (0..Geo::GDAL::FFI::CSLCount($csl)-1) {
         my ($name, $value) = split /=/, Geo::GDAL::FFI::CSLGetField($csl, $i);
         $md{$name} = $value;
     }
-    #Geo::GDAL::FFI::CSLDestroy($csl);
     return wantarray ? %md : \%md;
 }
 
@@ -552,10 +593,10 @@ sub GetDescription {
     my $self = shift;
     return Geo::GDAL::FFI::GDALGetDescription($$self);
 }
+*Name = *GetDescription;
 
 sub Create {
-    my $self = shift;
-    my ($name, $width, $height, $bands, $dt, $options) = @_;
+    my ($self, $name, $width, $height, $bands, $dt, $options) = @_;
     $name //= '';
     $width //= 256;
     $height //= 256;
@@ -569,12 +610,21 @@ sub Create {
         $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options->{$key}");
     }
     my $ds = Geo::GDAL::FFI::GDALCreate($$self, $name, $width, $height, $bands, $dt, $o);
-    if (@errors) {
-        my $msg = join("\n", @errors);
-        @errors = ();
+    if (!$ds || @errors) {
+        my $msg;
+        if (@errors) {
+            $msg = join("\n", @errors);
+            @errors = ();
+        }
+        $msg //= 'Create failed. (Driver = '.$self->GetDescription.')';
         croak $msg;
     }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
+}
+
+sub CreateVector {
+    my ($self, $name, $options) = @_;
+    $self->Create($name, 0, 0, 0, undef, $options);
 }
 
 package Geo::GDAL::FFI::SpatialReference;
@@ -894,6 +944,20 @@ sub GetDefn {
     return bless \$d, 'Geo::GDAL::FFI::FeatureDefn';
 }
 
+sub CreateField {
+    my ($self, $d, $approx_ok) = @_;
+    $approx_ok //= 1;
+    my $e = Geo::GDAL::FFI::OGR_L_CreateField($$self, $$d, $approx_ok);
+    return unless $e;
+}
+
+sub GetSpatialRef {
+    my ($self) = @_;
+    my $sr = Geo::GDAL::FFI::OGR_L_GetSpatialRef($$self);
+    return unless $sr;
+    return bless \$sr, 'Geo::GDAL::FFI::SpatialReference';
+}
+
 sub ResetReading {
     my $self = shift;
     Geo::GDAL::FFI::OGR_L_ResetReading($$self);
@@ -902,12 +966,32 @@ sub ResetReading {
 sub GetNextFeature {
     my $self = shift;
     my $f = Geo::GDAL::FFI::OGR_L_GetNextFeature($$self);
+    return unless $f;
     return bless \$f, 'Geo::GDAL::FFI::Feature';
+}
+
+sub GetFeature {
+    my ($self, $fid) = @_;
+    my $f = Geo::GDAL::FFI::OGR_L_GetFeature($$self, $fid);
+    croak unless $f;
+    return bless \$f, 'Geo::GDAL::FFI::Feature';
+}
+
+sub SetFeature {
+    my ($self, $f) = @_;
+    Geo::GDAL::FFI::OGR_L_SetFeature($$self, $$f);
 }
 
 sub CreateFeature {
     my ($self, $f) = @_;
-    Geo::GDAL::FFI::OGR_L_CreateFeature($$self, $$f);
+    my $e = Geo::GDAL::FFI::OGR_L_CreateFeature($$self, $$f);
+    return $f unless $e;
+}
+
+sub DeleteFeature {
+    my ($self, $fid) = @_;
+    my $e = Geo::GDAL::FFI::OGR_L_DeleteFeature($$self, $fid);
+    return unless $e;
 }
 
 package Geo::GDAL::FFI::FeatureDefn;
@@ -1307,6 +1391,65 @@ sub GetFieldCount {
     return Geo::GDAL::FFI::OGR_F_GetFieldCount($$self);
 }
 
+sub SetField {
+    my ($self, $field_name, $value) = @_;
+    my $i = GetFieldIndex($self, $field_name);
+    $self->SetFieldNull($i) unless defined $value;
+    my $t = $self->GetFieldDefn($i)->Type;
+    $self->SetFieldInteger($i, $value) if $t eq 'Integer';
+    $self->SetFieldInteger64($i, $value) if $t eq 'Integer64';
+    $self->SetFieldDouble($i, $value) if $t eq 'Real';
+    $self->SetFieldString($i, $value) if $t eq 'String';
+    # Binary
+    if ($t eq 'IntegerList') {
+        $self->SetFieldIntegerList($i, $value);
+    } elsif ($t eq 'Integer64List') {
+        $self->SetFieldInteger64List($i, $value);
+    } elsif ($t eq 'RealList') {
+        $self->SetFieldRealList($i, $value);
+    } elsif ($t eq 'StringList') {
+        $self->SetFieldStringList($i, $value);
+    } elsif ($t eq 'Date') {
+        $self->SetFieldDateTimeEx($i, $value);
+    } elsif ($t eq 'Time') {
+        my @dt = (0, 0, 0, @$value);
+        $self->SetFieldDateTimeEx($i, \@dt);
+    } elsif ($t eq 'DateTime') {
+        $self->SetFieldDateTimeEx($i, $value);
+    }
+}
+
+sub GetField {
+    my ($self, $field_name) = @_;
+    my $i = GetFieldIndex($self, $field_name);
+    return unless $self->IsFieldSetAndNotNull($i);
+    my $t = $self->GetFieldDefn($i)->Type;
+    return $self->GetFieldAsInteger($i) if $t eq 'Integer';
+    return $self->GetFieldAsInteger64($i) if $t eq 'Integer64';
+    return $self->GetFieldAsDouble($i) if $t eq 'Real';
+    return $self->GetFieldAsString($i) if $t eq 'String';
+    # Binary
+    my $list;
+    if ($t eq 'IntegerList') {
+        $list = $self->GetFieldAsIntegerList($i);
+    } elsif ($t eq 'Integer64List') {
+        $list = $self->GetFieldAsInteger64List($i);
+    } elsif ($t eq 'RealList') {
+        $list = $self->GetFieldAsRealList($i);
+    } elsif ($t eq 'StringList') {
+        $list = $self->GetFieldAsStringList($i);
+    } elsif ($t eq 'Date') {
+        $list = $self->GetFieldAsDateTimeEx($i);
+        $list = [@$list[0..2]];
+    } elsif ($t eq 'Time') {
+        $list = $self->GetFieldAsDateTimeEx($i);
+        $list = [@$list[3..6]];
+    } elsif ($t eq 'DateTime') {
+        $list = $self->GetFieldAsDateTimeEx($i);
+    }
+    return wantarray ? @$list : $list;
+}
+
 sub GetFieldDefn {
     my ($self, $i) = @_;
     $i //= 0;
@@ -1431,7 +1574,10 @@ sub GetFieldAsDateTime {
 sub GetFieldAsDateTimeEx {
     my ($self, $i) = @_;
     $i //= 0;
-    return Geo::GDAL::FFI::OGR_F_GetFieldAsDateTimeEx($$self, $i);
+    my ($y, $m, $d, $h, $min, $s, $tz) = (0, 0, 0, 0, 0, 0.0, 0);
+    Geo::GDAL::FFI::OGR_F_GetFieldAsDateTimeEx($$self, $i, \$y, \$m, \$d, \$h, \$min, \$s, \$tz);
+    $s = sprintf("%.3f", $s) + 0;
+    return wantarray ? ($y, $m, $d, $h, $min, $s, $tz) : [$y, $m, $d, $h, $min, $s, $tz];
 }
 
 sub SetFieldInteger {
@@ -1499,19 +1645,29 @@ sub SetFieldDateTime {
 }
 
 sub SetFieldDateTimeEx {
-    my ($self, $i, $value) = @_;
+    my ($self, $i, $dt) = @_;
+    $dt //= [];
     $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldDateTimeEx($$self, $i, $value);
+    my @dt = @$dt;
+    $dt[0] //= 2000; # year
+    $dt[0] //= 1; # month 1-12
+    $dt[0] //= 1; # day 1-31
+    $dt[0] //= 0; # hour 0-23
+    $dt[0] //= 0; # minute 0-59
+    $dt[0] //= 0.0; # second with millisecond accuracy
+    $dt[0] //= 100; # TZ
+    Geo::GDAL::FFI::OGR_F_SetFieldDateTimeEx($$self, $i, @dt);
 }
 
-sub GetGeometryCount {
+sub GetGeomFieldCount {
     my ($self) = @_;
     return Geo::GDAL::FFI::OGR_F_GetGeomFieldCount($$self);
 }
 
-sub GetGeometryIndex {
+sub GetGeomFieldIndex {
     my ($self, $name) = @_;
     $name //= '';
+    return $name if $name =~ /^\d+$/;
     return Geo::GDAL::FFI::OGR_F_GetGeomFieldIndex($$self, $name);
 }
 
@@ -1520,24 +1676,27 @@ sub GetGeomFieldDefn {
     $i //= 0;
 }
 
-sub GetGeometry {
-    my ($self, $i) = @_;
-    $i //= 0;
+sub GetGeomField {
+    my ($self, $name) = @_;
+    my $i = defined $name ? $self->GetGeomFieldIndex($name) : 0;
     my $g = Geo::GDAL::FFI::OGR_F_GetGeomFieldRef($$self, $i);
     croak "No such field: $i" unless $g;
     $immutable{$g} = exists $immutable{$g} ? $immutable{$g} + 1 : 1;
     #say STDERR "$g immutable";
     return bless \$g, 'Geo::GDAL::FFI::Geometry';
 }
+*GetGeometry = *GetGeomField;
 
-sub SetGeometry {
-    my ($self, $g, $i) = @_;
-    $i //= 0;
+sub SetGeomField {
+    my $self = shift;
+    my $g = pop;
+    my $name = shift;
+    my $i = defined $name ? $self->GetGeomFieldIndex($name) : 0;
     $immutable{$$g} = exists $immutable{$$g} ? $immutable{$$g} + 1 : 1;
     #say STDERR "$$g immutable";
     Geo::GDAL::FFI::OGR_F_SetGeomFieldDirectly($$self, $i, $$g);
 }
-
+*SetGeometry = *SetGeomField;
 
 package Geo::GDAL::FFI::Geometry;
 use v5.10;
