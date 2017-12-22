@@ -302,7 +302,7 @@ sub new {
     $ffi->attach( 'OGR_F_GetFieldAsIntegerList' => ['opaque', 'int', 'int*'] => 'pointer');
     $ffi->attach( 'OGR_F_GetFieldAsInteger64List' => ['opaque', 'int', 'int*'] => 'pointer');
     $ffi->attach( 'OGR_F_GetFieldAsDoubleList' => ['opaque', 'int', 'int*'] => 'pointer');
-    $ffi->attach( 'OGR_F_GetFieldAsStringList' => ['opaque', 'int'] => 'void');
+    $ffi->attach( 'OGR_F_GetFieldAsStringList' => ['opaque', 'int'] => 'opaque');
     $ffi->attach( 'OGR_F_GetFieldAsBinary' => ['opaque', 'int', 'int*'] => 'char*');
     $ffi->attach( 'OGR_F_GetFieldAsDateTime' => [qw/opaque int int* int* int* int* int* int* int*/]  => 'int');
     $ffi->attach( 'OGR_F_GetFieldAsDateTimeEx' => [qw/opaque int int* int* int* int* int* float* int*/] => 'int');
@@ -1408,8 +1408,11 @@ sub GetFieldAsDoubleList {
 sub GetFieldAsStringList {
     my ($self, $i) = @_;
     $i //= 0;
-    my (@list, $len);
-    my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsStringList($$self, $i, \$len);
+    my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsStringList($$self, $i);
+    my @list;
+    for my $i (0..Geo::GDAL::FFI::CSLCount($p)-1) {
+        push @list, Geo::GDAL::FFI::CSLGetField($p, $i);
+    }
     return wantarray ? @list : \@list;
 }
 
@@ -1481,7 +1484,12 @@ sub SetFieldStringList {
     my ($self, $i, $list) = @_;
     $list //= [];
     $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldStringList($$self, $i, scalar @$list, $list);
+    my $csl = 0;
+    for my $s (@$list) {
+        $csl = Geo::GDAL::FFI::CSLAddString($csl, $s);
+    }
+    Geo::GDAL::FFI::OGR_F_SetFieldStringList($$self, $i, $csl);
+    Geo::GDAL::FFI::CSLDestroy($csl);
 }
 
 sub SetFieldDateTime {

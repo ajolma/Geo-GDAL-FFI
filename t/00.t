@@ -379,7 +379,12 @@ if(1){
     $s = [3, 21.2, 7.4, 5.5];
     $f->SetFieldDoubleList($types->{RealList}, $s);
     $x = $f->GetFieldAsDoubleList($types->{RealList});
-    is_deeply($x, $s, "Set/get Double field: @$x");
+    is_deeply($x, $s, "Set/get DoubleList field: @$x");
+
+    $s = ['a', 'gdal', 'perl'];
+    $f->SetFieldStringList($types->{StringList}, $s);
+    $x = $f->GetFieldAsStringList($types->{StringList});
+    is_deeply($x, $s, "Set/get StringList field: @$x");
         
 #    IntegerList => 1,
 #    RealList => 3,
