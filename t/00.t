@@ -12,7 +12,7 @@ my $gdal = Geo::GDAL::FFI->new();
 $gdal->AllRegister;
 
 # test error handler:
-if(1){
+if(0){
     eval {
         my $ds = $gdal->Open('itsnotthere.tiff');
     };
@@ -20,7 +20,7 @@ if(1){
 }
 
 # test CSL
-if(1){
+if(0){
     ok(Geo::GDAL::FFI::CSLCount(0) == 0, "empty CSL");
     my @list;
     my $csl = Geo::GDAL::FFI::CSLAddString(0, 'foo');
@@ -31,13 +31,13 @@ if(1){
 }
 
 # test VersionInfo
-if(1){
+if(0){
     my $info = $gdal->VersionInfo;
     ok($info, "Got info: '$info'.");
 }
 
 # test driver count
-if(1){
+if(0){
     my $n = $gdal->GetDriverCount;
     ok($n > 0, "Have $n drivers.");
     for my $i (0..$n-1) {
@@ -46,7 +46,7 @@ if(1){
 }
 
 # test metadata
-if(1){
+if(0){
     my $dr = $gdal->GetDriverByName('NITF');
     my $ds = $dr->Create('/vsimem/test.nitf');
     my @d = $ds->GetMetadataDomainList;
@@ -60,7 +60,7 @@ if(1){
 }
 
 # test dataset
-if(1){
+if(0){
     my $dr = $gdal->GetDriverByName('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff');
     my $ogc_wkt = 
@@ -79,7 +79,7 @@ if(1){
 }
 
 # test band
-if(1){
+if(0){
     my $dr = $gdal->GetDriverByName('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff');
     my $b = $ds->GetBand;
@@ -119,7 +119,7 @@ if(1){
     # should investigate why
     #$b->SetColorTable([[1,2,3,4],[5,6,7,8]]);
 }
-if(1){
+if(0){
     my $dr = $gdal->GetDriverByName('MEM');
     my $ds = $dr->Create();
     my $b = $ds->GetBand;
@@ -132,7 +132,7 @@ if(1){
 }
 
 # test creating a shapefile
-if(1){
+if(0){
     my $dr = $gdal->GetDriverByName('ESRI Shapefile');
     my $ds = $dr->Create('test.shp');
     my $sr = Geo::GDAL::FFI::SpatialReference->new();
@@ -142,7 +142,7 @@ if(1){
     my $f = Geo::GDAL::FFI::Feature->new($d);
     $l->CreateFeature($f);
 }
-if(1){
+if(0){
     my $ds = $gdal->OpenEx('test.shp');
     my $l = $ds->GetLayer;
     my $d = $l->GetDefn();
@@ -150,7 +150,7 @@ if(1){
 }
 
 # test field definitions
-if(1){
+if(0){
     my $f = Geo::GDAL::FFI::FieldDefn->new(test => 'Integer');
     ok($f->GetName eq 'test', "Field definition: get name");
     ok($f->Type eq 'Integer', "Field definition: get type");
@@ -209,7 +209,7 @@ if(1){
 }
 
 # test feature definitions
-if(1){
+if(0){
     my $d = Geo::GDAL::FFI::FeatureDefn->new('test');
     ok($d->GetFieldCount == 0, "GetFieldCount");
     ok($d->GetGeomFieldCount == 1, "GetGeomFieldCount");
@@ -245,7 +245,7 @@ if(1){
 }
 
 # test creating a geometry object
-if(1){
+if(0){
     my $g = Geo::GDAL::FFI::Geometry->new('Point');
     my $wkt = $g->ExportToWkt;
     ok($wkt eq 'POINT EMPTY', "Got WKT: '$wkt'.");
@@ -271,7 +271,7 @@ if(1){
 }
 
 # test features
-if(1){
+if(0){
     my $d = Geo::GDAL::FFI::FeatureDefn->new('test');
     # geometry type checking is not implemented in GDAL
     #$d->SetGeomType('PointM');
@@ -365,6 +365,21 @@ if(1){
     # WideString not tested
     
     #$f->SetFieldBinary($types->{Binary}, 1);
+
+    $s = [13, 21, 7, 5];
+    $f->SetFieldIntegerList($types->{IntegerList}, $s);
+    $x = $f->GetFieldAsIntegerList($types->{IntegerList});
+    is_deeply($x, $s, "Set/get IntegerList field: @$x");
+
+    $s = [0x90000001, 21, 7, 5];
+    $f->SetFieldInteger64List($types->{Integer64List}, $s);
+    $x = $f->GetFieldAsInteger64List($types->{Integer64List});
+    is_deeply($x, $s, "Set/get Integer64List field: @$x");
+
+    $s = [3, 21.2, 7.4, 5.5];
+    $f->SetFieldDoubleList($types->{RealList}, $s);
+    $x = $f->GetFieldAsDoubleList($types->{RealList});
+    is_deeply($x, $s, "Set/get Double field: @$x");
         
 #    IntegerList => 1,
 #    RealList => 3,

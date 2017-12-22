@@ -299,9 +299,9 @@ sub new {
     $ffi->attach( 'OGR_F_GetFieldAsInteger64' => ['opaque', 'int'] => 'sint64');
     $ffi->attach( 'OGR_F_GetFieldAsDouble' => ['opaque', 'int'] => 'double');
     $ffi->attach( 'OGR_F_GetFieldAsString' => ['opaque', 'int'] => 'string');
-    $ffi->attach( 'OGR_F_GetFieldAsIntegerList' => ['opaque', 'int', 'int*'] => 'int[]');
-    $ffi->attach( 'OGR_F_GetFieldAsInteger64List' => ['opaque', 'int', 'int*'] => 'sint64[]');
-    $ffi->attach( 'OGR_F_GetFieldAsDoubleList' => ['opaque', 'int', 'int*'] => 'double[]');
+    $ffi->attach( 'OGR_F_GetFieldAsIntegerList' => ['opaque', 'int', 'int*'] => 'pointer');
+    $ffi->attach( 'OGR_F_GetFieldAsInteger64List' => ['opaque', 'int', 'int*'] => 'pointer');
+    $ffi->attach( 'OGR_F_GetFieldAsDoubleList' => ['opaque', 'int', 'int*'] => 'pointer');
     $ffi->attach( 'OGR_F_GetFieldAsStringList' => ['opaque', 'int'] => 'void');
     $ffi->attach( 'OGR_F_GetFieldAsBinary' => ['opaque', 'int', 'int*'] => 'char*');
     $ffi->attach( 'OGR_F_GetFieldAsDateTime' => [qw/opaque int int* int* int* int* int* int* int*/]  => 'int');
@@ -310,8 +310,8 @@ sub new {
     $ffi->attach( 'OGR_F_SetFieldInteger64' => ['opaque', 'int', 'sint64'] => 'void');
     $ffi->attach( 'OGR_F_SetFieldDouble' => [qw/opaque int double/] => 'void');
     $ffi->attach( 'OGR_F_SetFieldString' => [qw/opaque int string/] => 'void');
-    $ffi->attach( 'OGR_F_SetFieldIntegerList' => [qw/opaque int int int*/] => 'void');
-    $ffi->attach( 'OGR_F_SetFieldInteger64List' => ['opaque', 'int', 'int', 'long long[]'] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldIntegerList' => [qw/opaque int int sint32[]/] => 'void');
+    $ffi->attach( 'OGR_F_SetFieldInteger64List' => ['opaque', 'int', 'int', 'sint64[]'] => 'void');
     $ffi->attach( 'OGR_F_SetFieldDoubleList' => ['opaque', 'int', 'int', 'double[]'] => 'void');
     $ffi->attach( 'OGR_F_SetFieldStringList' => ['opaque', 'int', 'opaque'] => 'void');
     $ffi->attach( 'OGR_F_SetFieldBinary' => [qw/opaque int int char*/] => 'void');
@@ -1259,6 +1259,7 @@ use strict;
 use warnings;
 use Carp;
 use Encode qw(decode encode);
+use FFI::Platypus::Buffer;
 
 sub new {
     my ($class, $def) = @_;
@@ -1380,25 +1381,36 @@ sub GetFieldAsString {
 sub GetFieldAsIntegerList {
     my ($self, $i) = @_;
     $i //= 0;
-    return Geo::GDAL::FFI::OGR_F_GetFieldAsIntegerList($$self, $i);
+    my (@list, $len);
+    my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsIntegerList($$self, $i, \$len);
+    @list = unpack("l[$len]", buffer_to_scalar($p, $len*4));
+    return wantarray ? @list : \@list;
 }
 
 sub GetFieldAsInteger64List {
     my ($self, $i) = @_;
     $i //= 0;
-    return Geo::GDAL::FFI::OGR_F_GetFieldAsInteger64List($$self, $i);
+    my (@list, $len);
+    my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsInteger64List($$self, $i, \$len);
+    @list = unpack("q[$len]", buffer_to_scalar($p, $len*8));
+    return wantarray ? @list : \@list;
 }
 
 sub GetFieldAsDoubleList {
     my ($self, $i) = @_;
     $i //= 0;
-    return Geo::GDAL::FFI::OGR_F_GetFieldAsDoubleList($$self, $i);
+    my (@list, $len);
+    my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsDoubleList($$self, $i, \$len);
+    @list = unpack("d[$len]", buffer_to_scalar($p, $len*8));
+    return wantarray ? @list : \@list;
 }
 
 sub GetFieldAsStringList {
     my ($self, $i) = @_;
     $i //= 0;
-    return Geo::GDAL::FFI::OGR_F_GetFieldAsStringList($$self, $i);
+    my (@list, $len);
+    my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsStringList($$self, $i, \$len);
+    return wantarray ? @list : \@list;
 }
 
 sub GetFieldAsBinary {
@@ -1445,27 +1457,31 @@ sub SetFieldString {
 }
 
 sub SetFieldIntegerList {
-    my ($self, $i, $value) = @_;
+    my ($self, $i, $list) = @_;
+    $list //= [];
     $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldIntegerList($$self, $i, $value);
+    Geo::GDAL::FFI::OGR_F_SetFieldIntegerList($$self, $i, scalar @$list, $list);
 }
 
 sub SetFieldInteger64List {
-    my ($self, $i, $value) = @_;
+    my ($self, $i, $list) = @_;
+    $list //= [];
     $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldInteger64List($$self, $i, $value);
+    Geo::GDAL::FFI::OGR_F_SetFieldInteger64List($$self, $i, scalar @$list, $list);
 }
 
 sub SetFieldDoubleList {
-    my ($self, $i, $value) = @_;
+    my ($self, $i, $list) = @_;
+    $list //= [];
     $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldDoubleList($$self, $i, $value);
+    Geo::GDAL::FFI::OGR_F_SetFieldDoubleList($$self, $i, scalar @$list, $list);
 }
 
 sub SetFieldStringList {
-    my ($self, $i, $value) = @_;
+    my ($self, $i, $list) = @_;
+    $list //= [];
     $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldStringList($$self, $i, $value);
+    Geo::GDAL::FFI::OGR_F_SetFieldStringList($$self, $i, scalar @$list, $list);
 }
 
 sub SetFieldDateTime {
