@@ -9,6 +9,12 @@ use Data::Dumper;
 
 my $gdal = Geo::GDAL::FFI->new();
 
+# test unavailable function
+if(1){
+    my $can = $gdal->can('is_not_available');
+    ok(!$can, "Can't call missing functions.");
+}
+
 $gdal->AllRegister;
 
 # test error handler:
@@ -57,6 +63,20 @@ if(1){
     @d = $ds->GetMetadata('');
     ok("@d" eq "a b", "GetMetadata");
     #say STDERR join(',', @d);
+}
+
+# test progress function
+if(1){
+    my $dr = $gdal->GetDriverByName('GTiff');
+    my $ds = $dr->Create('/vsimem/test.tiff');
+    my $was_at_fct;
+    my $progress = $gdal->{ffi}->closure(sub {
+        my ($fraction, $msg, $data) = @_;
+        ++$was_at_fct;
+    });
+    my $data;
+    my $ds2 = $dr->CreateCopy('/vsimem/copy.tiff', $ds, 1, undef, $progress, $data);
+    ok($was_at_fct == 3, "Progress callback called");
 }
 
 # test dataset

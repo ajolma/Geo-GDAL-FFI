@@ -31,6 +31,11 @@ my %constants = (
     OGRAxisOrientation => 1,
     );
 
+my %callbacks = (
+    CPLErrorHandler => 1,
+    GDALProgressFunc => 1,
+    );
+
 my %use_CSL = (
     GDALCreate => 1,
     GDALOpenEx => 1,
@@ -134,7 +139,7 @@ sub parse_h {
             } else {
                 $args = "'".join("','", @args)."'";
             }
-            say "\$ffi->attach('$name' => [$args] => '$ret');";
+            say "eval{\$ffi->attach('$name' => [$args] => '$ret');};";
         } else {
             die "can't parse $s as function";
         }
@@ -150,6 +155,11 @@ sub parse_type {
     for my $c (keys %constants) {
         if ($arg =~ /^$c/) {
             $arg = 'unsigned int';
+        }
+    }
+    for my $c (keys %callbacks) {
+        if ($arg =~ /^$c/) {
+            return $c;
         }
     }
     if ($arg =~ /^\w+?H/) {
