@@ -14,5 +14,6 @@ WriteMakefile(
     },
     TEST_REQUIRES => {
         'Test::More' => 0,
+        'JSON' => 0
     }
 );

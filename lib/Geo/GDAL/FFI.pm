@@ -195,6 +195,20 @@ our %geometry_types = (
     );
 our %geometry_types_reverse = reverse %geometry_types;
 
+our %grid_algorithms = (
+    InverseDistanceToAPower => 1,
+    MovingAverage => 2,
+    NearestNeighbor => 3,
+    MetricMinimum => 4,
+    MetricMaximum => 5,
+    MetricRange => 6,
+    MetricCount => 7,
+    MetricAverageDistance => 8,
+    MetricAverageDistancePts => 9,
+    Linear => 10,
+    InverseDistanceToAPowerNearestNeighbor => 11
+    );
+
 sub new {
     my $class = shift;
     my $ffi = FFI::Platypus->new;
@@ -203,6 +217,9 @@ sub new {
 
     $ffi->type('(int,int,string)->void' => 'CPLErrorHandler');
     $ffi->type('(double,string,pointer)->int' => 'GDALProgressFunc');
+    $ffi->type('(pointer,int, pointer,int,int,unsigned int,unsigned int,int,int)->int' => 'GDALDerivedPixelFunc');
+    $ffi->type('(pointer,int,int,pointer,pointer,pointer,pointer)->int' => 'GDALTransformerFunc');
+    $ffi->type('(double,int,pointer,pointer,pointer)->int' => 'GDALContourWriter');
 
     # from port/*.h
     $ffi->attach('CPLPushErrorHandler' => ['CPLErrorHandler'] => 'void');
@@ -975,6 +992,43 @@ eval{$ffi->attach('OCTCleanupProjMutex' => [] => 'void');};
 eval{$ffi->attach('OPTGetProjectionMethods' => [] => 'string_pointer');};
 eval{$ffi->attach('OPTGetParameterList' => [qw/string string_pointer/] => 'string_pointer');};
 eval{$ffi->attach('OPTGetParameterInfo' => [qw/string string string_pointer string_pointer double*/] => 'int');};
+# from /home/ajolma/src/gdal/gdal/apps/gdal_utils.h
+eval{$ffi->attach('GDALInfoOptionsNew' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALInfoOptionsFree' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALInfo' => [qw/opaque opaque/] => 'string');};
+eval{$ffi->attach('GDALTranslateOptionsNew' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALTranslateOptionsFree' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALTranslateOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
+eval{$ffi->attach('GDALTranslate' => [qw/string opaque opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALWarpAppOptionsNew' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALWarpAppOptionsFree' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALWarpAppOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
+eval{$ffi->attach('GDALWarpAppOptionsSetWarpOption' => [qw/opaque string string/] => 'void');};
+eval{$ffi->attach('GDALWarp' => [qw/string opaque int opaque opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALVectorTranslateOptionsNew' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALVectorTranslateOptionsFree' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALVectorTranslateOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
+eval{$ffi->attach('GDALVectorTranslate' => [qw/string opaque int opaque opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALDEMProcessingOptionsNew' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALDEMProcessingOptionsFree' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALDEMProcessingOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
+eval{$ffi->attach('GDALDEMProcessing' => [qw/string opaque string string opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALNearblackOptionsNew' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALNearblackOptionsFree' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALNearblackOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
+eval{$ffi->attach('GDALNearblack' => [qw/string opaque opaque opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALGridOptionsNew' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALGridOptionsFree' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALGridOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
+eval{$ffi->attach('GDALGrid' => [qw/string opaque opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALRasterizeOptionsNew' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALRasterizeOptionsFree' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALRasterizeOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
+eval{$ffi->attach('GDALRasterize' => [qw/string opaque opaque opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALBuildVRTOptionsNew' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALBuildVRTOptionsFree' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALBuildVRTOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
+eval{$ffi->attach('GDALBuildVRT' => [qw/string int opaque opaque opaque int*/] => 'opaque');};
     
     my $self = {};
     $self->{ffi} = $ffi;
@@ -1238,6 +1292,19 @@ sub DESTROY {
 sub FlushCache {
     my $self = shift;
     Geo::GDAL::FFI::GDALFlushCache($$self);
+}
+
+sub Info {
+    my $self = shift;
+    my $o = 0;
+    for my $s (@_) {
+        $o = Geo::GDAL::FFI::CSLAddString($o, $s);
+    }
+    my $io = Geo::GDAL::FFI::GDALInfoOptionsNew($o, 0);
+    Geo::GDAL::FFI::CSLDestroy($o);
+    my $info = Geo::GDAL::FFI::GDALInfo($$self, $io);
+    Geo::GDAL::FFI::GDALInfoOptionsFree($io);
+    return $info;
 }
 
 sub Width {

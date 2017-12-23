@@ -6,6 +6,7 @@ use Encode qw(decode encode);
 use Geo::GDAL::FFI;
 use Test::More;
 use Data::Dumper;
+use JSON;
 
 my $gdal = Geo::GDAL::FFI->new();
 
@@ -77,6 +78,14 @@ if(1){
     my $data;
     my $ds2 = $dr->CreateCopy('/vsimem/copy.tiff', $ds, 1, undef, $progress, $data);
     ok($was_at_fct == 3, "Progress callback called");
+}
+
+# test Info
+if(1){
+    my $dr = $gdal->GetDriverByName('GTiff');
+    my $ds = $dr->Create('/vsimem/test.tiff');
+    my $info = decode_json $ds->Info('-json');
+    ok($info->{files}[0] eq '/vsimem/test.tiff', "Info");
 }
 
 # test dataset
