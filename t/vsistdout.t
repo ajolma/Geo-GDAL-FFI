@@ -3,14 +3,11 @@ use strict;
 use warnings;
 use Carp;
 use Encode qw(decode encode);
-use Geo::GDAL::FFI;
+use Geo::GDAL::FFI qw/$gdal/;
 use Test::More;
 use Data::Dumper;
 use JSON;
 use FFI::Platypus::Buffer;
-
-my $gdal = Geo::GDAL::FFI->new();
-$gdal->AllRegister;
 
 {
     package Output;
@@ -59,6 +56,13 @@ if(1){
        '"coordinates": [ 1.0, 1.0 ] } }]}end', 
     "Redirect vsistdout to write/close methods of a class.");
 
+}
+
+# test Translate
+if(1){
+    my $ds = $gdal->GetDriverByName('GTiff')->Create('/vsimem/test.tiff');
+    my $png = $ds->Translate('/vsimem/test.png', -of => 'PNG');
+    ok($png->Driver->Name eq 'PNG', "Translate");
 }
 
 done_testing();

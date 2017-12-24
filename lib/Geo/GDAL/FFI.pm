@@ -7,6 +7,13 @@ use Carp;
 use Alien::gdal;
 use FFI::Platypus;
 use FFI::Platypus::Buffer;
+require Exporter;
+
+our $VERSION = 0.01;
+our @ISA = qw(Exporter);
+our @EXPORT_OK = qw($gdal);
+
+our $gdal;
 
 use constant Warning => 2;
 use constant Failure => 3;
@@ -1049,10 +1056,9 @@ eval{$ffi->attach('GDALBuildVRT' => [qw/string int opaque opaque opaque int*/] =
             push @errors, $msg;
         });
     CPLPushErrorHandler($self->{CPLErrorHandler});
+    GDALAllRegister();
     return bless $self, $class;
 }
-
-*AllRegister = *GDALAllRegister;
 
 sub VersionInfo {
     shift;
@@ -1324,19 +1330,65 @@ use warnings;
 use Carp;
 
 sub new {
-    my ($class, $wkt) = @_;
-    my $sr = Geo::GDAL::FFI::OSRNewSpatialReference($wkt);
-    if (@errors) {
-        my $msg = join("\n", @errors);
-        @errors = ();
-        croak $msg;
+    my $class = shift;
+    my $sr;
+    if (@_ == 0) {
+        $sr = Geo::GDAL::FFI::OSRNewSpatialReference();
+    } elsif (@_ == 1) {
+        my $wkt = shift;
+        $sr = Geo::GDAL::FFI::OSRNewSpatialReference($wkt);
+    } else {
+        my $format = shift;
+        my $importer = $gdal->can('OSRImportFrom' . $format);
+        if ($importer) {
+            $sr = Geo::GDAL::FFI::OSRNewSpatialReference();
+            if ($importer->($sr, @_) != 0) {
+                Geo::GDAL::FFI::OSRDestroySpatialReference($sr);
+                $sr = 0;
+            }
+        } else {
+            croak "$format importer for $class not found!";
+        }
     }
-    return bless \$sr, $class;
+    return bless \$sr, $class if $sr;
+    my $msg = join("\n", @errors);
+    @errors = ();
+    croak $msg;
 }
 
 sub DESTROY {
     my $self = shift;
     Geo::GDAL::FFI::OSRDestroySpatialReference($$self);
+}
+
+sub ExportTo {
+    my $self = shift;
+    my $format = shift;
+    my $exporter = $gdal->can('OSRExportTo' . $format);
+    if ($exporter) {
+        my $x;
+        if ($exporter->($$self, \$x, @_) != 0) {
+            my $msg = join("\n", @errors);
+            @errors = ();
+            croak $msg;
+        }
+        return $x;
+    }
+    croak "$format exporter for '.ref($self).' not found!";
+}
+
+sub Set {
+    my $self = shift;
+    my $what = shift;
+    my $setter = $gdal->can('OSRSet' . $what);
+    if ($setter) {
+        if ($setter->($$self, @_) != 0) {
+            my $msg = join("\n", @errors);
+            @errors = ();
+            croak $msg;
+        }
+    }
+    croak "Setter '$what' not found for '.ref($self).'!";
 }
 
 sub Clone {
@@ -1345,10 +1397,7 @@ sub Clone {
     return bless \$s, 'Geo::GDAL::FFI::SpatialReference';
 }
 
-sub ImportFromEPSG {
-    my ($self, $code) = @_;
-    Geo::GDAL::FFI::OSRImportFromEPSG($$self, $code);
-}
+
 
 package Geo::GDAL::FFI::Dataset;
 use v5.10;
@@ -1369,6 +1418,12 @@ sub FlushCache {
     Geo::GDAL::FFI::GDALFlushCache($$self);
 }
 
+sub Driver {
+    my $self = shift;
+    my $dr = Geo::GDAL::FFI::GDALGetDatasetDriver($$self);
+    return bless \$dr, 'Geo::GDAL::FFI::Driver';
+}
+
 sub Info {
     my $self = shift;
     my $o = 0;
@@ -1380,6 +1435,28 @@ sub Info {
     my $info = Geo::GDAL::FFI::GDALInfo($$self, $io);
     Geo::GDAL::FFI::GDALInfoOptionsFree($io);
     return $info;
+}
+
+sub Translate {
+    my $self = shift;
+    my $path = shift;
+    my $o = 0;
+    for my $s (@_) {
+        $o = Geo::GDAL::FFI::CSLAddString($o, $s);
+    }
+    my $io = Geo::GDAL::FFI::GDALTranslateOptionsNew($o, 0);
+    Geo::GDAL::FFI::CSLDestroy($o);
+    my $e = 0;
+    my $ds = Geo::GDAL::FFI::GDALTranslate($path, $$self, $io, \$e);
+    Geo::GDAL::FFI::GDALTranslateOptionsFree($io);
+    return bless \$ds, 'Geo::GDAL::FFI::Dataset' if $ds && ($e == 0);
+    my $msg;
+    if (@errors) {
+        $msg = join("\n", @errors);
+        @errors = ();
+    }
+    $msg //= 'Translate failed.';
+    croak $msg;
 }
 
 sub Width {
@@ -2619,5 +2696,9 @@ sub ExportToIsoWkt {
     return $wkt;
 }
 *AsWKT = *ExportToIsoWkt;
+
+BEGIN {
+    $gdal = Geo::GDAL::FFI->new();
+}
 
 1;

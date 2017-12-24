@@ -3,14 +3,11 @@ use strict;
 use warnings;
 use Carp;
 use Encode qw(decode encode);
-use Geo::GDAL::FFI;
+use Geo::GDAL::FFI qw/$gdal/;
 use Test::More;
 use Data::Dumper;
 use JSON;
 use FFI::Platypus::Buffer;
-
-my $gdal = Geo::GDAL::FFI->new();
-$gdal->AllRegister;
 
 {
     my $geometry = Geo::GDAL::FFI::Geometry->new('Point');
