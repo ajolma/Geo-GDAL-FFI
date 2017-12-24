@@ -7,11 +7,12 @@ use Geo::GDAL::FFI;
 use Test::More;
 use Data::Dumper;
 use JSON;
+use FFI::Platypus::Buffer;
 
 my $gdal = Geo::GDAL::FFI->new();
 
 # test unavailable function
-if(1){
+if(0){
     my $can = $gdal->can('is_not_available');
     ok(!$can, "Can't call missing functions.");
 }
@@ -19,7 +20,7 @@ if(1){
 $gdal->AllRegister;
 
 # test error handler:
-if(1){
+if(0){
     eval {
         my $ds = $gdal->Open('itsnotthere.tiff');
     };
@@ -293,10 +294,10 @@ if(1){
     ok($g->Type eq 'Point25D', "Geom constructor respects M & Z");
     $g = Geo::GDAL::FFI::Geometry->new('PointM');
     ok($g->Type eq 'PointM', "Geom constructor respects M & Z");
-    $wkt = $g->ExportToWkt('ISO');
+    $wkt = $g->ExportToIsoWkt;
     ok($wkt eq 'POINT M EMPTY', "Got WKT: '$wkt'.");
     $g->ImportFromWkt('POINTM (1 2 3)');
-    ok($g->ExportToWkt('ISO') eq 'POINT M (1 2 3)', "Import PointM from WKT");
+    ok($g->ExportToIsoWkt eq 'POINT M (1 2 3)', "Import PointM from WKT");
 }
 
 # test features
@@ -313,14 +314,14 @@ if(1){
     $g->SetPoint(1,2,3,4);
     $f->SetGeomField($g);
     my $h = $f->GetGeomField();
-    ok($h->ExportToWkt('ISO') eq 'POINT M (1 2 4)', "GetGeometry");
+    ok($h->ExportToIsoWkt eq 'POINT M (1 2 4)', "GetGeometry");
     
     $g = Geo::GDAL::FFI::Geometry->new('LineString');
     $g->SetPoint(0, 5,6,7,8);
     $g->SetPoint(1, [7,8]);
     $f->SetGeomField(1 => $g);
     $h = $f->GetGeometry(1);
-    ok($h->ExportToWkt('ISO') eq 'LINESTRING (5 6,7 8)', "2nd geom field");
+    ok($h->ExportToIsoWkt eq 'LINESTRING (5 6,7 8)', "2nd geom field");
 }
 
 # test setting field

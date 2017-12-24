@@ -6,6 +6,7 @@ use warnings;
 use Carp;
 use Alien::gdal;
 use FFI::Platypus;
+use FFI::Platypus::Buffer;
 
 use constant Warning => 2;
 use constant Failure => 3;
@@ -16,6 +17,7 @@ use constant Write => 1;
 
 our @errors;
 our %immutable;
+our %parent;
 
 our %capabilities = (
     OPEN => 1,
@@ -195,6 +197,10 @@ our %geometry_types = (
     );
 our %geometry_types_reverse = reverse %geometry_types;
 
+our %geometry_formats = (
+    WKT => 1,
+    );
+
 our %grid_algorithms = (
     InverseDistanceToAPower => 1,
     MovingAverage => 2,
@@ -215,6 +221,7 @@ sub new {
     $ffi->load_custom_type('::StringPointer' => 'string_pointer');
     $ffi->lib(Alien::gdal->dynamic_libs);
 
+    $ffi->type('(pointer,size_t,size_t,opaque)->size_t' => 'VSIWriteFunction');
     $ffi->type('(int,int,string)->void' => 'CPLErrorHandler');
     $ffi->type('(double,string,pointer)->int' => 'GDALProgressFunc');
     $ffi->type('(pointer,int, pointer,int,int,unsigned int,unsigned int,int,int)->int' => 'GDALDerivedPixelFunc');
@@ -222,6 +229,10 @@ sub new {
     $ffi->type('(double,int,pointer,pointer,pointer)->int' => 'GDALContourWriter');
 
     # from port/*.h
+    $ffi->attach('VSIFOpenL' => [qw/string string/] => 'opaque');
+    $ffi->attach('VSIFCloseL' => ['opaque'] => 'int');
+    $ffi->attach('VSIFWriteL' => [qw/pointer size_t size_t opaque/] => 'size_t');
+    $ffi->attach('VSIStdoutSetRedirection' => ['VSIWriteFunction', 'opaque'] => 'void');
     $ffi->attach('CPLPushErrorHandler' => ['CPLErrorHandler'] => 'void');
     $ffi->attach('CSLDestroy' => ['opaque'] => 'void');
     $ffi->attach('CSLAddString' => ['opaque', 'string'] => 'opaque');
@@ -319,21 +330,21 @@ eval{$ffi->attach('GDALReferenceDataset' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALDereferenceDataset' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALReleaseDataset' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALBuildOverviews' => [qw/opaque string int int* int int* GDALProgressFunc opaque/] => 'int');};
-eval{$ffi->attach('GDALGetOpenDatasets' => [qw/opaque int*/] => 'void');};
+eval{$ffi->attach('GDALGetOpenDatasets' => [qw/uint64* int*/] => 'void');};
 eval{$ffi->attach('GDALGetAccess' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALFlushCache' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALCreateDatasetMaskBand' => [qw/opaque int/] => 'int');};
 eval{$ffi->attach('GDALDatasetCopyWholeRaster' => [qw/opaque opaque string_pointer GDALProgressFunc opaque/] => 'int');};
 eval{$ffi->attach('GDALRasterBandCopyWholeRaster' => [qw/opaque opaque string_pointer GDALProgressFunc opaque/] => 'int');};
-eval{$ffi->attach('GDALRegenerateOverviews' => [qw/opaque int opaque string GDALProgressFunc opaque/] => 'int');};
+eval{$ffi->attach('GDALRegenerateOverviews' => [qw/opaque int uint64* string GDALProgressFunc opaque/] => 'int');};
 eval{$ffi->attach('GDALDatasetGetLayerCount' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALDatasetGetLayer' => [qw/opaque int/] => 'opaque');};
 eval{$ffi->attach('GDALDatasetGetLayerByName' => [qw/opaque string/] => 'opaque');};
 eval{$ffi->attach('GDALDatasetDeleteLayer' => [qw/opaque int/] => 'int');};
 eval{$ffi->attach('GDALDatasetCreateLayer' => ['opaque','string','opaque','unsigned int','opaque'] => 'opaque');};
-eval{$ffi->attach('GDALDatasetCopyLayer' => [qw/opaque opaque string string_pointer/] => 'opaque');};
+eval{$ffi->attach('GDALDatasetCopyLayer' => [qw/opaque opaque string opaque/] => 'opaque');};
 eval{$ffi->attach('GDALDatasetResetReading' => [qw/opaque/] => 'void');};
-eval{$ffi->attach('GDALDatasetGetNextFeature' => [qw/opaque opaque double* GDALProgressFunc opaque/] => 'opaque');};
+eval{$ffi->attach('GDALDatasetGetNextFeature' => [qw/opaque uint64* double* GDALProgressFunc opaque/] => 'opaque');};
 eval{$ffi->attach('GDALDatasetTestCapability' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('GDALDatasetExecuteSQL' => [qw/opaque string opaque string/] => 'opaque');};
 eval{$ffi->attach('GDALDatasetReleaseResultSet' => [qw/opaque opaque/] => 'void');};
@@ -392,10 +403,10 @@ eval{$ffi->attach('GDALGetRasterSampleOverview' => [qw/opaque int/] => 'opaque')
 eval{$ffi->attach('GDALGetRasterSampleOverviewEx' => [qw/opaque uint64/] => 'opaque');};
 eval{$ffi->attach('GDALFillRaster' => [qw/opaque double double/] => 'int');};
 eval{$ffi->attach('GDALComputeBandStats' => [qw/opaque int double* double* GDALProgressFunc opaque/] => 'int');};
-eval{$ffi->attach('GDALOverviewMagnitudeCorrection' => [qw/opaque int opaque GDALProgressFunc opaque/] => 'int');};
+eval{$ffi->attach('GDALOverviewMagnitudeCorrection' => [qw/opaque int uint64* GDALProgressFunc opaque/] => 'int');};
 eval{$ffi->attach('GDALGetDefaultRAT' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('GDALSetDefaultRAT' => [qw/opaque opaque/] => 'int');};
-eval{$ffi->attach('GDALAddDerivedBandPixelFunc' => [qw/string opaque/] => 'int');};
+eval{$ffi->attach('GDALAddDerivedBandPixelFunc' => [qw/string GDALDerivedPixelFunc/] => 'int');};
 eval{$ffi->attach('GDALGetMaskBand' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('GDALGetMaskFlags' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALCreateMaskBand' => [qw/opaque int/] => 'int');};
@@ -470,12 +481,12 @@ eval{$ffi->attach('GDALRasterBandGetVirtualMem' => ['opaque','unsigned int','int
 eval{$ffi->attach('GDALGetVirtualMemAuto' => ['opaque','unsigned int','int*','sint64*','string_pointer'] => 'opaque');};
 eval{$ffi->attach('GDALDatasetGetTiledVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','int','int*','unsigned int','size_t','int','string_pointer'] => 'opaque');};
 eval{$ffi->attach('GDALRasterBandGetTiledVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','size_t','int','string_pointer'] => 'opaque');};
-eval{$ffi->attach('GDALCreatePansharpenedVRT' => [qw/string opaque int opaque/] => 'opaque');};
+eval{$ffi->attach('GDALCreatePansharpenedVRT' => [qw/string opaque int uint64*/] => 'opaque');};
 eval{$ffi->attach('GDALGetJPEG2000Structure' => [qw/string string_pointer/] => 'opaque');};
 # from /home/ajolma/src/gdal/gdal/ogr/ogr_api.h
-eval{$ffi->attach('OGR_G_CreateFromWkb' => [qw/string opaque opaque int/] => 'int');};
-eval{$ffi->attach('OGR_G_CreateFromWkt' => [qw/string_pointer opaque opaque/] => 'int');};
-eval{$ffi->attach('OGR_G_CreateFromFgf' => [qw/string opaque opaque int int*/] => 'int');};
+eval{$ffi->attach('OGR_G_CreateFromWkb' => [qw/string opaque uint64* int/] => 'int');};
+eval{$ffi->attach('OGR_G_CreateFromWkt' => [qw/string_pointer opaque uint64*/] => 'int');};
+eval{$ffi->attach('OGR_G_CreateFromFgf' => [qw/string opaque uint64* int int*/] => 'int');};
 eval{$ffi->attach('OGR_G_DestroyGeometry' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OGR_G_CreateGeometry' => ['unsigned int'] => 'opaque');};
 eval{$ffi->attach('OGR_G_ApproximateArcAngles' => [qw/double double double double double double double double double/] => 'opaque');};
@@ -780,8 +791,8 @@ eval{$ffi->attach('OGR_DS_GetLayer' => [qw/opaque int/] => 'opaque');};
 eval{$ffi->attach('OGR_DS_GetLayerByName' => [qw/opaque string/] => 'opaque');};
 eval{$ffi->attach('OGR_DS_DeleteLayer' => [qw/opaque int/] => 'int');};
 eval{$ffi->attach('OGR_DS_GetDriver' => [qw/opaque/] => 'opaque');};
-eval{$ffi->attach('OGR_DS_CreateLayer' => ['opaque','string','opaque','unsigned int','string_pointer'] => 'opaque');};
-eval{$ffi->attach('OGR_DS_CopyLayer' => [qw/opaque opaque string string_pointer/] => 'opaque');};
+eval{$ffi->attach('OGR_DS_CreateLayer' => ['opaque','string','opaque','unsigned int','opaque'] => 'opaque');};
+eval{$ffi->attach('OGR_DS_CopyLayer' => [qw/opaque opaque string opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_DS_TestCapability' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('OGR_DS_ExecuteSQL' => [qw/opaque string opaque string/] => 'opaque');};
 eval{$ffi->attach('OGR_DS_ReleaseResultSet' => [qw/opaque opaque/] => 'void');};
@@ -799,8 +810,8 @@ eval{$ffi->attach('OGR_Dr_TestCapability' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('OGR_Dr_CreateDataSource' => [qw/opaque string string_pointer/] => 'opaque');};
 eval{$ffi->attach('OGR_Dr_CopyDataSource' => [qw/opaque opaque string string_pointer/] => 'opaque');};
 eval{$ffi->attach('OGR_Dr_DeleteDataSource' => [qw/opaque string/] => 'int');};
-eval{$ffi->attach('OGROpen' => [qw/string int opaque/] => 'opaque');};
-eval{$ffi->attach('OGROpenShared' => [qw/string int opaque/] => 'opaque');};
+eval{$ffi->attach('OGROpen' => [qw/string int uint64*/] => 'opaque');};
+eval{$ffi->attach('OGROpenShared' => [qw/string int uint64*/] => 'opaque');};
 eval{$ffi->attach('OGRReleaseDataSource' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OGRRegisterDriver' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OGRDeregisterDriver' => [qw/opaque/] => 'void');};
@@ -872,9 +883,9 @@ eval{$ffi->attach('OSRExportToWkt' => [qw/opaque string_pointer/] => 'int');};
 eval{$ffi->attach('OSRExportToPrettyWkt' => [qw/opaque string_pointer int/] => 'int');};
 eval{$ffi->attach('OSRExportToProj4' => [qw/opaque string_pointer/] => 'int');};
 eval{$ffi->attach('OSRExportToPCI' => [qw/opaque string_pointer string_pointer double*/] => 'int');};
-eval{$ffi->attach('OSRExportToUSGS' => [qw/opaque long long double* long/] => 'int');};
+eval{$ffi->attach('OSRExportToUSGS' => [qw/opaque long* long* double* long*/] => 'int');};
 eval{$ffi->attach('OSRExportToXML' => [qw/opaque string_pointer string/] => 'int');};
-eval{$ffi->attach('OSRExportToPanorama' => [qw/opaque long long long long double*/] => 'int');};
+eval{$ffi->attach('OSRExportToPanorama' => [qw/opaque long* long* long* long* double*/] => 'int');};
 eval{$ffi->attach('OSRExportToMICoordSys' => [qw/opaque string_pointer/] => 'int');};
 eval{$ffi->attach('OSRExportToERM' => [qw/opaque string string string/] => 'int');};
 eval{$ffi->attach('OSRMorphToESRI' => [qw/opaque/] => 'int');};
@@ -926,8 +937,8 @@ eval{$ffi->attach('OSRGetUTMZone' => [qw/opaque int*/] => 'int');};
 eval{$ffi->attach('OSRSetStatePlane' => [qw/opaque int int/] => 'int');};
 eval{$ffi->attach('OSRSetStatePlaneWithUnits' => [qw/opaque int int string double/] => 'int');};
 eval{$ffi->attach('OSRAutoIdentifyEPSG' => [qw/opaque/] => 'int');};
-eval{$ffi->attach('OSRFindMatches' => [qw/opaque string_pointer int* int*/] => 'opaque');};
-eval{$ffi->attach('OSRFreeSRSArray' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('OSRFindMatches' => [qw/opaque string_pointer int* int*/] => 'uint64*');};
+eval{$ffi->attach('OSRFreeSRSArray' => [qw/uint64*/] => 'void');};
 eval{$ffi->attach('OSREPSGTreatsAsLatLong' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSREPSGTreatsAsNorthingEasting' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRGetAxis' => ['opaque','string','int','unsigned int'] => 'string');};
@@ -1029,7 +1040,7 @@ eval{$ffi->attach('GDALBuildVRTOptionsNew' => [qw/opaque opaque/] => 'opaque');}
 eval{$ffi->attach('GDALBuildVRTOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALBuildVRTOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
 eval{$ffi->attach('GDALBuildVRT' => [qw/string int opaque opaque opaque int*/] => 'opaque');};
-    
+
     my $self = {};
     $self->{ffi} = $ffi;
     $self->{CPLErrorHandler} = $ffi->closure(
@@ -1074,6 +1085,7 @@ sub GetDriverByName {
     my $d = GDALGetDriverByName(@_);
     return bless \$d, 'Geo::GDAL::FFI::Driver';
 }
+*Driver = *GetDriverByName;
 
 sub Open {
     shift;
@@ -1105,6 +1117,34 @@ sub OpenEx {
         croak $msg;
     }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
+}
+
+sub write {
+    print STDOUT $_[0];
+}
+
+sub close {
+}
+
+sub SetVSIStdout {
+    my ($self, $writer) = @_;
+    $writer = $self unless $writer;
+    my $w = $writer->can('write');
+    my $c = $writer->can('close');
+    croak "$writer must be able to write and close." unless $w && $c;
+    #$self->{write} = $w;
+    $self->{close} = $c;
+    $self->{writer} = $self->{ffi}->closure(sub {
+        my ($buf, $size, $count, $stream) = @_;
+        $w->(buffer_to_scalar($buf, $size*$count));
+    });
+    VSIStdoutSetRedirection($self->{writer}, 0);
+}
+
+sub UnsetVSIStdout {
+    my $self = shift;
+    $self->{close}->() if $self->{close};
+    $self->SetVSIStdout;
 }
 
 package Geo::GDAL::FFI::Object;
@@ -1143,7 +1183,7 @@ sub GetMetadata {
         }
         return wantarray ? %md : \%md;
     }
-    my $csl = Geo::GDAL::FFI::GDALGetMetadata($$self, $domain);    
+    my $csl = Geo::GDAL::FFI::GDALGetMetadata($$self, $domain);
     for my $i (0..Geo::GDAL::FFI::CSLCount($csl)-1) {
         my ($name, $value) = split /=/, Geo::GDAL::FFI::CSLGetField($csl, $i);
         $md{$name} = $value;
@@ -1286,6 +1326,8 @@ use base 'Geo::GDAL::FFI::Object';
 
 sub DESTROY {
     my $self = shift;
+    $self->FlushCache;
+    #say STDERR "DESTROY $self and $$self";
     Geo::GDAL::FFI::GDALClose($$self);
 }
 
@@ -1372,14 +1414,33 @@ sub CreateLayer {
     for my $key (keys %$options) {
         $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options->{$key}");
     }
-    $sr = Geo::GDAL::FFI::OSRClone($$sr);
+    $sr = Geo::GDAL::FFI::OSRClone($$sr) if $sr;
     my $l = Geo::GDAL::FFI::GDALDatasetCreateLayer($$self, $name, $sr, $gt, $o);
-    Geo::GDAL::FFI::OSRRelease($sr);
+    Geo::GDAL::FFI::OSRRelease($sr) if $sr;
     if (@errors) {
         my $msg = join("\n", @errors);
         @errors = ();
         croak $msg;
     }
+    $parent{$l} = $self;
+    #say STDERR "parent of $l is $self";
+    return bless \$l, 'Geo::GDAL::FFI::Layer';
+}
+
+sub CopyLayer {
+    my ($self, $layer, $name, $options) = @_;
+    my $o = 0;
+    for my $key (keys %$options) {
+        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options->{$key}");
+    }
+    my $l = Geo::GDAL::FFI::GDALDatasetCopyLayer($$self, $$layer, $name, $o);
+    if (@errors) {
+        my $msg = join("\n", @errors);
+        @errors = ();
+        croak $msg;
+    }
+    $parent{$l} = $self;
+    #say STDERR "parent of $l is $self";
     return bless \$l, 'Geo::GDAL::FFI::Layer';
 }
 
@@ -1571,6 +1632,8 @@ use base 'Geo::GDAL::FFI::Object';
 sub DESTROY {
     my $self = shift;
     Geo::GDAL::FFI::OGR_L_SyncToDisk($$self);
+    #say STDERR "delete parent of $$self $parent{$$self}";
+    delete $parent{$$self};
 }
 
 sub GetDefn {
@@ -1578,12 +1641,40 @@ sub GetDefn {
     my $d = Geo::GDAL::FFI::OGR_L_GetLayerDefn($$self);
     return bless \$d, 'Geo::GDAL::FFI::FeatureDefn';
 }
+*Defn = *GetDefn;
 
 sub CreateField {
-    my ($self, $d, $approx_ok) = @_;
-    $approx_ok //= 1;
-    my $e = Geo::GDAL::FFI::OGR_L_CreateField($$self, $$d, $approx_ok);
+    my $self = shift;
+    my $def = shift;
+    unless (ref $def) {
+        # name => type calling syntax
+        my $name = $def;
+        my $type = shift;
+        $def = Geo::GDAL::FFI::FieldDefn->new($name => $type)
+    }
+    my $approx_ok = shift // 1;
+    my $e = Geo::GDAL::FFI::OGR_L_CreateField($$self, $$def, $approx_ok);
     return unless $e;
+    my $msg = join("\n", @errors);
+    @errors = ();
+    croak $msg;
+}
+
+sub CreateGeomField {
+    my $self = shift;
+    my $def = shift;
+    unless (ref $def) {
+        # name => type calling syntax
+        my $name = $def;
+        my $type = shift;
+        $def = Geo::GDAL::FFI::GeomFieldDefn->new($name => $type)
+    }
+    my $approx_ok = shift // 1;
+    my $e = Geo::GDAL::FFI::OGR_L_CreateGeomField($$self, $$def, $approx_ok);
+    return unless $e;
+    my $msg = join("\n", @errors);
+    @errors = ();
+    croak $msg;
 }
 
 sub GetSpatialRef {
@@ -1627,6 +1718,9 @@ sub DeleteFeature {
     my ($self, $fid) = @_;
     my $e = Geo::GDAL::FFI::OGR_L_DeleteFeature($$self, $fid);
     return unless $e;
+    my $msg = join("\n", @errors);
+    @errors = ();
+    croak $msg;
 }
 
 package Geo::GDAL::FFI::FeatureDefn;
@@ -2316,7 +2410,7 @@ sub GetGeomField {
     my $i = defined $name ? $self->GetGeomFieldIndex($name) : 0;
     my $g = Geo::GDAL::FFI::OGR_F_GetGeomFieldRef($$self, $i);
     croak "No such field: $i" unless $g;
-    $immutable{$g} = exists $immutable{$g} ? $immutable{$g} + 1 : 1;
+    ++$immutable{$g};
     #say STDERR "$g immutable";
     return bless \$g, 'Geo::GDAL::FFI::Geometry';
 }
@@ -2327,7 +2421,10 @@ sub SetGeomField {
     my $g = pop;
     my $name = shift;
     my $i = defined $name ? $self->GetGeomFieldIndex($name) : 0;
-    $immutable{$$g} = exists $immutable{$$g} ? $immutable{$$g} + 1 : 1;
+    if (ref $g eq 'ARRAY') {
+        $g = Geo::GDAL::FFI::Geometry->new(@$g);
+    }
+    ++$immutable{$$g};
     #say STDERR "$$g immutable";
     Geo::GDAL::FFI::OGR_F_SetGeomFieldDirectly($$self, $i, $$g);
 }
@@ -2340,16 +2437,28 @@ use warnings;
 use Carp;
 
 sub new {
-    my ($class, $type) = @_;
-    $type //= 'Unknown';
-    my $m = $type =~ /M$/;
-    my $z = $type =~ /ZM$/ || $type =~ /25D$/;
-    my $tmp = $geometry_types{$type};
-    confess "Unknown constant: $type\n" unless defined $tmp;
-    $type = $tmp;
-    my $g = Geo::GDAL::FFI::OGR_G_CreateGeometry($type);
-    Geo::GDAL::FFI::OGR_G_SetMeasured($g, 1) if $m;
-    Geo::GDAL::FFI::OGR_G_Set3D($g, 1) if $z;
+    my $class = shift;
+    my $g = 0;
+    if (@_ == 1) {
+        my $type = shift // '';
+        my $tmp = $geometry_types{$type};
+        confess "Empty or unknown geometry type: '$type'\n" unless defined $tmp;
+        my $m = $type =~ /M$/;
+        my $z = $type =~ /ZM$/ || $type =~ /25D$/;
+        $g = Geo::GDAL::FFI::OGR_G_CreateGeometry($tmp);
+        confess "OGR_G_CreateGeometry failed." unless $g; # should not happen
+        Geo::GDAL::FFI::OGR_G_SetMeasured($g, 1) if $m;
+        Geo::GDAL::FFI::OGR_G_Set3D($g, 1) if $z;
+        return bless \$g, $class;
+    } else {
+        my ($format, $string, $sr) = @_;
+        my $tmp = $geometry_formats{$format};
+        confess "Empty or unknown geometry format: '$format'\n" unless defined $tmp;
+        $sr = $$sr if $sr;
+        if ($format eq 'WKT') {
+            my $e = Geo::GDAL::FFI::OGR_G_CreateFromWkt(\$string, $sr, \$g);
+        }
+    }
     return bless \$g, $class;
 }
 
@@ -2383,7 +2492,7 @@ sub SetPoint {
     my $self = shift;
     croak "Can't modify an immutable object." if $immutable{$$self};
     my ($i, $x, $y, $z, $m);
-    $i = shift if 
+    $i = shift if
         Geo::GDAL::FFI::OGR_GT_Flatten(
             Geo::GDAL::FFI::OGR_G_GetGeometryType($$self)) != 1; # a point
     if (@_ > 1) {
@@ -2461,15 +2570,18 @@ sub ImportFromWkt {
 }
 
 sub ExportToWkt {
-    my ($self, $mode) = @_;
-    $mode //= '';
+    my ($self) = @_;
     my $wkt = '';
-    if ($mode =~ /ISO/i) {
-        Geo::GDAL::FFI::OGR_G_ExportToIsoWkt($$self, \$wkt);
-    } else {
-        Geo::GDAL::FFI::OGR_G_ExportToWkt($$self, \$wkt);
-    }
+    Geo::GDAL::FFI::OGR_G_ExportToWkt($$self, \$wkt);
     return $wkt;
 }
+
+sub ExportToIsoWkt {
+    my ($self) = @_;
+    my $wkt = '';
+    Geo::GDAL::FFI::OGR_G_ExportToIsoWkt($$self, \$wkt);
+    return $wkt;
+}
+*AsWKT = *ExportToIsoWkt;
 
 1;

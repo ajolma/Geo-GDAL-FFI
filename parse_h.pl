@@ -52,6 +52,9 @@ my %use_CSL = (
     GDALGetFileList => 1,
     GDALAddBand => 1,
     GDALDatasetCreateLayer => 1,
+    GDALDatasetCopyLayer => 1,
+    OGR_DS_CreateLayer => 1,
+    OGR_DS_CopyLayer => 1,
     OGR_F_GetFieldAsStringList => 1,
     OGR_F_SetFieldStringList => 1,
     GDALInfoOptionsNew => 1,
@@ -209,7 +212,9 @@ sub parse_type {
             return 'opaque';
         }
     }
-    if ($arg =~ /^\w+?H/) {
+    if ($arg =~ /^\w+?H\s*\*/) {
+        $arg = 'uint64*';
+    } elsif ($arg =~ /^\w+?H/) {
         $arg = 'opaque';
     } elsif ($arg =~ /^const \w+?H/) {
         $arg = 'opaque';
