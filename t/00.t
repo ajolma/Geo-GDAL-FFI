@@ -10,13 +10,13 @@ use JSON;
 use FFI::Platypus::Buffer;
 
 # test unavailable function
-if(0){
+if(1){
     my $can = $gdal->can('is_not_available');
     ok(!$can, "Can't call missing functions.");
 }
 
 # test error handler:
-if(0){
+if(1){
     eval {
         my $ds = $gdal->Open('itsnotthere.tiff');
     };
