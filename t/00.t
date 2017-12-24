@@ -449,7 +449,7 @@ if(1){
     }
     
     my $dr = $gdal->GetDriverByName('Memory');
-    my $ds = $dr->CreateVector('test');
+    my $ds = $dr->CreateDataset(Name => 'test');
     my $sr = Geo::GDAL::FFI::SpatialReference->new();
     $sr->ImportFromEPSG(3067);
     my $l = $ds->CreateLayer('test', $sr, 'Point');

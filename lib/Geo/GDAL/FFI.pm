@@ -1231,6 +1231,44 @@ sub GetDescription {
 }
 *Name = *GetDescription;
 
+sub CreateDataset {
+    my $self = shift;
+    my %args = @_ == 1 ? %{$_[0]} : @_;
+    my $n = $args{Name} // '';
+    my $dt = $args{DataType} // 'Byte';
+    my $tmp = $data_types{$dt};
+    confess "Unknown constant: $dt\n" unless defined $tmp;
+    $dt = $tmp;
+    my $o = 0;
+    for my $key (keys %{$args{Options}}) {
+        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args{Options}{$key}");
+    }
+    my $ds;
+    if ($args{Source}) {
+        my $src = ${$args{Source}};
+        my $s = $args{Strict} // 0;
+        my $p = $args{Progress};
+        $ds = Geo::GDAL::FFI::GDALCreateCopy($$self, $n, $src, $s, $o, $p, $args{ProgressData});
+    } elsif (not exists $args{Width}) {
+        $ds = Geo::GDAL::FFI::GDALCreate($$self, $n, 0, 0, 0, $dt, $o);
+    } else {
+        my $w = $args{Width} // 256;
+        my $h = $args{Height} // 256;
+        my $b = $args{Bands} // 1;
+        $ds = Geo::GDAL::FFI::GDALCreate($$self, $n, $w, $h, $b, $dt, $o);
+    }
+    if (!$ds || @errors) {
+        my $msg;
+        if (@errors) {
+            $msg = join("\n", @errors);
+            @errors = ();
+        }
+        $msg //= 'CreateDataset failed. (Driver = '.$self->GetDescription.')';
+        croak $msg;
+    }
+    return bless \$ds, 'Geo::GDAL::FFI::Dataset';
+}
+
 sub Create {
     #my $this_subs_name = (caller(0))[3];
     #say STDERR "called $this_subs_name";
@@ -1277,11 +1315,6 @@ sub CreateCopy {
         croak $msg;
     }
     return bless \$copy, 'Geo::GDAL::FFI::Dataset';
-}
-
-sub CreateVector {
-    my ($self, $name, $options) = @_;
-    $self->Create($name, 0, 0, 0, undef, $options);
 }
 
 package Geo::GDAL::FFI::SpatialReference;
@@ -1407,6 +1440,8 @@ sub GetLayer {
 
 sub CreateLayer {
     my ($self, $name, $sr, $gt, $options) = @_;
+    $name //= '';
+    $gt //= 'None';
     my $tmp = $geometry_types{$gt};
     confess "Unknown constant: $gt\n" unless defined $tmp;
     $gt = $tmp;
@@ -1429,6 +1464,7 @@ sub CreateLayer {
 
 sub CopyLayer {
     my ($self, $layer, $name, $options) = @_;
+    $name //= '';
     my $o = 0;
     for my $key (keys %$options) {
         $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options->{$key}");
