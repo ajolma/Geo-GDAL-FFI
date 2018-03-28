@@ -10,7 +10,8 @@ WriteMakefile(
         'Alien::gdal' => 0
     },
     PREREQ_PM => {
-        'FFI::Platypus' => 0
+        'FFI::Platypus' => 0,
+        'PDL' => 0
     },
     TEST_REQUIRES => {
         'Test::More' => 0,
