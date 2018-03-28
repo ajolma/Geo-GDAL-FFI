@@ -17,7 +17,6 @@ my %constants = (
     GDALPaletteInterp => 1,
     GDALAccess => 1,
     GDALRWFlag => 1,
-    GSpacing => 1,
     OGRwkbGeometryType => 1,
     GDALRATFieldUsage => 1,
     GDALRATFieldType => 1,
@@ -302,7 +301,7 @@ sub parse_type {
         } else {
             $arg = 'sint64*';
         }
-    } elsif ($arg =~ /^GIntBig/) {
+    } elsif ($arg =~ /^GIntBig/ or $arg =~ /^GSpacing/) {
         $arg = 'sint64';
     } elsif ($arg =~ /^void/) {
         $arg = 'void';
@@ -332,8 +331,8 @@ sub pre_process {
         if ($s =~ /^#ifndef (\w+)/) {
             next;
         }
-        if ($s =~ /^#ifdef (\w+)/) {
-            if ($1 eq 'DEBUG' or $1 eq 'undef') {
+        if ($s =~ /^#ifdef (\w+)/ or $s =~ /^#if defined\((\w+)\)/) {
+            if ($1 eq 'DEBUG' or $1 eq 'undef' or $1 eq 'GDAL_COMPILATION') {
                 $skip = 1;
                 next;
             }

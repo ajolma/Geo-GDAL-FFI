@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use Carp;
 use Alien::gdal;
+use PDL;
 use FFI::Platypus;
 use FFI::Platypus::Buffer;
 require Exporter;
@@ -60,7 +61,7 @@ our %open_flags = (
     HASHSET_BLOCK_ACCESS =>    0x200,
     );
 
-our %data_types = (
+our %datatypes = (
     Unknown => 0,
     Byte => 1,
     UInt16 => 2,
@@ -74,6 +75,28 @@ our %data_types = (
     CFloat32 => 10,
     CFloat64 => 11
     );
+our %datatypes_reverse = reverse %datatypes;
+
+our %resampling = (
+    NearestNeighbour => 0,
+    Bilinear => 1,
+    Cubic => 2,
+    CubicSpline => 3,
+    ORA_Lanczos => 4,
+    Average => 5,
+    Mode => 6,
+    Gauss => 7
+    );
+
+our %datatype2pdl_datatype = (
+    Byte => $PDL::Types::PDL_B,
+    Int16 => $PDL::Types::PDL_S,
+    UInt16 => $PDL::Types::PDL_US,
+    Int32 => $PDL::Types::PDL_L,
+    Float32 => $PDL::Types::PDL_F,
+    Float64 => $PDL::Types::PDL_D,
+    );
+our %pdl_datatype2datatype = reverse %datatype2pdl_datatype;
 
 our %field_types = (
     Integer => 0,
@@ -250,7 +273,7 @@ sub new {
     $ffi->attach( 'OGR_GT_Flatten' => ['unsigned int'] => 'unsigned int');
 
 # created with parse_h.pl
-# from /home/ajolma/src/gdal/gdal/gcore/gdal.h
+# from /home/ajolma/github/gdal/gdal/gcore/gdal.h
 eval{$ffi->attach('GDALGetDataTypeSize' => ['unsigned int'] => 'int');};
 eval{$ffi->attach('GDALGetDataTypeSizeBits' => ['unsigned int'] => 'int');};
 eval{$ffi->attach('GDALGetDataTypeSizeBytes' => ['unsigned int'] => 'int');};
@@ -266,6 +289,7 @@ eval{$ffi->attach('GDALFindDataType' => [qw/int int int int/] => 'unsigned int')
 eval{$ffi->attach('GDALFindDataTypeForValue' => [qw/double int/] => 'unsigned int');};
 eval{$ffi->attach('GDALAdjustValueToDataType' => ['unsigned int','double','int*','int*'] => 'double');};
 eval{$ffi->attach('GDALGetNonComplexDataType' => ['unsigned int'] => 'unsigned int');};
+eval{$ffi->attach('GDALDataTypeIsConversionLossy' => ['unsigned int','unsigned int'] => 'int');};
 eval{$ffi->attach('GDALGetAsyncStatusTypeName' => ['unsigned int'] => 'string');};
 eval{$ffi->attach('GDALGetAsyncStatusTypeByName' => [qw/string/] => 'unsigned int');};
 eval{$ffi->attach('GDALGetColorInterpretationName' => ['unsigned int'] => 'string');};
@@ -322,7 +346,7 @@ eval{$ffi->attach('GDALAddBand' => ['opaque','unsigned int','opaque'] => 'int');
 eval{$ffi->attach('GDALBeginAsyncReader' => ['opaque','int','int','int','int','opaque','int','int','unsigned int','int','int*','int','int','int','string_pointer'] => 'opaque');};
 eval{$ffi->attach('GDALEndAsyncReader' => [qw/opaque opaque/] => 'void');};
 eval{$ffi->attach('GDALDatasetRasterIO' => ['opaque','unsigned int','int','int','int','int','opaque','int','int','unsigned int','int','int*','int','int','int'] => 'int');};
-eval{$ffi->attach('GDALDatasetRasterIOEx' => ['opaque','unsigned int','int','int','int','int','opaque','int','int','unsigned int','int','int*','unsigned int','unsigned int','unsigned int','opaque'] => 'int');};
+eval{$ffi->attach('GDALDatasetRasterIOEx' => ['opaque','unsigned int','int','int','int','int','opaque','int','int','unsigned int','int','int*','sint64','sint64','sint64','opaque'] => 'int');};
 eval{$ffi->attach('GDALDatasetAdviseRead' => ['opaque','int','int','int','int','int','int','unsigned int','int','int*','string_pointer'] => 'int');};
 eval{$ffi->attach('GDALGetProjectionRef' => [qw/opaque/] => 'string');};
 eval{$ffi->attach('GDALSetProjection' => [qw/opaque string/] => 'int');};
@@ -366,7 +390,7 @@ eval{$ffi->attach('GDALGetBlockSize' => [qw/opaque int* int*/] => 'void');};
 eval{$ffi->attach('GDALGetActualBlockSize' => [qw/opaque int int int* int*/] => 'int');};
 eval{$ffi->attach('GDALRasterAdviseRead' => ['opaque','int','int','int','int','int','int','unsigned int','string_pointer'] => 'int');};
 eval{$ffi->attach('GDALRasterIO' => ['opaque','unsigned int','int','int','int','int','opaque','int','int','unsigned int','int','int'] => 'int');};
-eval{$ffi->attach('GDALRasterIOEx' => ['opaque','unsigned int','int','int','int','int','opaque','int','int','unsigned int','unsigned int','unsigned int','opaque'] => 'int');};
+eval{$ffi->attach('GDALRasterIOEx' => ['opaque','unsigned int','int','int','int','int','opaque','int','int','unsigned int','sint64','sint64','opaque'] => 'int');};
 eval{$ffi->attach('GDALReadBlock' => [qw/opaque int int opaque/] => 'int');};
 eval{$ffi->attach('GDALWriteBlock' => [qw/opaque int int opaque/] => 'int');};
 eval{$ffi->attach('GDALGetRasterBandXSize' => [qw/opaque/] => 'int');};
@@ -490,7 +514,7 @@ eval{$ffi->attach('GDALDatasetGetTiledVirtualMem' => ['opaque','unsigned int','i
 eval{$ffi->attach('GDALRasterBandGetTiledVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','size_t','int','string_pointer'] => 'opaque');};
 eval{$ffi->attach('GDALCreatePansharpenedVRT' => [qw/string opaque int uint64*/] => 'opaque');};
 eval{$ffi->attach('GDALGetJPEG2000Structure' => [qw/string string_pointer/] => 'opaque');};
-# from /home/ajolma/src/gdal/gdal/ogr/ogr_api.h
+# from /home/ajolma/github/gdal/gdal/ogr/ogr_api.h
 eval{$ffi->attach('OGR_G_CreateFromWkb' => [qw/string opaque uint64* int/] => 'int');};
 eval{$ffi->attach('OGR_G_CreateFromWkt' => [qw/string_pointer opaque uint64*/] => 'int');};
 eval{$ffi->attach('OGR_G_CreateFromFgf' => [qw/string opaque uint64* int int*/] => 'int');};
@@ -859,7 +883,7 @@ eval{$ffi->attach('OGR_STBL_Find' => [qw/opaque string/] => 'string');};
 eval{$ffi->attach('OGR_STBL_ResetStyleStringReading' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OGR_STBL_GetNextStyle' => [qw/opaque/] => 'string');};
 eval{$ffi->attach('OGR_STBL_GetLastStyleName' => [qw/opaque/] => 'string');};
-# from /home/ajolma/src/gdal/gdal/ogr/ogr_srs_api.h
+# from /home/ajolma/github/gdal/gdal/ogr/ogr_srs_api.h
 eval{$ffi->attach('OSRAxisEnumToName' => ['unsigned int'] => 'string');};
 eval{$ffi->attach('OSRNewSpatialReference' => [qw/string/] => 'opaque');};
 eval{$ffi->attach('OSRCloneGeogCS' => [qw/opaque/] => 'opaque');};
@@ -1010,7 +1034,7 @@ eval{$ffi->attach('OCTCleanupProjMutex' => [] => 'void');};
 eval{$ffi->attach('OPTGetProjectionMethods' => [] => 'string_pointer');};
 eval{$ffi->attach('OPTGetParameterList' => [qw/string string_pointer/] => 'string_pointer');};
 eval{$ffi->attach('OPTGetParameterInfo' => [qw/string string string_pointer string_pointer double*/] => 'int');};
-# from /home/ajolma/src/gdal/gdal/apps/gdal_utils.h
+# from /home/ajolma/github/gdal/gdal/apps/gdal_utils.h
 eval{$ffi->attach('GDALInfoOptionsNew' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALInfoOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALInfo' => [qw/opaque opaque/] => 'string');};
@@ -1022,11 +1046,11 @@ eval{$ffi->attach('GDALWarpAppOptionsNew' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALWarpAppOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALWarpAppOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
 eval{$ffi->attach('GDALWarpAppOptionsSetWarpOption' => [qw/opaque string string/] => 'void');};
-eval{$ffi->attach('GDALWarp' => [qw/string opaque int opaque opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALWarp' => [qw/string opaque int uint64* opaque int*/] => 'opaque');};
 eval{$ffi->attach('GDALVectorTranslateOptionsNew' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALVectorTranslateOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALVectorTranslateOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
-eval{$ffi->attach('GDALVectorTranslate' => [qw/string opaque int opaque opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALVectorTranslate' => [qw/string opaque int uint64* opaque int*/] => 'opaque');};
 eval{$ffi->attach('GDALDEMProcessingOptionsNew' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALDEMProcessingOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALDEMProcessingOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
@@ -1046,7 +1070,8 @@ eval{$ffi->attach('GDALRasterize' => [qw/string opaque opaque opaque int*/] => '
 eval{$ffi->attach('GDALBuildVRTOptionsNew' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALBuildVRTOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALBuildVRTOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
-eval{$ffi->attach('GDALBuildVRT' => [qw/string int opaque opaque opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALBuildVRT' => [qw/string int uint64* opaque opaque int*/] => 'opaque');};
+
 
     my $self = {};
     $self->{ffi} = $ffi;
@@ -1242,7 +1267,7 @@ sub CreateDataset {
     my %args = @_ == 1 ? %{$_[0]} : @_;
     my $n = $args{Name} // '';
     my $dt = $args{DataType} // 'Byte';
-    my $tmp = $data_types{$dt};
+    my $tmp = $datatypes{$dt};
     confess "Unknown constant: $dt\n" unless defined $tmp;
     $dt = $tmp;
     my $o = 0;
@@ -1284,7 +1309,7 @@ sub Create {
     $height //= 256;
     $bands //= 1;
     $dt //= 'Byte';
-    my $tmp = $data_types{$dt};
+    my $tmp = $datatypes{$dt};
     confess "Unknown constant: $dt\n" unless defined $tmp;
     $dt = $tmp;
     my $o = 0;
@@ -1506,8 +1531,10 @@ sub GetBand {
     my ($self, $i) = @_;
     $i //= 1;
     my $b = Geo::GDAL::FFI::GDALGetRasterBand($$self, $i);
+    $parent{$b} = $self;
     return bless \$b, 'Geo::GDAL::FFI::Band';
 }
+*Band = *GetBand;
 
 sub GetLayer {
     my ($self, $i) = @_;
@@ -1564,10 +1591,17 @@ use warnings;
 use Carp;
 use FFI::Platypus::Buffer;
 
+sub DESTROY {
+    my $self = shift;
+    #say STDERR "delete parent of $$self $parent{$$self}";
+    delete $parent{$$self};
+}
+
 sub GetDataType {
     my $self = shift;
-    Geo::GDAL::FFI::GDALGetRasterDataType($$self);
+    return $datatypes_reverse{Geo::GDAL::FFI::GDALGetRasterDataType($$self)};
 }
+*DataType = *GetDataType;
 
 sub Width {
     my $self = shift;
@@ -1577,6 +1611,14 @@ sub Width {
 sub Height {
     my $self = shift;
     Geo::GDAL::FFI::GDALGetRasterBandYSize($$self);
+}
+
+sub Size {
+    my $self = shift;
+    return (
+        Geo::GDAL::FFI::GDALGetRasterBandXSize($$self),
+        Geo::GDAL::FFI::GDALGetRasterBandYSize($$self)
+        );
 }
 
 sub GetNoDataValue {
@@ -1633,22 +1675,14 @@ sub Read {
     my $buf;
     my ($pc, $bytes_per_cell) = PackCharacter($t);
     my $w;
-    unless (defined $xsize) {
-        Geo::GDAL::FFI::GDALGetBlockSize($$self, \$xsize, \$ysize);
-        $bufxsize = $xsize;
-        $bufysize = $ysize;
-        $w = $bufxsize * $bytes_per_cell;
-        $buf = ' ' x ($bufysize * $w);
-        my ($pointer, $size) = scalar_to_buffer $buf;
-        my $e = Geo::GDAL::FFI::GDALReadBlock($$self, $xoff, $yoff, $pointer);
-    } else {
-        $bufxsize //= $xsize;
-        $bufysize //= $ysize;
-        $w = $bufxsize * $bytes_per_cell;
-        $buf = ' ' x ($bufysize * $w);
-        my ($pointer, $size) = scalar_to_buffer $buf;
-        Geo::GDAL::FFI::GDALRasterIO($$self, Geo::GDAL::FFI::Read, $xoff, $yoff, $xsize, $ysize, $pointer, $bufxsize, $bufysize, $t, 0, 0);
-    }
+    $xsize //= Geo::GDAL::FFI::GDALGetRasterBandXSize($$self);
+    $ysize //= Geo::GDAL::FFI::GDALGetRasterBandYSize($$self);
+    $bufxsize //= $xsize;
+    $bufysize //= $ysize;
+    $w = $bufxsize * $bytes_per_cell;
+    $buf = ' ' x ($bufysize * $w);
+    my ($pointer, $size) = scalar_to_buffer $buf;
+    Geo::GDAL::FFI::GDALRasterIO($$self, Geo::GDAL::FFI::Read, $xoff, $yoff, $xsize, $ysize, $pointer, $bufxsize, $bufysize, $t, 0, 0);
     my $offset = 0;
     my @data;
     for my $y (0..$bufysize-1) {
@@ -1658,7 +1692,27 @@ sub Read {
     }
     return \@data;
 }
-*ReadBlock = *Read;
+
+sub ReadBlock {
+    my ($self, $xoff, $yoff) = @_;
+    my ($xsize, $ysize);
+    Geo::GDAL::FFI::GDALGetBlockSize($$self, \$xsize, \$ysize);
+    my $t = Geo::GDAL::FFI::GDALGetRasterDataType($$self);
+    my $buf;
+    my ($pc, $bytes_per_cell) = PackCharacter($t);
+    my $w = $xsize * $bytes_per_cell;
+    $buf = ' ' x ($ysize * $w);
+    my ($pointer, $size) = scalar_to_buffer $buf;
+    Geo::GDAL::FFI::GDALReadBlock($$self, $xoff, $yoff, $pointer);
+    my $offset = 0;
+    my @data;
+    for my $y (0..$ysize-1) {
+        my @d = unpack($pc."[$xsize]", substr($buf, $offset, $w));
+        push @data, \@d;
+        $offset += $w;
+    }
+    return \@data;
+}
 
 sub Write {
     my ($self, $data, $xoff, $yoff, $xsize, $ysize) = @_;
@@ -1733,6 +1787,66 @@ sub SetColorTable {
     }
     Geo::GDAL::FFI::GDALSetRasterColorTable($$self, $ct);
     Geo::GDAL::FFI::GDALDestroyColorTable($ct);
+}
+
+sub Piddle {
+    my $self = shift;
+    my ($w, $h) = $self->Size;
+    unless (defined wantarray) {
+        my $pdl = shift;
+        my $t = $pdl_datatype2datatype{$pdl->get_datatype};
+        confess "The Piddle datatype '".$pdl->get_datatype."' is unsuitable.\n" unless defined $t;
+        $t = $datatypes{$t};
+        my ($xdim, $ydim) = $pdl->dims();
+        my ($xoff, $yoff, $xsize, $ysize) = @_;
+        $xoff //= 0;
+        $yoff //= 0;
+        $xsize //= $xdim;
+        $ysize //= $ydim;
+        if ($xdim > $w - $xoff) {
+            warn "Piddle too wide ($xdim) for this raster band (width = $w, offset = $xoff).";
+            $xdim = $w - $xoff;
+        }
+        if ($ydim > $h - $yoff) {
+            $ydim = $h - $yoff;
+            warn "Piddle too tall ($ydim) for this raster band (height = $h, offset = $yoff).";
+        }
+        my $data = $pdl->get_dataref();
+        my ($pointer, $size) = scalar_to_buffer $$data;
+        Geo::GDAL::FFI::GDALRasterIO($$self, Geo::GDAL::FFI::Write, $xoff, $yoff, $xsize, $ysize, $pointer, $xdim, $ydim, $t, 0, 0);
+        return;
+    }
+    my $t = Geo::GDAL::FFI::GDALGetRasterDataType($$self);
+    my $pdl_t = $datatype2pdl_datatype{$datatypes_reverse{$t}};
+    confess "The Piddle datatype is unsuitable.\n" unless defined $pdl_t;
+    my ($xoff, $yoff, $xsize, $ysize, $xdim, $ydim, $alg) = @_;
+    $xoff //= 0;
+    $yoff //= 0;
+    $xsize //= $w - $xoff;
+    $ysize //= $h - $yoff;
+    $xdim //= $xsize;
+    $ydim //= $ysize;
+    $alg //= 'NearestNeighbour';
+    my $tmp = $resampling{$alg};
+    confess "Unknown constant: $alg\n" unless defined $tmp;
+    $alg = $tmp;
+    my $bufxsize = $xsize;
+    my $bufysize = $ysize;
+    my ($pc, $bytes_per_cell) = PackCharacter($t);
+    my $buf = ' ' x ($bufysize * $bufxsize * $bytes_per_cell);
+    my ($pointer, $size) = scalar_to_buffer $buf;
+    Geo::GDAL::FFI::GDALRasterIO($$self, Geo::GDAL::FFI::Read, $xoff, $yoff, $xsize, $ysize, $pointer, $bufxsize, $bufysize, $t, 0, 0);
+    my $pdl = PDL->new;
+    $pdl->set_datatype($pdl_t);
+    $pdl->setdims([$xdim, $ydim]);
+    my $data = $pdl->get_dataref();
+    # FIXME: see http://pdl.perl.org/PDLdocs/API.html how to wrap $buf into a piddle
+    $$data = $buf;
+    $pdl->upd_data;
+    # FIXME: we want approximate equality since no data value can be very large floating point value
+    my $bad = GetNoDataValue($self);
+    return $pdl->setbadif($pdl == $bad) if defined $bad;
+    return $pdl;
 }
 
 package Geo::GDAL::FFI::Layer;
