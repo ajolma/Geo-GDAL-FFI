@@ -18,7 +18,7 @@ before_install:
 #  - cpanm https://github.com/shawnlaffan/perl-alien-gdal.git
 
 install:
-  - cpanm -v --installdeps --notest .
+  - cpanm --installdeps --notest .
 
 script: "perl Makefile.PL; make test"
 
