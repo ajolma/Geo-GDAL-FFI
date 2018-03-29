@@ -5,6 +5,7 @@ use Config;
  
 WriteMakefile(
     NAME => 'Geo::GDAL::FFI',
+    VERSION_FROM => "lib/Geo/GDAL/FFI.pm",
     Alien::Base::Wrapper->mm_args,
     CONFIGURE_REQUIRES => {
         'Alien::gdal' => 0

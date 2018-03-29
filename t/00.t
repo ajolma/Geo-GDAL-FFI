@@ -166,12 +166,11 @@ if(1){
     my $d = $l->GetDefn();
     my $f = Geo::GDAL::FFI::Feature->new($d);
     $l->CreateFeature($f);
-}
-if(1){
-    my $ds = $gdal->OpenEx('test.shp');
-    my $l = $ds->GetLayer;
-    my $d = $l->GetDefn();
+    $ds = $gdal->OpenEx('test.shp');
+    $l = $ds->GetLayer;
+    $d = $l->GetDefn();
     ok($d->GetGeomType eq 'Point', "Create point shapefile and open it.");
+    unlink qw/test.dbf test.prj test.shp test.shx/;
 }
 
 # test field definitions

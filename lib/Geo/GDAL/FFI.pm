@@ -1136,16 +1136,23 @@ sub Open {
 
 sub OpenEx {
     shift;
-    my ($name, $flags, $drivers, $options, $files) = @_;
-    $flags //= 0;
+    my ($name, $flags_aref, $drivers, $options, $files) = @_;
+    $flags_aref //= [];
     $drivers //= 0;
     $options //= 0;
     $files //= 0;
+    my $flags = 0;
+    for my $f (@$flags_aref) {
+        $flags |= $open_flags{$f};
+    }
     my $ds = GDALOpenEx($name, $flags, $drivers, $options, $files);
     if (@errors) {
         my $msg = join("\n", @errors);
         @errors = ();
         croak $msg;
+    }
+    unless ($ds) { # no VERBOSE_ERROR in options and fail
+        croak "OpenEx failed for '$name'. Hint: add VERBOSE_ERROR to flags.";
     }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
