@@ -2855,17 +2855,108 @@ access library.
 
 =head2 Methods
 
-These are the methods of the pre-defined $gdal object.
-
 =over 4
+
+=item C<new>
+
+Create a new Geo::GDAL::FFI object.
 
 =item C<capabilities>
 
-Returns the list of capabilities (strings) a GDAL object can have.
+Returns the list of capabilities (strings) a Geo::GDAL::FFI::Object can have.
 
 =item C<OpenEx($name, $named_arguments_hash)>
 
+=back
 
+=head1 Geo::GDAL::FFI::Object
+
+The base class for classes Driver, SpatialReference, Dataset, Band,
+and Layer.
+
+=head2 Methods
+
+=over 4
+
+=back
+
+=head1 Geo::GDAL::FFI::Driver
+
+=head2 Methods
+
+=over 4
+
+=back
+
+=head1 Geo::GDAL::FFI::SpatialReference
+
+=head2 Methods
+
+=over 4
+
+=back
+
+=head1 Geo::GDAL::FFI::Dataset
+
+=head2 Methods
+
+=over 4
+
+=back
+
+=head1 Geo::GDAL::FFI::Band
+
+=head2 Methods
+
+=over 4
+
+=back
+
+=head1 Geo::GDAL::FFI::Layer
+
+=head2 Methods
+
+=over 4
+
+=back
+
+=head1 Geo::GDAL::FFI::FeatureDefn
+
+=head2 Methods
+
+=over 4
+
+=back
+
+=head1 Geo::GDAL::FFI::FieldDefn
+
+=head2 Methods
+
+=over 4
+
+=back
+
+=head1 Geo::GDAL::FFI::GeomFieldDefn
+
+=head2 Methods
+
+=over 4
+
+=back
+
+=head1 Geo::GDAL::FFI::Feature
+
+=head2 Methods
+
+=over 4
+
+=back
+
+=head1 Geo::GDAL::FFI::Geometry
+
+=head2 Methods
+
+=over 4
 
 =back
 
@@ -2875,7 +2966,7 @@ This is released under the Artistic License. See L<perlartistic>.
 
 =head1 AUTHOR
 
-Ari Jolma - L<http://arijolma.org/>
+Ari Jolma - L<http://arijolma.org>
 
 =head1 SEE ALSO
 
