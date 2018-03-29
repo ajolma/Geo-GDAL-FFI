@@ -3,11 +3,13 @@ use strict;
 use warnings;
 use Carp;
 use Encode qw(decode encode);
-use Geo::GDAL::FFI qw/$gdal/;
+use Geo::GDAL::FFI;
 use Test::More;
 use Data::Dumper;
 use JSON;
 use FFI::Platypus::Buffer;
+
+my $gdal = Geo::GDAL::FFI->new();
 
 # test unavailable function
 if(1){
@@ -161,7 +163,8 @@ if(1){
 if(1){
     my $dr = $gdal->GetDriverByName('ESRI Shapefile');
     my $ds = $dr->Create('test.shp');
-    my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
+    my $epsg = $gdal->Importer('EPSG');
+    my $sr = Geo::GDAL::FFI::SpatialReference->new($epsg => 3067);
     my $l = $ds->CreateLayer('test', $sr, 'Point');
     my $d = $l->GetDefn();
     my $f = Geo::GDAL::FFI::Feature->new($d);
@@ -444,7 +447,8 @@ if(1){
     
     my $dr = $gdal->GetDriverByName('Memory');
     my $ds = $dr->CreateDataset(Name => 'test');
-    my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
+    my $epsg = $gdal->Importer('EPSG');
+    my $sr = Geo::GDAL::FFI::SpatialReference->new($epsg => 3067);
     my $l = $ds->CreateLayer('test', $sr, 'Point');
     $l->CreateField(Geo::GDAL::FFI::FieldDefn->new(int => 'Integer'));
     my $d = $l->GetDefn;

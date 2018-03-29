@@ -12,9 +12,7 @@ require Exporter;
 
 our $VERSION = 0.01;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw($gdal);
-
-our $gdal;
+our @EXPORT_OK = qw();
 
 use constant Warning => 2;
 use constant Failure => 3;
@@ -29,18 +27,21 @@ our %parent;
 
 our %capabilities = (
     OPEN => 1,
-    CREATE => 1,
-    CREATECOPY => 1,
-    VIRTUALIO => 1,
-    RASTER => 1,
-    VECTOR => 1,
-    GNM => 1,
-    NOTNULL_FIELDS => 1,
-    DEFAULT_FIELDS => 1,
-    NOTNULL_GEOMFIELDS => 1,
-    NONSPATIAL => 1,
-    FEATURE_STYLES => 1,
+    CREATE => 2,
+    CREATECOPY => 3,
+    VIRTUALIO => 4,
+    RASTER => 5,
+    VECTOR => 6,
+    GNM => 7,
+    NOTNULL_FIELDS => 8,
+    DEFAULT_FIELDS => 9,
+    NOTNULL_GEOMFIELDS => 10,
+    NONSPATIAL => 11,
+    FEATURE_STYLES => 12,
     );
+sub capabilities {
+    return sort {$capabilities{$a} <=> $capabilities{$b}} keys %capabilities;
+}
 
 our %access = (
     ReadOnly => 0,
@@ -60,6 +61,9 @@ our %open_flags = (
     ARRAY_BLOCK_ACCESS   =>    0x100,
     HASHSET_BLOCK_ACCESS =>    0x200,
     );
+sub open_flags {
+    return sort {$open_flags{$a} <=> $open_flags{$b}} keys %open_flags;
+}
 
 our %datatypes = (
     Unknown => 0,
@@ -76,6 +80,9 @@ our %datatypes = (
     CFloat64 => 11
     );
 our %datatypes_reverse = reverse %datatypes;
+sub datatypes {
+    return sort {$datatypes{$a} <=> $datatypes{$b}} keys %datatypes;
+}
 
 our %resampling = (
     NearestNeighbour => 0,
@@ -1136,23 +1143,24 @@ sub Open {
 
 sub OpenEx {
     shift;
-    my ($name, $flags_aref, $drivers, $options, $files) = @_;
-    $flags_aref //= [];
-    $drivers //= 0;
-    $options //= 0;
-    $files //= 0;
+    my ($name, $args) = @_;
+    $args //= {};
+    $args->{open_flags} //= [];
+    $args->{allowed_drivers} //= 0;
+    $args->{open_options} //= 0;
+    $args->{sibling_files} //= 0;
     my $flags = 0;
-    for my $f (@$flags_aref) {
+    for my $f (@{$args->{open_flags}}) {
         $flags |= $open_flags{$f};
     }
-    my $ds = GDALOpenEx($name, $flags, $drivers, $options, $files);
+    my $ds = GDALOpenEx($name, $flags, $args->{allowed_drivers}, $args->{open_options}, $args->{sibling_files});
     if (@errors) {
         my $msg = join("\n", @errors);
         @errors = ();
         croak $msg;
     }
     unless ($ds) { # no VERBOSE_ERROR in options and fail
-        croak "OpenEx failed for '$name'. Hint: add VERBOSE_ERROR to flags.";
+        croak "OpenEx failed for '$name'. Hint: add VERBOSE_ERROR to open_flags.";
     }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
@@ -1183,6 +1191,27 @@ sub UnsetVSIStdout {
     my $self = shift;
     $self->{close}->() if $self->{close};
     $self->SetVSIStdout;
+}
+
+sub Importer {
+    my ($self, $format) = @_;
+    my $importer = $self->can('OSRImportFrom' . $format);
+    croak "Spatial reference importer for format '$format' not found!" unless $importer;
+    return $importer;
+}
+
+sub Exporter {
+    my ($self, $format) = @_;
+    my $exporter = $self->can('OSRExportTo' . $format);
+    croak "Spatial reference exporter for format '$format' not found!" unless $exporter;
+    return $exporter;
+}
+
+sub Setter {
+    my ($self, $proj) = @_;
+    my $setter = $self->can('OSRSet' . $proj);
+    croak "Parameter setter for projection '$proj' not found!" unless $setter;
+    return $setter;
 }
 
 package Geo::GDAL::FFI::Object;
@@ -1362,24 +1391,17 @@ use warnings;
 use Carp;
 
 sub new {
-    my $class = shift;
+    my ($class, $arg, @arg) = @_;
     my $sr;
-    if (@_ == 0) {
+    if (not defined $arg) {
         $sr = Geo::GDAL::FFI::OSRNewSpatialReference();
-    } elsif (@_ == 1) {
-        my $wkt = shift;
-        $sr = Geo::GDAL::FFI::OSRNewSpatialReference($wkt);
+    } elsif (not ref $arg) {
+        $sr = Geo::GDAL::FFI::OSRNewSpatialReference($arg);
     } else {
-        my $format = shift;
-        my $importer = $gdal->can('OSRImportFrom' . $format);
-        if ($importer) {
-            $sr = Geo::GDAL::FFI::OSRNewSpatialReference();
-            if ($importer->($sr, @_) != 0) {
-                Geo::GDAL::FFI::OSRDestroySpatialReference($sr);
-                $sr = 0;
-            }
-        } else {
-            croak "$format importer for $class not found!";
+        $sr = Geo::GDAL::FFI::OSRNewSpatialReference();
+        if ($arg->($sr, @arg) != 0) {
+            Geo::GDAL::FFI::OSRDestroySpatialReference($sr);
+            $sr = 0;
         }
     }
     return bless \$sr, $class if $sr;
@@ -1393,34 +1415,26 @@ sub DESTROY {
     Geo::GDAL::FFI::OSRDestroySpatialReference($$self);
 }
 
-sub ExportTo {
+sub Export {
     my $self = shift;
-    my $format = shift;
-    my $exporter = $gdal->can('OSRExportTo' . $format);
-    if ($exporter) {
-        my $x;
-        if ($exporter->($$self, \$x, @_) != 0) {
-            my $msg = join("\n", @errors);
-            @errors = ();
-            croak $msg;
-        }
-        return $x;
+    my $exporter = shift;
+    my $x;
+    if ($exporter->($$self, \$x, @_) != 0) {
+        my $msg = join("\n", @errors);
+        @errors = ();
+        croak $msg;
     }
-    croak "$format exporter for '.ref($self).' not found!";
+    return $x;
 }
 
 sub Set {
     my $self = shift;
-    my $what = shift;
-    my $setter = $gdal->can('OSRSet' . $what);
-    if ($setter) {
-        if ($setter->($$self, @_) != 0) {
-            my $msg = join("\n", @errors);
-            @errors = ();
-            croak $msg;
-        }
+    my $setter = shift;
+    if ($setter->($$self, @_) != 0) {
+        my $msg = join("\n", @errors);
+        @errors = ();
+        croak $msg;
     }
-    croak "Setter '$what' not found for '.ref($self).'!";
 }
 
 sub Clone {
@@ -2818,8 +2832,55 @@ sub ExportToIsoWkt {
 }
 *AsWKT = *ExportToIsoWkt;
 
-BEGIN {
-    $gdal = Geo::GDAL::FFI->new();
-}
-
 1;
+
+=pod
+
+=encoding UTF-8
+
+=head1 NAME
+
+Geo::GDAL::FFI - A foreign function interface to GDAL
+
+=head1 SYNOPSIS
+
+    use Geo::GDAL::FFI;
+    my $gdal = Geo::GDAL::FFI->new();
+    my $ds = $gdal->OpenEx('shapefile.shp');
+
+=head1 DESCRIPTION
+
+This is a foreign function interface to the GDAL geospatial data
+access library.
+
+=head2 Methods
+
+These are the methods of the pre-defined $gdal object.
+
+=over 4
+
+=item C<capabilities>
+
+Returns the list of capabilities (strings) a GDAL object can have.
+
+=item C<OpenEx($name, $named_arguments_hash)>
+
+
+
+=back
+
+=head1 LICENSE
+
+This is released under the Artistic License. See L<perlartistic>.
+
+=head1 AUTHOR
+
+Ari Jolma - L<http://arijolma.org/>
+
+=head1 SEE ALSO
+
+L<Alien::gdal>, L<FFI::Platypus>
+
+=cut
+
+__END__;

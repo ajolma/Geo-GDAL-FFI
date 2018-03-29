@@ -3,12 +3,13 @@ use strict;
 use warnings;
 use Carp;
 use Encode qw(decode encode);
-use Geo::GDAL::FFI qw/$gdal/;
+use Geo::GDAL::FFI;
 use Test::More;
 use Data::Dumper;
 use JSON;
 use FFI::Platypus::Buffer;
 
+my $gdal = Geo::GDAL::FFI->new();
 my $band = $gdal->Driver('MEM')->CreateDataset(Width => 7, Height => 15)->Band();
 
 my $t = $band->Read;
