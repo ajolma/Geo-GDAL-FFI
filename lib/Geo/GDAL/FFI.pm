@@ -9,6 +9,7 @@ use PDL;
 use FFI::Platypus;
 use FFI::Platypus::Buffer;
 require Exporter;
+require B;
 
 our $VERSION = 0.01;
 our @ISA = qw(Exporter);
@@ -251,6 +252,13 @@ our %grid_algorithms = (
     Linear => 10,
     InverseDistanceToAPowerNearestNeighbor => 11
     );
+
+sub isint {
+    my $value = shift;
+    my $b_obj = B::svref_2object(\$value);
+    my $flags = $b_obj->FLAGS;
+    return 1 if $flags & B::SVp_IOK() && !($flags & B::SVp_NOK()) && !($flags & B::SVp_POK());
+}
 
 sub new {
     my $class = shift;
@@ -1302,23 +1310,23 @@ sub CreateDataset {
     my $self = shift;
     my %args = @_ == 1 ? %{$_[0]} : @_;
     my $n = $args{Name} // '';
-    my $dt = $args{DataType} // 'Byte';
-    my $tmp = $datatypes{$dt};
-    confess "Unknown constant: $dt\n" unless defined $tmp;
-    $dt = $tmp;
     my $o = 0;
     for my $key (keys %{$args{Options}}) {
         $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args{Options}{$key}");
     }
     my $ds;
-    if ($args{Source}) {
+    if (exists $args{Source}) {
         my $src = ${$args{Source}};
         my $s = $args{Strict} // 0;
         my $p = $args{Progress};
-        $ds = Geo::GDAL::FFI::GDALCreateCopy($$self, $n, $src, $s, $o, $p, $args{ProgressData});
+        $ds = Geo::GDAL::FFI::GDALCreateCopy($$self, $n, $$src, $s, $o, $p, $args{ProgressData});
     } elsif (not exists $args{Width}) {
-        $ds = Geo::GDAL::FFI::GDALCreate($$self, $n, 0, 0, 0, $dt, $o);
+        $ds = Geo::GDAL::FFI::GDALCreate($$self, $n, 0, 0, 0, 0, $o);
     } else {
+        my $dt = $args{DataType} // 'Byte';
+        my $tmp = $datatypes{$dt};
+        confess "Unknown constant: $dt\n" unless defined $tmp;
+        $dt = $tmp;
         my $w = $args{Width} // 256;
         my $h = $args{Height} // 256;
         my $b = $args{Bands} // 1;
@@ -1515,6 +1523,14 @@ sub Height {
     return Geo::GDAL::FFI::GDALGetRasterYSize($$self);
 }
 
+sub Size {
+    my $self = shift;
+    return (
+        Geo::GDAL::FFI::GDALGetRasterXSize($$self),
+        Geo::GDAL::FFI::GDALGetRasterYSize($$self)
+        );
+}
+
 sub GetProjectionString {
     my ($self) = @_;
     return Geo::GDAL::FFI::GDALGetProjectionRef($$self);
@@ -1557,25 +1573,38 @@ sub GetBand {
 }
 *Band = *GetBand;
 
+sub Bands {
+    my $self = shift;
+    my @bands;
+    for my $i (1..Geo::GDAL::FFI::GDALGetRasterCount($$self)) {
+        push @bands, $self->Band($i);
+    }
+    return @bands;
+}
+
 sub GetLayer {
     my ($self, $i) = @_;
-    my $l = Geo::GDAL::FFI::GDALDatasetGetLayer($$self, $i);
+    $i //= 0;
+    my $l = Geo::GDAL::FFI::isint($i) ? Geo::GDAL::FFI::GDALDatasetGetLayer($$self, $i) :
+        Geo::GDAL::FFI::GDALDatasetGetLayerByName($$self, $i);
     return bless \$l, 'Geo::GDAL::FFI::Layer';
 }
 
 sub CreateLayer {
-    my ($self, $name, $sr, $gt, $options) = @_;
-    $name //= '';
-    $gt //= 'None';
-    my $tmp = $geometry_types{$gt};
-    confess "Unknown constant: $gt\n" unless defined $tmp;
-    $gt = $tmp;
+    my ($self, $args) = @_;
+    $args //= {};
+    $args->{Name} //= '';
+    $args->{GeometryType} //= 'Unknown';
+    my $tmp = $geometry_types{$args->{GeometryType}};
+    confess "Unknown geometry type: '$args->{GeometryType}'\n" unless defined $tmp;
+    my $gt = $tmp;
     my $o = 0;
-    for my $key (keys %$options) {
-        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options->{$key}");
+    for my $key (keys %{$args->{Options}}) {
+        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}->{$key}");
     }
-    $sr = Geo::GDAL::FFI::OSRClone($$sr) if $sr;
-    my $l = Geo::GDAL::FFI::GDALDatasetCreateLayer($$self, $name, $sr, $gt, $o);
+    my $sr;
+    $sr = Geo::GDAL::FFI::OSRClone(${$args->{SpatialReference}}) if $args->{SpatialReference};
+    my $l = Geo::GDAL::FFI::GDALDatasetCreateLayer($$self, $args->{Name}, $sr, $gt, $o);
     Geo::GDAL::FFI::OSRRelease($sr) if $sr;
     if (@errors) {
         my $msg = join("\n", @errors);
@@ -1671,6 +1700,7 @@ sub GetBlockSize {
     Geo::GDAL::FFI::GDALGetBlockSize($$self, \$w, \$h);
     return ($w, $h);
 }
+*BlockSize = *GetBlockSize;
 
 sub PackCharacter {
     my $t = shift;
@@ -1782,6 +1812,10 @@ sub SetColorInterpretation {
     Geo::GDAL::FFI::GDALSetRasterColorInterpretation($$self, $i);
 }
 
+sub GetPaletteInterp {
+    my $self = shift;
+}
+
 sub GetColorTable {
     my $self = shift;
     my $ct = Geo::GDAL::FFI::GDALGetRasterColorTable($$self);
@@ -1794,10 +1828,6 @@ sub GetColorTable {
         push @table, $c;
     }
     return wantarray ? @table : \@table;
-}
-
-sub GetPaletteInterp {
-    my $self = shift;
 }
 
 sub SetColorTable {
@@ -2078,6 +2108,10 @@ sub IsStyleIgnored {
 sub SetStyleIgnored {
     my ($self, $i) = @_;
     Geo::GDAL::FFI::OGR_FD_SetStyleIgnored($$self, $i);
+}
+
+sub schema {
+    my $self = shift;
 }
 
 
@@ -2855,6 +2889,9 @@ access library.
 
 =head2 Methods
 
+'$named_arguments' below means a reference to a hash whose keys are
+argument names.
+
 =over 4
 
 =item C<new>
@@ -2865,7 +2902,21 @@ Create a new Geo::GDAL::FFI object.
 
 Returns the list of capabilities (strings) a Geo::GDAL::FFI::Object can have.
 
-=item C<OpenEx($name, $named_arguments_hash)>
+=item C<open_flags>
+
+=item C<datatypes>
+
+=item C<new>
+
+=item C<VersionInfo>
+
+=item C<Drivers>
+
+=item C<Driver($name)>
+
+=item C<OpenEx($name, $named_arguments)>
+
+=item C<Importer($format)>
 
 =back
 
@@ -2878,6 +2929,18 @@ and Layer.
 
 =over 4
 
+=item C<HasCapability($capability)>
+
+=item C<GetMetadataDomainList>
+
+=item C<GetMetadata($domain)>
+
+=item C<SetMetadata($metadata, $domain)>
+
+=item C<GetMetadataItem($item, $domain)>
+
+=item C<SetMetadataItem($item, $value, $domain)>
+
 =back
 
 =head1 Geo::GDAL::FFI::Driver
@@ -2885,6 +2948,19 @@ and Layer.
 =head2 Methods
 
 =over 4
+
+=item C<Name>
+
+=item C<CreateDataset($named_arguments)>
+
+Named arguments are Name (string, default = ''), Options (hashref,
+default = {}), Source (optional, the dataset to copy), Width and
+Height (optional but required to create a raster dataset), Bands
+(optional, the number of raster bands in the dataset), DataType
+(string, optional, used only when creating a raster dataset, default =
+'Byte'), Progress and ProgressData (optional, used only when copying a
+dataset), Strict (optional, default is false (0), used only when
+copying a dataset).
 
 =back
 
@@ -2894,6 +2970,21 @@ and Layer.
 
 =over 4
 
+=item C<new($arg, @arg)>
+
+Create a new SpatialReference object. If only one argument is given,
+it is taken as WKT of a SRS. If there are more than one argument, the
+first argument is taken as a format importer and the rest of the
+arguments are taken as arguments to the importer. Importers are functions
+that are created with the Importer method of Geo::GDAL::FFI object.
+
+Known formats are EPSG, EPSGA, Wkt, Proj4, ESRI, PCI, USGS, XML, Dict,
+Panorama, Ozi, MICoordSys, ERM, Url.
+
+=item C<Export($exporter, @arg)>
+
+=item C<Set($setter, @arg)>
+
 =back
 
 =head1 Geo::GDAL::FFI::Dataset
@@ -2901,6 +2992,45 @@ and Layer.
 =head2 Methods
 
 =over 4
+
+=item C<Driver>
+
+=item C<Info(@options)>
+
+=item C<Translate(@options)>
+
+=item C<Size>
+
+=item C<>
+
+=item C<>
+
+=item C<>
+
+=item C<>
+
+=item C<Bands>
+
+Returns a list of band objects.
+
+=item C<CreateLayer($named_arguments)>
+
+Create a new vector layer into this dataset.
+
+Named arguments are Name (string, optional, default is ''),
+GeometryType (optional, default is 'Unknown', note: use 'None', if you
+intend to create the geometry field or fields later with
+CreateGeomField), SpatialReference (a SpatialReference object,
+optional), Options (optional, driver specific options in an anonymous
+hash).
+
+=item C<GetLayer($n)>
+
+If $n is strictly an integer, then returns the (n-1)th layer in the
+dataset, otherwise returns the layer whose name is $n. Without
+arguments returns the first layer.
+
+=item C<CopyLayer($layer, $name, $options)>
 
 =back
 
@@ -2910,6 +3040,34 @@ and Layer.
 
 =over 4
 
+=item C<DataType>
+
+=item C<Size>
+
+=item C<BlockSize>
+
+=item C<GetNoDataValue>
+
+=item C<SetNoDataValue>
+
+=item C<Read($xoff, $yoff, $xsize, $ysize, $bufxsize, $bufysize)>
+
+=item C<ReadBlock($xoff, $yoff)>
+
+=item C<Write($data, $xoff, $yoff, $xsize, $ysize)>
+
+=item C<WriteBlock($data, $xoff, $yoff)>
+
+=item C<GetColorInterpretation>
+
+=item C<SetColorInterpretation>
+
+=item C<GetColorTable>
+
+=item C<SetColorTable>
+
+=item C<Piddle>
+
 =back
 
 =head1 Geo::GDAL::FFI::Layer
@@ -2917,6 +3075,24 @@ and Layer.
 =head2 Methods
 
 =over 4
+
+=item C<CreateField>
+
+=item C<CreateGeomField>
+
+=item C<GetSpatialRef>
+
+=item C<ResetReading>
+
+=item C<GetNextFeature>
+
+=item C<GetFeature>
+
+=item C<SetFeature>
+
+=item C<CreateFeature>
+
+=item C<DeleteFeature>
 
 =back
 
@@ -2926,21 +3102,31 @@ and Layer.
 
 =over 4
 
+=item C<new($named_arguments)>
+
+Create a new FeatureDefn object.
+
+The named arguments are
+
+=over 8
+
+=item C<Name>
+
+=item C<Fields>
+
+=item C<GeometryType>
+
+=item C<GeometryFields>
+
+=item C<GeometryIgnored>
+
+=item C<StyleIgnored>
+
 =back
 
-=head1 Geo::GDAL::FFI::FieldDefn
+=item C<schema>
 
-=head2 Methods
-
-=over 4
-
-=back
-
-=head1 Geo::GDAL::FFI::GeomFieldDefn
-
-=head2 Methods
-
-=over 4
+Return the object as a perl data structure.
 
 =back
 
@@ -2962,7 +3148,8 @@ and Layer.
 
 =head1 LICENSE
 
-This is released under the Artistic License. See L<perlartistic>.
+This software is released under the Artistic License. See
+L<perlartistic>.
 
 =head1 AUTHOR
 

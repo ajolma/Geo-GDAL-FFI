@@ -37,7 +37,7 @@ my $gdal = Geo::GDAL::FFI->new();
 if(1){
 
     # create a small layer and copy it to vsistdout with redirection
-    my $layer = $gdal->Driver('Memory')->CreateDataset()->CreateLayer();
+    my $layer = $gdal->Driver('Memory')->CreateDataset()->CreateLayer({GeometryType => 'None'});
     $layer->CreateField(value => 'Integer');
     $layer->CreateGeomField(geom => 'Point');
     my $feature = Geo::GDAL::FFI::Feature->new($layer->Defn);
@@ -50,7 +50,8 @@ if(1){
     $gdal->Driver('GeoJSON')->CreateDataset(Name => '/vsistdout')->CopyLayer($layer);
     $gdal->UnsetVSIStdout();
 
-    ok($output->output eq
+    my $ret = $output->output;
+    ok($ret eq
        '{"type": "FeatureCollection",'.
        '"features": '.
        '[{ "type": "Feature", "id": 0, "properties": '.

@@ -165,7 +165,7 @@ if(1){
     my $ds = $dr->Create('test.shp');
     my $epsg = $gdal->Importer('EPSG');
     my $sr = Geo::GDAL::FFI::SpatialReference->new($epsg => 3067);
-    my $l = $ds->CreateLayer('test', $sr, 'Point');
+    my $l = $ds->CreateLayer({Name => 'test', SpatialReference => $sr, GeometryType => 'Point'});
     my $d = $l->GetDefn();
     my $f = Geo::GDAL::FFI::Feature->new($d);
     $l->CreateFeature($f);
@@ -449,7 +449,7 @@ if(1){
     my $ds = $dr->CreateDataset(Name => 'test');
     my $epsg = $gdal->Importer('EPSG');
     my $sr = Geo::GDAL::FFI::SpatialReference->new($epsg => 3067);
-    my $l = $ds->CreateLayer('test', $sr, 'Point');
+    my $l = $ds->CreateLayer({Name => 'test', SpatialReference => $sr, GeometryType => 'Point'});
     $l->CreateField(Geo::GDAL::FFI::FieldDefn->new(int => 'Integer'));
     my $d = $l->GetDefn;
     for my $i (0..$d->GetFieldCount-1) {
