@@ -1138,13 +1138,13 @@ sub Open {
     my ($name, $access) = @_;
     $access //= 'ReadOnly';
     my $tmp = $access{$access};
-    croak "Unknown constant: $access\n" unless defined $tmp;
+    confess "Unknown constant: $access\n" unless defined $tmp;
     $access = $tmp;
     my $ds = GDALOpen($name, $access);
     if (@errors) {
         my $msg = join("\n", @errors);
         @errors = ();
-        croak $msg;
+        confess $msg;
     }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
@@ -1153,22 +1153,22 @@ sub OpenEx {
     shift;
     my ($name, $args) = @_;
     $args //= {};
-    $args->{open_flags} //= [];
-    $args->{allowed_drivers} //= 0;
-    $args->{open_options} //= 0;
-    $args->{sibling_files} //= 0;
+    my $flags_array = $args->{open_flags} // [];
+    my $drivers = $args->{allowed_drivers} // 0;
+    my $options = $args->{open_options} // 0;
+    my $files = $args->{sibling_files} // 0;
     my $flags = 0;
-    for my $f (@{$args->{open_flags}}) {
+    for my $f (@$flags_array) {
         $flags |= $open_flags{$f};
     }
-    my $ds = GDALOpenEx($name, $flags, $args->{allowed_drivers}, $args->{open_options}, $args->{sibling_files});
+    my $ds = GDALOpenEx($name, $flags, $drivers, $options, $files);
     if (@errors) {
         my $msg = join("\n", @errors);
         @errors = ();
-        croak $msg;
+        confess $msg;
     }
     unless ($ds) { # no VERBOSE_ERROR in options and fail
-        croak "OpenEx failed for '$name'. Hint: add VERBOSE_ERROR to open_flags.";
+        confess "OpenEx failed for '$name'. Hint: add VERBOSE_ERROR to open_flags.";
     }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
@@ -1185,7 +1185,7 @@ sub SetVSIStdout {
     $writer = $self unless $writer;
     my $w = $writer->can('write');
     my $c = $writer->can('close');
-    croak "$writer must be able to write and close." unless $w && $c;
+    confess "$writer must be able to write and close." unless $w && $c;
     #$self->{write} = $w;
     $self->{close} = $c;
     $self->{writer} = $self->{ffi}->closure(sub {
@@ -1204,21 +1204,21 @@ sub UnsetVSIStdout {
 sub Importer {
     my ($self, $format) = @_;
     my $importer = $self->can('OSRImportFrom' . $format);
-    croak "Spatial reference importer for format '$format' not found!" unless $importer;
+    confess "Spatial reference importer for format '$format' not found!" unless $importer;
     return $importer;
 }
 
 sub Exporter {
     my ($self, $format) = @_;
     my $exporter = $self->can('OSRExportTo' . $format);
-    croak "Spatial reference exporter for format '$format' not found!" unless $exporter;
+    confess "Spatial reference exporter for format '$format' not found!" unless $exporter;
     return $exporter;
 }
 
 sub Setter {
     my ($self, $proj) = @_;
     my $setter = $self->can('OSRSet' . $proj);
-    croak "Parameter setter for projection '$proj' not found!" unless $setter;
+    confess "Parameter setter for projection '$proj' not found!" unless $setter;
     return $setter;
 }
 
@@ -1231,7 +1231,7 @@ use Carp;
 sub HasCapability {
     my ($self, $cap) = @_;
     my $tmp = $capabilities{$cap};
-    croak "Unknown constant: $cap\n" unless defined $tmp;
+    confess "Unknown constant: $cap\n" unless defined $tmp;
     my $md = $self->GetMetadata('');
     return $md->{'DCAP_'.$cap};
 }
@@ -1274,7 +1274,7 @@ sub SetMetadata {
     }
     $domain //= "";
     my $err = Geo::GDAL::FFI::GDALSetMetadata($$self, $csl, $domain);
-    croak "" if $err == Geo::GDAL::FFI::Failure;
+    confess "" if $err == Geo::GDAL::FFI::Failure;
     warn "" if $err == Geo::GDAL::FFI::Warning;
 }
 
@@ -1289,7 +1289,7 @@ sub SetMetadataItem {
     if (@errors) {
         my $msg = join("\n", @errors);
         @errors = ();
-        croak $msg;
+        confess $msg;
     }
 }
 
@@ -1339,7 +1339,7 @@ sub CreateDataset {
             @errors = ();
         }
         $msg //= 'CreateDataset failed. (Driver = '.$self->GetDescription.')';
-        croak $msg;
+        confess $msg;
     }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
@@ -1368,7 +1368,7 @@ sub Create {
             @errors = ();
         }
         $msg //= 'Create failed. (Driver = '.$self->GetDescription.')';
-        croak $msg;
+        confess $msg;
     }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
@@ -1387,7 +1387,7 @@ sub CreateCopy {
             @errors = ();
         }
         $msg //= 'CreateCopy failed. (Driver = '.$self->GetDescription.')';
-        croak $msg;
+        confess $msg;
     }
     return bless \$copy, 'Geo::GDAL::FFI::Dataset';
 }
@@ -1415,7 +1415,7 @@ sub new {
     return bless \$sr, $class if $sr;
     my $msg = join("\n", @errors);
     @errors = ();
-    croak $msg;
+    confess $msg;
 }
 
 sub DESTROY {
@@ -1430,7 +1430,7 @@ sub Export {
     if ($exporter->($$self, \$x, @_) != 0) {
         my $msg = join("\n", @errors);
         @errors = ();
-        croak $msg;
+        confess $msg;
     }
     return $x;
 }
@@ -1441,7 +1441,7 @@ sub Set {
     if ($setter->($$self, @_) != 0) {
         my $msg = join("\n", @errors);
         @errors = ();
-        croak $msg;
+        confess $msg;
     }
 }
 
@@ -1450,7 +1450,6 @@ sub Clone {
     my $s = Geo::GDAL::FFI::OSRClone($$self);
     return bless \$s, 'Geo::GDAL::FFI::SpatialReference';
 }
-
 
 
 package Geo::GDAL::FFI::Dataset;
@@ -1510,7 +1509,7 @@ sub Translate {
         @errors = ();
     }
     $msg //= 'Translate failed.';
-    croak $msg;
+    confess $msg;
 }
 
 sub Width {
@@ -1542,7 +1541,7 @@ sub SetProjectionString {
     if ($e != 0) {
         my $msg = join("\n", @errors);
         @errors = ();
-        croak $msg;
+        confess $msg;
     }
 }
 
@@ -1593,27 +1592,43 @@ sub GetLayer {
 sub CreateLayer {
     my ($self, $args) = @_;
     $args //= {};
-    $args->{Name} //= '';
-    $args->{GeometryType} //= 'Unknown';
-    my $tmp = $geometry_types{$args->{GeometryType}};
-    confess "Unknown geometry type: '$args->{GeometryType}'\n" unless defined $tmp;
-    my $gt = $tmp;
-    my $o = 0;
-    for my $key (keys %{$args->{Options}}) {
-        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}->{$key}");
+    my $name = $args->{Name} // '';
+    my ($gt, $sr);
+    if (exists $args->{GeometryFields}) {
+        $gt = $geometry_types{None};
+    } else {
+        $gt = $args->{GeometryType} // 'Unknown';
+        $gt = $geometry_types{$gt};
+        confess "Unknown geometry type: '$args->{GeometryType}'\n" unless defined $gt;
+        $sr = Geo::GDAL::FFI::OSRClone(${$args->{SpatialReference}}) if exists $args->{SpatialReference};
     }
-    my $sr;
-    $sr = Geo::GDAL::FFI::OSRClone(${$args->{SpatialReference}}) if $args->{SpatialReference};
-    my $l = Geo::GDAL::FFI::GDALDatasetCreateLayer($$self, $args->{Name}, $sr, $gt, $o);
+    my $o = 0;
+    if (exists $args->{Options}) {
+        for my $key (keys %{$args->{Options}}) {
+            $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}->{$key}");
+        }
+    }
+    my $l = Geo::GDAL::FFI::GDALDatasetCreateLayer($$self, $name, $sr, $gt, $o);
     Geo::GDAL::FFI::OSRRelease($sr) if $sr;
     if (@errors) {
         my $msg = join("\n", @errors);
         @errors = ();
-        croak $msg;
+        confess $msg;
     }
     $parent{$l} = $self;
     #say STDERR "parent of $l is $self";
-    return bless \$l, 'Geo::GDAL::FFI::Layer';
+    my $layer = bless \$l, 'Geo::GDAL::FFI::Layer';
+    if (exists $args->{Fields}) {
+        for my $f (@{$args->{Fields}}) {
+            $layer->CreateField($f);
+        }
+    }
+    if (exists $args->{GeometryFields}) {
+        for my $f (@{$args->{GeometryFields}}) {
+            $layer->CreateGeomField($f);
+        }
+    }
+    return $layer;
 }
 
 sub CopyLayer {
@@ -1627,7 +1642,7 @@ sub CopyLayer {
     if (@errors) {
         my $msg = join("\n", @errors);
         @errors = ();
-        croak $msg;
+        confess $msg;
     }
     $parent{$l} = $self;
     #say STDERR "parent of $l is $self";
@@ -1688,10 +1703,10 @@ sub SetNoDataValue {
     my $v = shift;
     my $e = Geo::GDAL::FFI::GDALSetRasterNoDataValue($$self, $v);
     return unless $e;
-    croak "SetNoDataValue not supported by the driver." unless @errors;
+    confess "SetNoDataValue not supported by the driver." unless @errors;
     my $msg = join("\n", @errors);
     @errors = ();
-    croak $msg;
+    confess $msg;
 }
 
 sub GetBlockSize {
@@ -1914,6 +1929,11 @@ sub DESTROY {
     delete $parent{$$self};
 }
 
+sub schema {
+    my $self = shift;
+    return $self->Defn->schema;
+}
+
 sub GetDefn {
     my $self = shift;
     my $d = Geo::GDAL::FFI::OGR_L_GetLayerDefn($$self);
@@ -1928,14 +1948,16 @@ sub CreateField {
         # name => type calling syntax
         my $name = $def;
         my $type = shift;
-        $def = Geo::GDAL::FFI::FieldDefn->new($name => $type)
+        $def = Geo::GDAL::FFI::FieldDefn->new({Name => $name, Type => $type})
+    } elsif (ref $def eq 'HASH') {
+        $def = Geo::GDAL::FFI::FieldDefn->new($def)
     }
     my $approx_ok = shift // 1;
     my $e = Geo::GDAL::FFI::OGR_L_CreateField($$self, $$def, $approx_ok);
     return unless $e;
     my $msg = join("\n", @errors);
     @errors = ();
-    croak $msg;
+    confess $msg;
 }
 
 sub CreateGeomField {
@@ -1945,14 +1967,16 @@ sub CreateGeomField {
         # name => type calling syntax
         my $name = $def;
         my $type = shift;
-        $def = Geo::GDAL::FFI::GeomFieldDefn->new($name => $type)
+        $def = Geo::GDAL::FFI::GeomFieldDefn->new({Name => $name, Type => $type});
+    } elsif (ref $def eq 'HASH') {
+        $def = Geo::GDAL::FFI::GeomFieldDefn->new($def)
     }
     my $approx_ok = shift // 1;
     my $e = Geo::GDAL::FFI::OGR_L_CreateGeomField($$self, $$def, $approx_ok);
     return unless $e;
     my $msg = join("\n", @errors);
     @errors = ();
-    croak $msg;
+    confess $msg;
 }
 
 sub GetSpatialRef {
@@ -1977,7 +2001,7 @@ sub GetNextFeature {
 sub GetFeature {
     my ($self, $fid) = @_;
     my $f = Geo::GDAL::FFI::OGR_L_GetFeature($$self, $fid);
-    croak unless $f;
+    confess unless $f;
     return bless \$f, 'Geo::GDAL::FFI::Feature';
 }
 
@@ -1998,7 +2022,7 @@ sub DeleteFeature {
     return unless $e;
     my $msg = join("\n", @errors);
     @errors = ();
-    croak $msg;
+    confess $msg;
 }
 
 package Geo::GDAL::FFI::FeatureDefn;
@@ -2008,14 +2032,61 @@ use warnings;
 use Carp;
 
 sub new {
-    my ($class, $name) = @_;
-    my $f = Geo::GDAL::FFI::OGR_FD_Create($name);
-    return bless \$f, $class;
+    my ($class, $args) = @_;
+    $args //= {};
+    my $name = $args->{Name} // '';
+    my $self = bless \Geo::GDAL::FFI::OGR_FD_Create($name), $class;
+    if (exists $args->{Fields}) {
+        for my $field (@{$args->{Fields}}) {
+            $self->AddField(Geo::GDAL::FFI::FieldDefn->new($field));
+        }
+    }
+    if (exists $args->{GeometryFields}) {
+        my $first = 1;
+        for my $field (@{$args->{GeometryFields}}) {
+            if ($first) {
+                my $d = bless \Geo::GDAL::FFI::OGR_FD_GetGeomFieldDefn($$self, 0), 
+                'Geo::GDAL::FFI::GeomFieldDefn';
+                $d->SetName($field->{Name}) if defined $field->{Name};
+                $self->SetGeomType($field->{Type});
+                $d->SetSpatialRef($field->{SpatialReference}) if $field->{SpatialReference};
+                $d->SetIgnored(1) if $field->{Ignored};
+                $d->SetNullable(0) if $field->{NotNullable};
+                $first = 0;
+            } else {
+                $self->AddGeomField(Geo::GDAL::FFI::GeomFieldDefn->new($field));
+            }
+        }
+    } else {
+        $self->SetGeomType($args->{GeometryType});
+    }
+    $self->SetGeometryIgnored(1) if $args->{GeometryIgnored};
+    $self->SetStyleIgnored(1) if $args->{StyleIgnored};
+    return $self;
+}
+
+sub schema {
+    my $self = shift;
+    my $schema = {Name => $self->GetName};
+    for my $i (0..$self->GetFieldCount-1) {
+        push @{$schema->{Fields}}, $self->GetField($i)->schema;
+    }
+    for my $i (0..$self->GetGeomFieldCount-1) {
+        push @{$schema->{GeometryFields}}, $self->GetGeomField($i)->schema;
+    }
+    $schema->{GeometryIgnored} = 1 if $self->IsGeometryIgnored;
+    $schema->{StyleIgnored} = 1 if $self->IsStyleIgnored;
+    return $schema;
 }
 
 sub DESTROY {
     my $self = shift;
     #Geo::GDAL::FFI::OGR_FD_Release($$self);
+}
+
+sub GetName {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_FD_GetName($$self);
 }
 
 sub GetFieldCount {
@@ -2031,7 +2102,7 @@ sub GetGeomFieldCount {
 sub GetField {
     my ($self, $i) = @_;
     my $d = Geo::GDAL::FFI::OGR_FD_GetFieldDefn($$self, $i);
-    croak "No such field: $i" unless $d;
+    confess "No such field: $i" unless $d;
     ++$immutable{$d};
     #say STDERR "$d immutable";
     return bless \$d, 'Geo::GDAL::FFI::FieldDefn';
@@ -2040,7 +2111,7 @@ sub GetField {
 sub GetGeomField {
     my ($self, $i) = @_;
     my $d = Geo::GDAL::FFI::OGR_FD_GetGeomFieldDefn($$self, $i);
-    croak "No such field: $i" unless $d;
+    confess "No such field: $i" unless $d;
     ++$immutable{$d};
     #say STDERR "$d immutable";
     return bless \$d, 'Geo::GDAL::FFI::GeomFieldDefn';
@@ -2048,11 +2119,13 @@ sub GetGeomField {
 
 sub GetFieldIndex {
     my ($self, $name) = @_;
+    return 0 unless defined $name;
     return Geo::GDAL::FFI::OGR_FD_GetFieldIndex($$self, $name);
 }
 
 sub GetGeomFieldIndex {
     my ($self, $name) = @_;
+    return 0 unless defined $name;
     return Geo::GDAL::FFI::OGR_FD_GetGeomFieldIndex($$self, $name);
 }
 
@@ -2083,9 +2156,9 @@ sub GetGeomType {
 
 sub SetGeomType {
     my ($self, $type) = @_;
-    $type //= 'String';
+    $type //= 'Unknown';
     my $tmp = $geometry_types{$type};
-    confess "Unknown constant: $type\n" unless defined $tmp;
+    confess "Unknown geometry type: $type\n" unless defined $tmp;
     $type = $tmp;
     Geo::GDAL::FFI::OGR_FD_SetGeomType($$self, $type);
 }
@@ -2110,11 +2183,6 @@ sub SetStyleIgnored {
     Geo::GDAL::FFI::OGR_FD_SetStyleIgnored($$self, $i);
 }
 
-sub schema {
-    my $self = shift;
-}
-
-
 package Geo::GDAL::FFI::FieldDefn;
 use v5.10;
 use strict;
@@ -2122,14 +2190,37 @@ use warnings;
 use Carp;
 
 sub new {
-    my ($class, $name, $type) = @_;
-    $name //= 'Unnamed';
-    $type //= 'String';
+    my ($class, $args) = @_;
+    my $name = $args->{Name} // 'Unnamed';
+    my $type = $args->{Type} // 'String';
     my $tmp = $field_types{$type};
-    confess "Unknown constant: $type\n" unless defined $tmp;
-    $type = $tmp;
-    my $f = Geo::GDAL::FFI::OGR_Fld_Create($name, $type);
-    return bless \$f, $class;
+    confess "Unknown field type: '$type'\n" unless defined $tmp;
+    my $self = bless \Geo::GDAL::FFI::OGR_Fld_Create($name, $tmp), $class;
+    $self->SetDefault($args->{Default}) if defined $args->{Default};
+    $self->SetSubtype($args->{Subtype}) if defined $args->{Subtype};
+    $self->SetJustify($args->{Justify}) if defined $args->{Justify};
+    $self->SetWidth($args->{Width}) if defined $args->{Width};
+    $self->SetPrecision($args->{Precision}) if defined $args->{Precision};
+    $self->SetIgnored(1) if $args->{Ignored};
+    $self->SetNullable(0) if $args->{NotNullable};
+    return $self;
+}
+
+sub schema {
+    my $self = shift;
+    my $schema = {
+        Name => $self->GetName,
+        Type => $self->GetType,
+        Subtype => $self->GetSubtype,
+        Justify => $self->GetJustify,
+        Width => $self->GetWidth,
+        Precision => $self->GetPrecision,
+    };
+    my $default = $self->GetDefault;
+    $schema->{Default} = $default if defined $default;
+    $schema->{Ignored} = 1 if $self->IsIgnored;
+    $schema->{NotNullable} = 1 unless $self->IsNullable;
+    return $schema;
 }
 
 sub DESTROY {
@@ -2147,7 +2238,7 @@ sub DESTROY {
 
 sub SetName {
     my ($self, $name) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     $name //= '';
     Geo::GDAL::FFI::OGR_Fld_SetName($$self, $name);
 }
@@ -2160,7 +2251,7 @@ sub GetName {
 
 sub SetType {
     my ($self, $type) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     $type //= 'String';
     my $tmp = $field_types{$type};
     confess "Unknown constant: $type\n" unless defined $tmp;
@@ -2174,9 +2265,24 @@ sub GetType {
 }
 *Type = *GetType;
 
+sub GetDefault {
+    my $self = shift;
+    return Geo::GDAL::FFI::OGR_Fld_GetDefault($$self)
+}
+
+sub SetDefault {
+    my ($self, $default) = @_;
+    Geo::GDAL::FFI::OGR_Fld_SetDefault($$self, $default);
+}
+
+sub IsDefaultDriverSpecific {
+    my $self = shift;
+    return Geo::GDAL::FFI::OGR_Fld_IsDefaultDriverSpecific($$self);
+}
+
 sub SetSubtype {
     my ($self, $subtype) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     $subtype //= 'None';
     my $tmp = $field_subtypes{$subtype};
     confess "Unknown constant: $subtype\n" unless defined $tmp;
@@ -2192,7 +2298,7 @@ sub GetSubtype {
 
 sub SetJustify {
     my ($self, $justify) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     $justify //= 'Undefined';
     my $tmp = $justification{$justify};
     confess "Unknown constant: $justify\n" unless defined $tmp;
@@ -2208,7 +2314,7 @@ sub GetJustify {
 
 sub SetWidth {
     my ($self, $width) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     $width //= '';
     Geo::GDAL::FFI::OGR_Fld_SetWidth($$self, $width);
 }
@@ -2221,7 +2327,7 @@ sub GetWidth {
 
 sub SetPrecision {
     my ($self, $precision) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     $precision //= '';
     Geo::GDAL::FFI::OGR_Fld_SetPrecision($$self, $precision);
 }
@@ -2234,8 +2340,8 @@ sub GetPrecision {
 
 sub SetIgnored {
     my ($self, $ignored) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
-    $ignored //= 0;
+    confess "Can't modify an immutable object." if $immutable{$$self};
+    $ignored //= 1;
     Geo::GDAL::FFI::OGR_Fld_SetIgnored($$self, $ignored);
 }
 
@@ -2246,7 +2352,7 @@ sub IsIgnored {
 
 sub SetNullable {
     my ($self, $nullable) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     $nullable //= 0;
     Geo::GDAL::FFI::OGR_Fld_SetNullable($$self, $nullable);
 }
@@ -2263,14 +2369,29 @@ use warnings;
 use Carp;
 
 sub new {
-    my ($class, $name, $type) = @_;
-    $name //= 'Unnamed';
-    $type //= 'String';
+    my ($class, $args) = @_;
+    $args //= {};
+    my $name = $args->{Name} // 'Unnamed';
+    my $type = $args->{Type} // 'Point';
     my $tmp = $geometry_types{$type};
-    confess "Unknown constant: $type\n" unless defined $tmp;
-    $type = $tmp;
-    my $f = Geo::GDAL::FFI::OGR_GFld_Create($name, $type);
-    return bless \$f, $class;
+    confess "Unknown geometry type: $type\n" unless defined $tmp;
+    my $self = bless \Geo::GDAL::FFI::OGR_GFld_Create($name, $tmp), $class;
+    $self->SetSpatialRef($args->{SpatialReference}) if $args->{SpatialReference};
+    $self->SetIgnored(1) if $args->{Ignored};
+    $self->SetNullable(0) if $args->{NotNullable};
+    return $self;
+}
+
+sub schema {
+    my $self = shift;
+    my $schema = {
+        Name => $self->GetName,
+        Type => $self->GetType
+    };
+    $schema->{SpatialReference} = $self->GetSpatialRef;
+    $schema->{Ignored} = 1 if $self->IsIgnored;
+    $schema->{NotNullable} = 1 unless $self->IsNullable;
+    return $schema;
 }
 
 sub DESTROY {
@@ -2285,7 +2406,7 @@ sub DESTROY {
 
 sub SetName {
     my ($self, $name) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     $name //= '';
     Geo::GDAL::FFI::OGR_GFld_SetName($$self, $name);
 }
@@ -2298,10 +2419,10 @@ sub GetName {
 
 sub SetType {
     my ($self, $type) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
-    $type //= 'String';
+    confess "Can't modify an immutable object." if $immutable{$$self};
+    $type //= 'Point';
     my $tmp = $geometry_types{$type};
-    confess "Unknown constant: $type\n" unless defined $tmp;
+    confess "Unknown geometry type: $type\n" unless defined $tmp;
     $type = $tmp;
     Geo::GDAL::FFI::OGR_GFld_SetType($$self, $type);
 }
@@ -2314,8 +2435,8 @@ sub GetType {
 
 sub SetSpatialRef {
     my ($self, $sr) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
-    Geo::GDAL::FFI::OGR_GFld_SetSpatialRef($$self, $sr);
+    confess "Can't modify an immutable object." if $immutable{$$self};
+    Geo::GDAL::FFI::OGR_GFld_SetSpatialRef($$self, $$sr);
 }
 
 sub GetSpatialRef {
@@ -2326,8 +2447,8 @@ sub GetSpatialRef {
 
 sub SetIgnored {
     my ($self, $ignored) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
-    $ignored //= 0;
+    confess "Can't modify an immutable object." if $immutable{$$self};
+    $ignored //= 1;
     Geo::GDAL::FFI::OGR_GFld_SetIgnored($$self, $ignored);
 }
 
@@ -2338,7 +2459,7 @@ sub IsIgnored {
 
 sub SetNullable {
     my ($self, $nullable) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     $nullable //= 0;
     Geo::GDAL::FFI::OGR_GFld_SetNullable($$self, $nullable);
 }
@@ -2360,6 +2481,11 @@ sub new {
     my ($class, $def) = @_;
     my $f = Geo::GDAL::FFI::OGR_F_Create($$def);
     return bless \$f, $class;
+}
+
+sub schema {
+    my $self = shift;
+    return $self->Defn->schema;
 }
 
 sub DESTROY {
@@ -2385,6 +2511,7 @@ sub GetDefn {
     #say STDERR "$d immutable";
     return bless \$d, 'Geo::GDAL::FFI::FeatureDefn';
 }
+*Defn = *GetDefn;
 
 sub Clone {
     my ($self) = @_;
@@ -2403,8 +2530,9 @@ sub GetFieldCount {
 }
 
 sub SetField {
-    my ($self, $field_name, $value) = @_;
-    my $i = GetFieldIndex($self, $field_name);
+    my ($self, $fname, $value) = @_;
+    $fname //= 0;
+    my $i = Geo::GDAL::FFI::isint($fname) ? $fname : $self->GetFieldIndex($fname);
     $self->SetFieldNull($i) unless defined $value;
     my $t = $self->GetFieldDefn($i)->Type;
     $self->SetFieldInteger($i, $value) if $t eq 'Integer';
@@ -2431,8 +2559,9 @@ sub SetField {
 }
 
 sub GetField {
-    my ($self, $field_name) = @_;
-    my $i = GetFieldIndex($self, $field_name);
+    my ($self, $fname) = @_;
+    $fname //= 0;
+    my $i = Geo::GDAL::FFI::isint($fname) ? $fname : $self->GetFieldIndex($fname);
     return unless $self->IsFieldSetAndNotNull($i);
     my $t = $self->GetFieldDefn($i)->Type;
     return $self->GetFieldAsInteger($i) if $t eq 'Integer';
@@ -2465,14 +2594,14 @@ sub GetFieldDefn {
     my ($self, $i) = @_;
     $i //= 0;
     my $d = Geo::GDAL::FFI::OGR_F_GetFieldDefnRef($$self, $i);
-    croak unless $d;
+    confess unless $d;
     ++$immutable{$d};
     return bless \$d, 'Geo::GDAL::FFI::FieldDefn';
 }
 
 sub GetFieldIndex {
     my ($self, $name) = @_;
-    $name //= '';
+    return 0 unless defined $name;
     return Geo::GDAL::FFI::OGR_F_GetFieldIndex($$self, $name);
 }
 
@@ -2676,10 +2805,9 @@ sub GetGeomFieldCount {
 }
 
 sub GetGeomFieldIndex {
-    my ($self, $name) = @_;
-    $name //= '';
-    return $name if $name =~ /^\d+$/;
-    return Geo::GDAL::FFI::OGR_F_GetGeomFieldIndex($$self, $name);
+    my ($self, $fname) = @_;
+    return 0 unless defined $fname;
+    return Geo::GDAL::FFI::OGR_F_GetGeomFieldIndex($$self, $fname);
 }
 
 sub GetGeomFieldDefn {
@@ -2688,10 +2816,11 @@ sub GetGeomFieldDefn {
 }
 
 sub GetGeomField {
-    my ($self, $name) = @_;
-    my $i = defined $name ? $self->GetGeomFieldIndex($name) : 0;
+    my ($self, $fname) = @_;
+    $fname //= 0;
+    my $i = Geo::GDAL::FFI::isint($fname) ? $fname : $self->GetGeomFieldIndex($fname);
     my $g = Geo::GDAL::FFI::OGR_F_GetGeomFieldRef($$self, $i);
-    croak "No such field: $i" unless $g;
+    confess "No such field: $i" unless $g;
     ++$immutable{$g};
     #say STDERR "$g immutable";
     return bless \$g, 'Geo::GDAL::FFI::Geometry';
@@ -2701,8 +2830,9 @@ sub GetGeomField {
 sub SetGeomField {
     my $self = shift;
     my $g = pop;
-    my $name = shift;
-    my $i = defined $name ? $self->GetGeomFieldIndex($name) : 0;
+    my $fname = shift;
+    $fname //= 0;
+    my $i = Geo::GDAL::FFI::isint($fname) ? $fname : $self->GetGeomFieldIndex($fname);
     if (ref $g eq 'ARRAY') {
         $g = Geo::GDAL::FFI::Geometry->new(@$g);
     }
@@ -2772,7 +2902,7 @@ sub GetPointCount {
 
 sub SetPoint {
     my $self = shift;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     my ($i, $x, $y, $z, $m);
     $i = shift if
         Geo::GDAL::FFI::OGR_GT_Flatten(
@@ -2825,27 +2955,27 @@ sub GetGeometry {
 
 sub AddGeometry {
     my ($self, $g) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     my $e = Geo::GDAL::FFI::OGR_G_GetGeometryRef($$self, $$g);
     return unless $e;
     my $msg = join("\n", @errors);
     @errors = ();
-    croak $msg;
+    confess $msg;
 }
 
 sub RemoveGeometry {
     my ($self, $i) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     my $e = Geo::GDAL::FFI::OGR_G_GetGeometryRef($$self, $i, 1);
     return unless $e;
     my $msg = join("\n", @errors);
     @errors = ();
-    croak $msg;
+    confess $msg;
 }
 
 sub ImportFromWkt {
     my ($self, $wkt) = @_;
-    croak "Can't modify an immutable object." if $immutable{$$self};
+    confess "Can't modify an immutable object." if $immutable{$$self};
     $wkt //= '';
     Geo::GDAL::FFI::OGR_G_ImportFromWkt($$self, \$wkt);
     return $wkt;
@@ -3017,12 +3147,31 @@ Returns a list of band objects.
 
 Create a new vector layer into this dataset.
 
-Named arguments are Name (string, optional, default is ''),
-GeometryType (optional, default is 'Unknown', note: use 'None', if you
-intend to create the geometry field or fields later with
-CreateGeomField), SpatialReference (a SpatialReference object,
-optional), Options (optional, driver specific options in an anonymous
-hash).
+Named arguments are 
+
+=over 8
+
+=item Name (string, optional, default is ''),
+
+=item GeometryType (optional, default is 'Unknown', the type of the
+first geometry field; note: if 'None', the layer schema does not
+initially contain any geometry fields),
+
+=item SpatialReference (a SpatialReference object, optional, the
+spatial reference for the first geometry field),
+
+=item Options (optional, driver specific options in an anonymous
+hash),
+
+=item Fields (optional, a reference to an array of Field objects or
+schemas, the fields to create into the layer),
+
+=item GeometryFields (optional, a reference to an array of
+GeometryField objects or schemas, the geometry fields to create into
+the layer; note that if this argument is defined then the arguments
+GeometryType and SpatialReference are ignored).
+
+=back
 
 =item C<GetLayer($n)>
 
@@ -3106,7 +3255,7 @@ arguments returns the first layer.
 
 Create a new FeatureDefn object.
 
-The named arguments are
+The named arguments (optional) are
 
 =over 8
 

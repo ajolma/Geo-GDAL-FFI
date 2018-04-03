@@ -178,7 +178,7 @@ if(1){
 
 # test field definitions
 if(1){
-    my $f = Geo::GDAL::FFI::FieldDefn->new(test => 'Integer');
+    my $f = Geo::GDAL::FFI::FieldDefn->new({Name => 'test', Type => 'Integer'});
     ok($f->GetName eq 'test', "Field definition: get name");
     ok($f->Type eq 'Integer', "Field definition: get type");
     
@@ -200,19 +200,19 @@ if(1){
     $f->SetPrecision(10);
     ok($f->Precision == 10, "Field definition: Precision");
 
-    $f->SetIgnored(1);
-    ok($f->IsIgnored, "Field definition: Ignored");
+    $f->SetIgnored;
+    ok($f->IsIgnored, "Field definition: Ignored ");
+
+    $f->SetIgnored(0);
+    ok(!$f->IsIgnored, "Field definition: not Ignored");
 
     $f->SetNullable(1);
     ok($f->IsNullable, "Field definition: Nullable");
 
-    $f->SetIgnored;
-    ok(!$f->IsIgnored, "Field definition: Ignored");
-
     $f->SetNullable;
     ok(!$f->IsNullable, "Field definition: Nullable");
 
-    $f = Geo::GDAL::FFI::GeomFieldDefn->new(test => 'Point');
+    $f = Geo::GDAL::FFI::GeomFieldDefn->new({Name => 'test', GeometryType => 'Point'});
     ok($f->GetName eq 'test', "Geometry field definition: get name");
     ok($f->Type eq 'Point', "Geometry field definition: get type");
     
@@ -222,14 +222,14 @@ if(1){
     $f->SetType('LineString');
     ok($f->Type eq 'LineString', "Geometry field definition: type");
     
-    $f->SetIgnored(1);
+    $f->SetIgnored;
     ok($f->IsIgnored, "Geometry field definition: Ignored");
+
+    $f->SetIgnored(0);
+    ok(!$f->IsIgnored, "Geometry field definition: not Ignored");
 
     $f->SetNullable(1);
     ok($f->IsNullable, "Geometry field definition: Nullable");
-
-    $f->SetIgnored;
-    ok(!$f->IsIgnored, "Geometry field definition: Ignored");
 
     $f->SetNullable;
     ok(!$f->IsNullable, "Geometry field definition: Nullable");
@@ -237,9 +237,9 @@ if(1){
 
 # test feature definitions
 if(1){
-    my $d = Geo::GDAL::FFI::FeatureDefn->new('test');
+    my $d = Geo::GDAL::FFI::FeatureDefn->new;
     ok($d->GetFieldCount == 0, "GetFieldCount");
-    ok($d->GetGeomFieldCount == 1, "GetGeomFieldCount");
+    ok($d->GetGeomFieldCount == 1, "GetGeomFieldCount ".$d->GetGeomFieldCount);
 
     $d->SetGeometryIgnored(1);
     ok($d->IsGeometryIgnored, "IsGeometryIgnored");
@@ -254,7 +254,7 @@ if(1){
     $d->SetGeomType('Polygon');
     ok($d->GetGeomType eq 'Polygon', "GeomType");
 
-    $d->AddField(Geo::GDAL::FFI::FieldDefn->new(test => 'Integer'));
+    $d->AddField(Geo::GDAL::FFI::FieldDefn->new({Name => 'test', Type => 'Integer'}));
     ok($d->GetFieldCount == 1, "GetFieldCount");
     my $f = $d->GetField(0);
     ok($f->Name eq 'test', "GetFieldDefn ".$f->Name);
@@ -262,7 +262,7 @@ if(1){
     $d->DeleteField(0);
     ok($d->GetFieldCount == 0, "DeleteFieldDefn");
 
-    $d->AddGeomField(Geo::GDAL::FFI::GeomFieldDefn->new(test => 'Point'));
+    $d->AddGeomField(Geo::GDAL::FFI::GeomFieldDefn->new({Name => 'test', GeometryType => 'Point'}));
     ok($d->GetGeomFieldCount == 2, "GetGeomFieldCount");
     $f = $d->GetGeomField(1);
     ok($f->Name eq 'test', "GetGeomFieldDefn");
@@ -299,10 +299,10 @@ if(1){
 
 # test features
 if(1){
-    my $d = Geo::GDAL::FFI::FeatureDefn->new('test');
+    my $d = Geo::GDAL::FFI::FeatureDefn->new();
     # geometry type checking is not implemented in GDAL
     #$d->SetGeomType('PointM');
-    $d->AddGeomField(Geo::GDAL::FFI::GeomFieldDefn->new(test2 => 'LineString'));
+    $d->AddGeomField(Geo::GDAL::FFI::GeomFieldDefn->new({Name => 'test2', GeometryType => 'LineString'}));
     my $f = Geo::GDAL::FFI::Feature->new($d);
     ok($f->GetGeomFieldCount == 2, "GetGeometryCount");
     ok($f->GetGeomFieldIndex('test2') == 1, "GetGeometryIndex");
@@ -324,9 +324,9 @@ if(1){
 # test setting field
 if(1){
     my $types = \%Geo::GDAL::FFI::field_types;
-    my $d = Geo::GDAL::FFI::FeatureDefn->new('test');
+    my $d = Geo::GDAL::FFI::FeatureDefn->new();
     for my $t (sort {$types->{$a} <=> $types->{$b}} keys %$types) {
-        $d->AddField(Geo::GDAL::FFI::FieldDefn->new($t => $t));
+        $d->AddField(Geo::GDAL::FFI::FieldDefn->new({Name => $t, Type => $t}));
     }
     my $f = Geo::GDAL::FFI::Feature->new($d);
     ok($f->GetFieldCount == 14, "Nr field types is ".$f->GetFieldCount);
@@ -450,7 +450,7 @@ if(1){
     my $epsg = $gdal->Importer('EPSG');
     my $sr = Geo::GDAL::FFI::SpatialReference->new($epsg => 3067);
     my $l = $ds->CreateLayer({Name => 'test', SpatialReference => $sr, GeometryType => 'Point'});
-    $l->CreateField(Geo::GDAL::FFI::FieldDefn->new(int => 'Integer'));
+    $l->CreateField(Geo::GDAL::FFI::FieldDefn->new({Name => 'int', Type => 'Integer'}));
     my $d = $l->GetDefn;
     for my $i (0..$d->GetFieldCount-1) {
         my $fd = $d->GetField;
