@@ -40,6 +40,7 @@ our %capabilities = (
     NONSPATIAL => 11,
     FEATURE_STYLES => 12,
     );
+
 sub capabilities {
     return sort {$capabilities{$a} <=> $capabilities{$b}} keys %capabilities;
 }
@@ -48,6 +49,10 @@ our %access = (
     ReadOnly => 0,
     Update => 1
     );
+
+sub access {
+    return sort {$access{$a} <=> $access{$b}} keys %access;
+}
 
 our %open_flags = (
     READONLY => 0x00,
@@ -62,6 +67,7 @@ our %open_flags = (
     ARRAY_BLOCK_ACCESS   =>    0x100,
     HASHSET_BLOCK_ACCESS =>    0x200,
     );
+
 sub open_flags {
     return sort {$open_flags{$a} <=> $open_flags{$b}} keys %open_flags;
 }
@@ -81,6 +87,7 @@ our %datatypes = (
     CFloat64 => 11
     );
 our %datatypes_reverse = reverse %datatypes;
+
 sub datatypes {
     return sort {$datatypes{$a} <=> $datatypes{$b}} keys %datatypes;
 }
@@ -113,8 +120,8 @@ our %field_types = (
     RealList => 3,
     String => 4,
     StringList => 5,
-    WideString => 6,     # do not use
-    WideStringList => 7, # do not use
+    #WideString => 6,     # do not use
+    #WideStringList => 7, # do not use
     Binary => 8,
     Date => 9,
     Time => 10,
@@ -124,6 +131,10 @@ our %field_types = (
     );
 our %field_types_reverse = reverse %field_types;
 
+sub field_types {
+    return sort {$field_types{$a} <=> $field_types{$b}} keys %field_types;
+}
+
 our %field_subtypes = (
     None => 0,
     Boolean => 1,
@@ -132,12 +143,20 @@ our %field_subtypes = (
     );
 our %field_subtypes_reverse = reverse %field_subtypes;
 
+sub field_subtypes {
+    return sort {$field_subtypes{$a} <=> $field_subtypes{$b}} keys %field_subtypes;
+}
+
 our %justification = (
     Undefined => 0,
     Left => 1,
     Right => 2
     );
 our %justification_reverse = reverse %justification;
+
+sub justification {
+    return sort {$justification{$a} <=> $justification{$b}} keys %justification;
+}
 
 our %color_interpretations = (
     Undefined => 0,
@@ -159,6 +178,10 @@ our %color_interpretations = (
     YCbCr_CrBand => 16,
     );
 our %color_interpretations_reverse = reverse %color_interpretations;
+
+sub color_interpretations {
+    return sort {$color_interpretations{$a} <=> $color_interpretations{$b}} keys %color_interpretations;
+}
 
 our %geometry_types = (
     Unknown => 0,
@@ -235,9 +258,17 @@ our %geometry_types = (
     );
 our %geometry_types_reverse = reverse %geometry_types;
 
+sub geometry_types {
+    return sort {$geometry_types{$a} <=> $geometry_types{$b}} keys %geometry_types;
+}
+
 our %geometry_formats = (
     WKT => 1,
     );
+
+sub geometry_formats {
+    return sort {$geometry_formats{$a} <=> $geometry_formats{$b}} keys %geometry_formats;
+}
 
 our %grid_algorithms = (
     InverseDistanceToAPower => 1,
@@ -2050,7 +2081,6 @@ sub new {
                 $d->SetName($field->{Name}) if defined $field->{Name};
                 $self->SetGeomType($field->{Type});
                 $d->SetSpatialRef($field->{SpatialReference}) if $field->{SpatialReference};
-                $d->SetIgnored(1) if $field->{Ignored};
                 $d->SetNullable(0) if $field->{NotNullable};
                 $first = 0;
             } else {
@@ -2060,8 +2090,7 @@ sub new {
     } else {
         $self->SetGeomType($args->{GeometryType});
     }
-    $self->SetGeometryIgnored(1) if $args->{GeometryIgnored};
-    $self->SetStyleIgnored(1) if $args->{StyleIgnored};
+    $self->SetStyleIgnored if $args->{StyleIgnored};
     return $self;
 }
 
@@ -2074,7 +2103,6 @@ sub schema {
     for my $i (0..$self->GetGeomFieldCount-1) {
         push @{$schema->{GeometryFields}}, $self->GetGeomField($i)->schema;
     }
-    $schema->{GeometryIgnored} = 1 if $self->IsGeometryIgnored;
     $schema->{StyleIgnored} = 1 if $self->IsStyleIgnored;
     return $schema;
 }
@@ -2101,19 +2129,21 @@ sub GetGeomFieldCount {
 
 sub GetField {
     my ($self, $i) = @_;
+    $i //= 0;
+    $i = $self->GetFieldIndex($i) unless Geo::GDAL::FFI::isint($i);
     my $d = Geo::GDAL::FFI::OGR_FD_GetFieldDefn($$self, $i);
     confess "No such field: $i" unless $d;
     ++$immutable{$d};
-    #say STDERR "$d immutable";
     return bless \$d, 'Geo::GDAL::FFI::FieldDefn';
 }
 
 sub GetGeomField {
     my ($self, $i) = @_;
+    $i //= 0;
+    $i = $self->GetGeomFieldIndex($i) unless Geo::GDAL::FFI::isint($i);
     my $d = Geo::GDAL::FFI::OGR_FD_GetGeomFieldDefn($$self, $i);
     confess "No such field: $i" unless $d;
     ++$immutable{$d};
-    #say STDERR "$d immutable";
     return bless \$d, 'Geo::GDAL::FFI::GeomFieldDefn';
 }
 
@@ -2141,11 +2171,15 @@ sub AddGeomField {
 
 sub DeleteField {
     my ($self, $i) = @_;
+    $i //= 0;
+    $i = $self->GetFieldIndex($i) unless Geo::GDAL::FFI::isint($i);
     Geo::GDAL::FFI::OGR_FD_DeleteFieldDefn($$self, $i);
 }
 
 sub DeleteGeomField {
     my ($self, $i) = @_;
+    $i //= 0;
+    $i = $self->GetGeomFieldIndex($i) unless Geo::GDAL::FFI::isint($i);
     Geo::GDAL::FFI::OGR_FD_DeleteGeomFieldDefn($$self, $i);
 }
 
@@ -2159,8 +2193,7 @@ sub SetGeomType {
     $type //= 'Unknown';
     my $tmp = $geometry_types{$type};
     confess "Unknown geometry type: $type\n" unless defined $tmp;
-    $type = $tmp;
-    Geo::GDAL::FFI::OGR_FD_SetGeomType($$self, $type);
+    Geo::GDAL::FFI::OGR_FD_SetGeomType($$self, $tmp);
 }
 
 sub IsGeometryIgnored {
@@ -2170,6 +2203,7 @@ sub IsGeometryIgnored {
 
 sub SetGeometryIgnored {
     my ($self, $i) = @_;
+    $i //= 1;
     Geo::GDAL::FFI::OGR_FD_SetGeometryIgnored($$self, $i);
 }
 
@@ -2180,6 +2214,7 @@ sub IsStyleIgnored {
 
 sub SetStyleIgnored {
     my ($self, $i) = @_;
+    $i //= 1;
     Geo::GDAL::FFI::OGR_FD_SetStyleIgnored($$self, $i);
 }
 
@@ -2201,7 +2236,6 @@ sub new {
     $self->SetJustify($args->{Justify}) if defined $args->{Justify};
     $self->SetWidth($args->{Width}) if defined $args->{Width};
     $self->SetPrecision($args->{Precision}) if defined $args->{Precision};
-    $self->SetIgnored(1) if $args->{Ignored};
     $self->SetNullable(0) if $args->{NotNullable};
     return $self;
 }
@@ -2218,7 +2252,6 @@ sub schema {
     };
     my $default = $self->GetDefault;
     $schema->{Default} = $default if defined $default;
-    $schema->{Ignored} = 1 if $self->IsIgnored;
     $schema->{NotNullable} = 1 unless $self->IsNullable;
     return $schema;
 }
@@ -2340,7 +2373,7 @@ sub GetPrecision {
 
 sub SetIgnored {
     my ($self, $ignored) = @_;
-    confess "Can't modify an immutable object." if $immutable{$$self};
+    #confess "Can't modify an immutable object." if $immutable{$$self};
     $ignored //= 1;
     Geo::GDAL::FFI::OGR_Fld_SetIgnored($$self, $ignored);
 }
@@ -2377,7 +2410,6 @@ sub new {
     confess "Unknown geometry type: $type\n" unless defined $tmp;
     my $self = bless \Geo::GDAL::FFI::OGR_GFld_Create($name, $tmp), $class;
     $self->SetSpatialRef($args->{SpatialReference}) if $args->{SpatialReference};
-    $self->SetIgnored(1) if $args->{Ignored};
     $self->SetNullable(0) if $args->{NotNullable};
     return $self;
 }
@@ -2389,7 +2421,6 @@ sub schema {
         Type => $self->GetType
     };
     $schema->{SpatialReference} = $self->GetSpatialRef;
-    $schema->{Ignored} = 1 if $self->IsIgnored;
     $schema->{NotNullable} = 1 unless $self->IsNullable;
     return $schema;
 }
@@ -2447,7 +2478,7 @@ sub GetSpatialRef {
 
 sub SetIgnored {
     my ($self, $ignored) = @_;
-    confess "Can't modify an immutable object." if $immutable{$$self};
+    #confess "Can't modify an immutable object." if $immutable{$$self};
     $ignored //= 1;
     Geo::GDAL::FFI::OGR_GFld_SetIgnored($$self, $ignored);
 }
@@ -2478,8 +2509,8 @@ use Encode qw(decode encode);
 use FFI::Platypus::Buffer;
 
 sub new {
-    my ($class, $def) = @_;
-    my $f = Geo::GDAL::FFI::OGR_F_Create($$def);
+    my ($class, $defn) = @_;
+    my $f = Geo::GDAL::FFI::OGR_F_Create($$defn);
     return bless \$f, $class;
 }
 
@@ -2899,6 +2930,7 @@ sub GetPointCount {
     my ($self) = @_;
     return Geo::GDAL::FFI::OGR_G_GetPointCount($$self);
 }
+*PointCount = *GetPointCount;
 
 sub SetPoint {
     my $self = shift;
@@ -2946,6 +2978,7 @@ sub GetCount {
     my ($self) = @_;
     return Geo::GDAL::FFI::OGR_G_GetGeometryCount($$self);
 }
+*GeometryCount = *GetCount;
 
 sub GetGeometry {
     my ($self, $i) = @_;
@@ -2995,6 +3028,7 @@ sub ExportToIsoWkt {
     return $wkt;
 }
 *AsWKT = *ExportToIsoWkt;
+*AsText = *ExportToIsoWkt;
 
 1;
 
@@ -3036,8 +3070,6 @@ Returns the list of capabilities (strings) a Geo::GDAL::FFI::Object can have.
 
 =item C<datatypes>
 
-=item C<new>
-
 =item C<VersionInfo>
 
 =item C<Drivers>
@@ -3047,6 +3079,27 @@ Returns the list of capabilities (strings) a Geo::GDAL::FFI::Object can have.
 =item C<OpenEx($name, $named_arguments)>
 
 =item C<Importer($format)>
+
+Return a function for importing a SpatialReference object from a
+format. The format is one of EPSG, EPSGA, Wkt, Proj4, ESRI, PCI, USGS,
+XML, Dict, Panorama, Ozi, MICoordSys, ERM, Url.
+
+=item C<Exporter($format)>
+
+Return a function for exporting a SpatialReference object to a
+format. The format is one of Wkt, PrettyWkt, Proj4, PCI, USGS, XML,
+Panorama, MICoordSys, ERM.
+
+=item C<Setter($arg)>
+
+Return a function for setting projection parameters in a
+SpatialReference object. The arg is one of Axes, ACEA, AE, Bonne, CEA,
+CS, EC, Eckert, EckertIV, EckertVI, Equirectangular, Equirectangular2,
+GS, GH, IGH, GEOS, GaussSchreiberTMercator, Gnomonic, HOM, HOMAC,
+HOM2PNO, IWMPolyconic, Krovak, LAEA, LCC, LCC1SP, LCCB, MC, Mercator,
+Mercator2SP, Mollweide, NZMG, OS, Orthographic, Polyconic, PS,
+Robinson, Sinusoidal, Stereographic, SOC, TM, TMVariant, TMG, TMSO,
+TPED, VDG, Wagner, QSC, SCH
 
 =back
 
@@ -3108,9 +3161,6 @@ first argument is taken as a format importer and the rest of the
 arguments are taken as arguments to the importer. Importers are functions
 that are created with the Importer method of Geo::GDAL::FFI object.
 
-Known formats are EPSG, EPSGA, Wkt, Proj4, ESRI, PCI, USGS, XML, Dict,
-Panorama, Ozi, MICoordSys, ERM, Url.
-
 =item C<Export($exporter, @arg)>
 
 =item C<Set($setter, @arg)>
@@ -3151,22 +3201,22 @@ Named arguments are
 
 =over 8
 
-=item Name (string, optional, default is ''),
+=item C<Name> (string, optional, default is ''),
 
-=item GeometryType (optional, default is 'Unknown', the type of the
+=item C<GeometryType> (optional, default is 'Unknown', the type of the
 first geometry field; note: if 'None', the layer schema does not
 initially contain any geometry fields),
 
-=item SpatialReference (a SpatialReference object, optional, the
+=item C<SpatialReference> (a SpatialReference object, optional, the
 spatial reference for the first geometry field),
 
-=item Options (optional, driver specific options in an anonymous
+=item C<Options> (optional, driver specific options in an anonymous
 hash),
 
-=item Fields (optional, a reference to an array of Field objects or
+=item C<Fields> (optional, a reference to an array of Field objects or
 schemas, the fields to create into the layer),
 
-=item GeometryFields (optional, a reference to an array of
+=item C<GeometryFields> (optional, a reference to an array of
 GeometryField objects or schemas, the geometry fields to create into
 the layer; note that if this argument is defined then the arguments
 GeometryType and SpatialReference are ignored).
@@ -3225,11 +3275,9 @@ arguments returns the first layer.
 
 =over 4
 
-=item C<CreateField>
+=item C<Defn>
 
-=item C<CreateGeomField>
-
-=item C<GetSpatialRef>
+Get the FeatureDefn object for this layer.
 
 =item C<ResetReading>
 
@@ -3255,19 +3303,22 @@ arguments returns the first layer.
 
 Create a new FeatureDefn object.
 
-The named arguments (optional) are
+The named arguments (optional) are the following.
 
 =over 8
 
-=item C<Name>
+=item C<Name> Optional; the name for this feature class; default is
+the empty string.
 
-=item C<Fields>
+=item C<Fields> Optional, a reference to an array of FieldDefn objects
+or schemas.
 
-=item C<GeometryType>
+=item C<GeometryFields> Optional, a reference to an array of GeomFieldDefn
+objects or schemas.
 
-=item C<GeometryFields>
-
-=item C<GeometryIgnored>
+=item C<GeometryType> Optional, the type for the first geometry field;
+default is Unknown. Note that this argument is ignored if GeometryFields
+is given.
 
 =item C<StyleIgnored>
 
@@ -3277,6 +3328,71 @@ The named arguments (optional) are
 
 Return the object as a perl data structure.
 
+=item C<GetField($name)>
+
+Get the specified non spatial field. If the argument is explicitly an
+integer and not a string, it is taken as the field index.
+
+=item C<GetGeomField($name)>
+
+Get the specified spatial field. If the argument is explicitly an
+integer and not a string, it is taken as the field index.
+
+=item C<SetGeometryIgnored($arg)>
+
+Ignore the first geometry field when reading features from a layer. To
+not ignore the first geometry field call this method with defined but
+false (0) argument.
+
+=item C<IsGeometryIgnored>
+
+Is the first geometry field ignored when reading features from a
+layer.
+
+=back
+
+=head1 Geo::GDAL::FFI::FieldDefn
+
+=head2 Schema
+
+The schema of a FieldDefn is (Name, Type, Default, Subtype, Justify,
+Width, Precision, NotNullable).
+
+=head2 Methods
+
+=over 4
+
+=item C<SetIgnored($arg)>
+
+Ignore this field when reading features from a layer. To not ignore
+this field call this method with defined but false (0) argument.
+
+=item C<IsIgnored>
+
+Is this field ignored when reading features from a layer.
+
+=back
+
+=head1 Geo::GDAL::FFI::GeomFieldDefn
+
+=head2 Schema
+
+The schema of a GeomFieldDefn is (Name, Type, SpatialReference,
+NotNullable).
+
+=head2 Methods
+
+=over 4
+
+=item C<SetIgnored($arg)>
+
+Ignore this field when reading features from a layer. To not ignore
+this field call this method with defined but false (0) argument.
+
+=item C<IsIgnored>
+
+Is this field ignored when reading features from a layer.
+
 =back
 
 =head1 Geo::GDAL::FFI::Feature
@@ -3285,6 +3401,37 @@ Return the object as a perl data structure.
 
 =over 4
 
+=item C<new($defn)>
+
+Create a new Feature object. The argument is a FeatureDefn object,
+which you can get from a Layer object (Defn method), another Feature
+object (Defn method), or by explicitly creating a new FeatureDefn
+object.
+
+=item C<Defn>
+
+Return the FeatureDefn object for this Feature.
+
+=item C<GetFID>
+
+=item C<SetFID>
+
+=item C<Clone>
+
+=item C<Equal>
+
+=item C<SetField($fname, $value)>
+
+=item C<GetField($fname)>
+
+=item C<SetGeomField($fname, $geom)>
+
+$fname is optional and by default zero.
+
+=item C<GetGeomField($fname)>
+
+$fname is optional and by default zero.
+
 =back
 
 =head1 Geo::GDAL::FFI::Geometry
@@ -3292,6 +3439,38 @@ Return the object as a perl data structure.
 =head2 Methods
 
 =over 4
+
+=item C<new($type)>
+
+$type must be one of Geo::GDAL::FFI::geometry_types().
+
+=item C<new($format, $arg, $sr)>
+
+$format must be one of Geo::GDAL::FFI::geometry_formats().
+
+$sr should be SpatialRef object if given.
+
+=item C<Type>
+
+=item C<PointCount>
+
+=item C<SetPoint($i, $x, $y, $z, $m)>
+
+=item C<SetPoint($i, $point)>
+
+$point is [$x, $y, $z, $m]
+
+=item C<GetPoint($i)>
+
+=item C<GeometryCount>
+
+=item C<GetGeometry>
+
+=item C<AddGeometry($geom)>
+
+=item C<RemoveGeometry($i)>
+
+=item C<AsText>
 
 =back
 
@@ -3302,7 +3481,7 @@ L<perlartistic>.
 
 =head1 AUTHOR
 
-Ari Jolma - L<http://arijolma.org>
+Ari Jolma - Ari.Jolma at gmail.com
 
 =head1 SEE ALSO
 

@@ -329,9 +329,10 @@ if(1){
         $d->AddField(Geo::GDAL::FFI::FieldDefn->new({Name => $t, Type => $t}));
     }
     my $f = Geo::GDAL::FFI::Feature->new($d);
-    ok($f->GetFieldCount == 14, "Nr field types is ".$f->GetFieldCount);
+    ok($f->GetFieldCount == 12, "Nr field types is ".$f->GetFieldCount);
     for my $t (sort {$types->{$a} <=> $types->{$b}} keys %$types) {
         my $i = $types->{$t};
+        $i -= 2 if $i > 5;
         ok($f->GetFieldDefn($i)->Type eq $t, "Feature.GetFieldDefn, got ".$f->GetFieldDefn($i)->Type."=$i");
         ok($f->GetFieldIndex($t) == $i, "Feature.GetFieldIndex");
     }
@@ -372,12 +373,18 @@ if(1){
     ok($x eq 'not set or null', "Null 2.3");
 
     # scalar types
-    $f->SetFieldInteger($types->{Integer}, 13);
-    $x = $f->GetFieldAsInteger($types->{Integer});
+    $t = 'Integer';
+    $i = $types->{$t};
+    $i -= 2 if $i > 5;
+    $f->SetFieldInteger($i, 13);
+    $x = $f->GetFieldAsInteger($i);
     ok($x == 13, "Set/get Integer field: $x");
-        
-    $f->SetFieldInteger64($types->{Integer64}, 0x90000001);
-    $x = $f->GetFieldAsInteger64($types->{Integer64});
+
+    $t = 'Integer64';
+    $i = $types->{$t};
+    $i -= 2 if $i > 5;
+    $f->SetFieldInteger64($i, 0x90000001);
+    $x = $f->GetFieldAsInteger64($i);
     ok($x == 0x90000001, "Set/get Integer64 field: $x");
     
     $f->SetFieldDouble($types->{Real}, 1.123);
@@ -398,9 +405,12 @@ if(1){
     $x = $f->GetFieldAsIntegerList($types->{IntegerList});
     is_deeply($x, $s, "Set/get IntegerList field: @$x");
 
+    $t = 'Integer64List';
+    $i = $types->{$t};
+    $i -= 2 if $i > 5;
     $s = [0x90000001, 21, 7, 5];
-    $f->SetFieldInteger64List($types->{Integer64List}, $s);
-    $x = $f->GetFieldAsInteger64List($types->{Integer64List});
+    $f->SetFieldInteger64List($i, $s);
+    $x = $f->GetFieldAsInteger64List($i);
     is_deeply($x, $s, "Set/get Integer64List field: @$x");
 
     $s = [3, 21.2, 7.4, 5.5];
@@ -418,14 +428,20 @@ if(1){
     $x = $f->GetFieldAsDateTimeEx($types->{Date});
     is_deeply($x, $s, "Set/get Date field: @$x");
 
+    $t = 'Time';
+    $i = $types->{$t};
+    $i -= 2 if $i > 5;
     $s = [0, 0, 0, 15, 23, 23.34, 1];
-    $f->SetFieldDateTimeEx($types->{Time}, $s);
-    $x = $f->GetFieldAsDateTimeEx($types->{Time});
+    $f->SetFieldDateTimeEx($i, $s);
+    $x = $f->GetFieldAsDateTimeEx($i);
     is_deeply($x, $s, "Set/get Time field: @$x");
 
+    $t = 'DateTime';
+    $i = $types->{$t};
+    $i -= 2 if $i > 5;
     $s = [1962, 4, 23, 15, 23, 23.34, 1];
-    $f->SetFieldDateTimeEx($types->{DateTime}, $s);
-    $x = $f->GetFieldAsDateTimeEx($types->{DateTime});
+    $f->SetFieldDateTimeEx($i, $s);
+    $x = $f->GetFieldAsDateTimeEx($i);
     is_deeply($x, $s, "Set/get DateTime field: @$x");
         
 #    Binary => 8,
