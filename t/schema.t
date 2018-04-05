@@ -38,7 +38,7 @@ my $schema = {
         ]
 };
 
-my $layer = $gdal->GetDriverByName('Memory')->CreateDataset->CreateLayer($schema);
+my $layer = $gdal->GetDriver('Memory')->Create->CreateLayer($schema);
 
 my $schema2 = {
     Name => 'test',
@@ -68,18 +68,18 @@ my $schema2 = {
             Name => 'g1',
             Type => 'LineString',
             NotNullable => 1,
-            SpatialReference => undef
+            #SpatialReference => undef
         },
         {
             Name => 'g2',
             Type => 'Polygon',
             #Ignored => 1,
-            SpatialReference => undef
+            #SpatialReference => undef
         }
         ]
 };
 
-$schema = $layer->schema;
+$schema = $layer->GetDefn->GetSchema;
 #print Dumper $schema;
 
 is_deeply($schema, $schema2, "Create layer based on a schema");

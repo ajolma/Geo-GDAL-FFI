@@ -41,17 +41,8 @@ our %capabilities = (
     FEATURE_STYLES => 12,
     );
 
-sub capabilities {
+sub Capabilities {
     return sort {$capabilities{$a} <=> $capabilities{$b}} keys %capabilities;
-}
-
-our %access = (
-    ReadOnly => 0,
-    Update => 1
-    );
-
-sub access {
-    return sort {$access{$a} <=> $access{$b}} keys %access;
 }
 
 our %open_flags = (
@@ -68,11 +59,11 @@ our %open_flags = (
     HASHSET_BLOCK_ACCESS =>    0x200,
     );
 
-sub open_flags {
+sub OpenFlags {
     return sort {$open_flags{$a} <=> $open_flags{$b}} keys %open_flags;
 }
 
-our %datatypes = (
+our %data_types = (
     Unknown => 0,
     Byte => 1,
     UInt16 => 2,
@@ -86,10 +77,10 @@ our %datatypes = (
     CFloat32 => 10,
     CFloat64 => 11
     );
-our %datatypes_reverse = reverse %datatypes;
+our %data_types_reverse = reverse %data_types;
 
-sub datatypes {
-    return sort {$datatypes{$a} <=> $datatypes{$b}} keys %datatypes;
+sub DataTypes {
+    return sort {$data_types{$a} <=> $data_types{$b}} keys %data_types;
 }
 
 our %resampling = (
@@ -103,7 +94,11 @@ our %resampling = (
     Gauss => 7
     );
 
-our %datatype2pdl_datatype = (
+sub ResamplingMethods {
+    return sort {$resampling{$a} <=> $resampling{$b}} keys %resampling;
+}
+
+our %data_type2pdl_data_type = (
     Byte => $PDL::Types::PDL_B,
     Int16 => $PDL::Types::PDL_S,
     UInt16 => $PDL::Types::PDL_US,
@@ -111,7 +106,7 @@ our %datatype2pdl_datatype = (
     Float32 => $PDL::Types::PDL_F,
     Float64 => $PDL::Types::PDL_D,
     );
-our %pdl_datatype2datatype = reverse %datatype2pdl_datatype;
+our %pdl_data_type2data_type = reverse %data_type2pdl_data_type;
 
 our %field_types = (
     Integer => 0,
@@ -131,7 +126,7 @@ our %field_types = (
     );
 our %field_types_reverse = reverse %field_types;
 
-sub field_types {
+sub FieldTypes {
     return sort {$field_types{$a} <=> $field_types{$b}} keys %field_types;
 }
 
@@ -143,7 +138,7 @@ our %field_subtypes = (
     );
 our %field_subtypes_reverse = reverse %field_subtypes;
 
-sub field_subtypes {
+sub FieldSubtypes {
     return sort {$field_subtypes{$a} <=> $field_subtypes{$b}} keys %field_subtypes;
 }
 
@@ -154,7 +149,7 @@ our %justification = (
     );
 our %justification_reverse = reverse %justification;
 
-sub justification {
+sub Justifications {
     return sort {$justification{$a} <=> $justification{$b}} keys %justification;
 }
 
@@ -179,7 +174,7 @@ our %color_interpretations = (
     );
 our %color_interpretations_reverse = reverse %color_interpretations;
 
-sub color_interpretations {
+sub ColorInterpretations {
     return sort {$color_interpretations{$a} <=> $color_interpretations{$b}} keys %color_interpretations;
 }
 
@@ -258,7 +253,7 @@ our %geometry_types = (
     );
 our %geometry_types_reverse = reverse %geometry_types;
 
-sub geometry_types {
+sub GeometryTypes {
     return sort {$geometry_types{$a} <=> $geometry_types{$b}} keys %geometry_types;
 }
 
@@ -266,7 +261,7 @@ our %geometry_formats = (
     WKT => 1,
     );
 
-sub geometry_formats {
+sub GeometryFormats {
     return sort {$geometry_formats{$a} <=> $geometry_formats{$b}} keys %geometry_formats;
 }
 
@@ -284,11 +279,21 @@ our %grid_algorithms = (
     InverseDistanceToAPowerNearestNeighbor => 11
     );
 
+sub GridAlgorithms {
+    return sort {$grid_algorithms{$a} <=> $grid_algorithms{$b}} keys %grid_algorithms;
+}
+
 sub isint {
     my $value = shift;
     my $b_obj = B::svref_2object(\$value);
     my $flags = $b_obj->FLAGS;
     return 1 if $flags & B::SVp_IOK() && !($flags & B::SVp_NOK()) && !($flags & B::SVp_POK());
+}
+
+sub fake {
+    my $class = shift;
+    my $self = {};
+    return bless $self, $class;
 }
 
 sub new {
@@ -1131,66 +1136,46 @@ eval{$ffi->attach('GDALBuildVRT' => [qw/string int uint64* opaque opaque int*/] 
     return bless $self, $class;
 }
 
-sub VersionInfo {
+sub GetVersionInfo {
     shift;
     return GDALVersionInfo(@_);
 }
 
-sub GetDriverCount {
-    return GDALGetDriverCount();
-}
-
 sub GetDriver {
     my ($self, $i) = @_;
-    my $d = GDALGetDriver($i);
+    my $d = isint($i) ? GDALGetDriver($i) : GDALGetDriverByName($i);
     return bless \$d, 'Geo::GDAL::FFI::Driver';
 }
 
-sub Drivers {
+sub GetDrivers {
     my $self = shift;
-    my @retval;
-    for my $i (0..$self->GetDriverCount-1) {
-        push @retval, $self->GetDriver($i);
+    my @drivers;
+    for my $i (0..GDALGetDriverCount()-1) {
+        push @drivers, $self->GetDriver($i);
     }
-    return wantarray ? @retval : \@retval;
+    return @drivers;
 }
-
-sub GetDriverByName {
-    #my $this_subs_name = (caller(0))[3];
-    #say STDERR "called $this_subs_name";
-    shift;
-    my $d = GDALGetDriverByName(@_);
-    return bless \$d, 'Geo::GDAL::FFI::Driver';
-}
-*Driver = *GetDriverByName;
 
 sub Open {
     shift;
-    my ($name, $access) = @_;
-    $access //= 'ReadOnly';
-    my $tmp = $access{$access};
-    confess "Unknown constant: $access\n" unless defined $tmp;
-    $access = $tmp;
-    my $ds = GDALOpen($name, $access);
-    if (@errors) {
-        my $msg = join("\n", @errors);
-        @errors = ();
-        confess $msg;
-    }
-    return bless \$ds, 'Geo::GDAL::FFI::Dataset';
-}
-
-sub OpenEx {
-    shift;
     my ($name, $args) = @_;
     $args //= {};
-    my $flags_array = $args->{open_flags} // [];
-    my $drivers = $args->{allowed_drivers} // 0;
-    my $options = $args->{open_options} // 0;
-    my $files = $args->{sibling_files} // 0;
     my $flags = 0;
-    for my $f (@$flags_array) {
+    my $a = $args->{Flags} // [];
+    for my $f (@$a) {
         $flags |= $open_flags{$f};
+    }
+    my $drivers = 0;
+    for my $o (@{$args->{AllowedDrivers}}) {
+        $drivers = Geo::GDAL::FFI::CSLAddString($drivers, $o);
+    }
+    my $options = 0;
+    for my $o (@{$args->{Options}}) {
+        $options = Geo::GDAL::FFI::CSLAddString($options, $o);
+    }
+    my $files = 0;
+    for my $o (@{$args->{SiblingFiles}}) {
+        $files = Geo::GDAL::FFI::CSLAddString($files, $o);
     }
     my $ds = GDALOpenEx($name, $flags, $drivers, $options, $files);
     if (@errors) {
@@ -1199,7 +1184,7 @@ sub OpenEx {
         confess $msg;
     }
     unless ($ds) { # no VERBOSE_ERROR in options and fail
-        confess "OpenEx failed for '$name'. Hint: add VERBOSE_ERROR to open_flags.";
+        confess "Open failed for '$name'. Hint: add VERBOSE_ERROR to open_flags.";
     }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
@@ -1211,7 +1196,7 @@ sub write {
 sub close {
 }
 
-sub SetVSIStdout {
+sub SetWriter {
     my ($self, $writer) = @_;
     $writer = $self unless $writer;
     my $w = $writer->can('write');
@@ -1226,27 +1211,27 @@ sub SetVSIStdout {
     VSIStdoutSetRedirection($self->{writer}, 0);
 }
 
-sub UnsetVSIStdout {
+sub CloseWriter {
     my $self = shift;
     $self->{close}->() if $self->{close};
-    $self->SetVSIStdout;
+    $self->SetWriter;
 }
 
-sub Importer {
+sub get_importer {
     my ($self, $format) = @_;
     my $importer = $self->can('OSRImportFrom' . $format);
     confess "Spatial reference importer for format '$format' not found!" unless $importer;
     return $importer;
 }
 
-sub Exporter {
+sub get_exporter {
     my ($self, $format) = @_;
     my $exporter = $self->can('OSRExportTo' . $format);
     confess "Spatial reference exporter for format '$format' not found!" unless $exporter;
     return $exporter;
 }
 
-sub Setter {
+sub get_setter {
     my ($self, $proj) = @_;
     my $setter = $self->can('OSRSet' . $proj);
     confess "Parameter setter for projection '$proj' not found!" unless $setter;
@@ -1259,6 +1244,11 @@ use strict;
 use warnings;
 use Carp;
 
+sub GetDescription {
+    my $self = shift;
+    return Geo::GDAL::FFI::GDALGetDescription($$self);
+}
+
 sub HasCapability {
     my ($self, $cap) = @_;
     my $tmp = $capabilities{$cap};
@@ -1269,8 +1259,6 @@ sub HasCapability {
 
 sub GetMetadataDomainList {
     my ($self) = @_;
-    #my $this_subs_name = (caller(0))[3];
-    #say STDERR "called $this_subs_name";
     my $csl = Geo::GDAL::FFI::GDALGetMetadataDomainList($$self);
     my @list;
     for my $i (0..Geo::GDAL::FFI::CSLCount($csl)-1) {
@@ -1311,11 +1299,13 @@ sub SetMetadata {
 
 sub GetMetadataItem {
     my ($self, $name, $domain) = @_;
+    $domain //= "";
     return Geo::GDAL::FFI::GDALGetMetadataItem($$self, $name, $domain);
 }
 
 sub SetMetadataItem {
     my ($self, $name, $value, $domain) = @_;
+    $domain //= "";
     Geo::GDAL::FFI::GDALSetMetadataItem($$self, $name, $value, $domain);
     if (@errors) {
         my $msg = join("\n", @errors);
@@ -1331,97 +1321,50 @@ use warnings;
 use Carp;
 use base 'Geo::GDAL::FFI::Object';
 
-sub GetDescription {
+sub GetName {
     my $self = shift;
-    return Geo::GDAL::FFI::GDALGetDescription($$self);
-}
-*Name = *GetDescription;
-
-sub CreateDataset {
-    my $self = shift;
-    my %args = @_ == 1 ? %{$_[0]} : @_;
-    my $n = $args{Name} // '';
-    my $o = 0;
-    for my $key (keys %{$args{Options}}) {
-        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args{Options}{$key}");
-    }
-    my $ds;
-    if (exists $args{Source}) {
-        my $src = ${$args{Source}};
-        my $s = $args{Strict} // 0;
-        my $p = $args{Progress};
-        $ds = Geo::GDAL::FFI::GDALCreateCopy($$self, $n, $$src, $s, $o, $p, $args{ProgressData});
-    } elsif (not exists $args{Width}) {
-        $ds = Geo::GDAL::FFI::GDALCreate($$self, $n, 0, 0, 0, 0, $o);
-    } else {
-        my $dt = $args{DataType} // 'Byte';
-        my $tmp = $datatypes{$dt};
-        confess "Unknown constant: $dt\n" unless defined $tmp;
-        $dt = $tmp;
-        my $w = $args{Width} // 256;
-        my $h = $args{Height} // 256;
-        my $b = $args{Bands} // 1;
-        $ds = Geo::GDAL::FFI::GDALCreate($$self, $n, $w, $h, $b, $dt, $o);
-    }
-    if (!$ds || @errors) {
-        my $msg;
-        if (@errors) {
-            $msg = join("\n", @errors);
-            @errors = ();
-        }
-        $msg //= 'CreateDataset failed. (Driver = '.$self->GetDescription.')';
-        confess $msg;
-    }
-    return bless \$ds, 'Geo::GDAL::FFI::Dataset';
+    return $self->GetDescription;
 }
 
 sub Create {
-    #my $this_subs_name = (caller(0))[3];
-    #say STDERR "called $this_subs_name";
-    my ($self, $name, $width, $height, $bands, $dt, $options) = @_;
+    my ($self, $name, $args, $h) = @_;
     $name //= '';
-    $width //= 256;
-    $height //= 256;
-    $bands //= 1;
-    $dt //= 'Byte';
-    my $tmp = $datatypes{$dt};
-    confess "Unknown constant: $dt\n" unless defined $tmp;
-    $dt = $tmp;
+    $args //= {};
+    $args = {Width => $args, Height => $h} unless ref $args;
     my $o = 0;
-    for my $key (keys %$options) {
-        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options->{$key}");
+    for my $key (keys %{$args->{Options}}) {
+        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}{$key}");
     }
-    my $ds = Geo::GDAL::FFI::GDALCreate($$self, $name, $width, $height, $bands, $dt, $o);
+    my $ds;
+    if (exists $args->{Source}) {
+        my $src = ${$args->{Source}};
+        my $s = $args->{Strict} // 0;
+        my $ffi = FFI::Platypus->new;
+        my $p = $ffi->closure($args->{Progress});
+        $ds = Geo::GDAL::FFI::GDALCreateCopy($$self, $name, $src, $s, $o, $p, $args->{ProgressData});
+    } elsif (not $args->{Width}) {
+        $ds = Geo::GDAL::FFI::GDALCreate($$self, $name, 0, 0, 0, 0, $o);
+    } else {
+        my $w = $args->{Width};
+        $h //= $args->{Height} // $w;
+        my $b = $args->{Bands} // 1;
+        my $dt = $args->{DataType} // 'Byte';
+        my $tmp = $data_types{$dt};
+        confess "Unknown constant: $dt\n" unless defined $tmp;
+        $ds = Geo::GDAL::FFI::GDALCreate($$self, $name, $w, $h, $b, $tmp, $o);
+    }
     if (!$ds || @errors) {
         my $msg;
         if (@errors) {
             $msg = join("\n", @errors);
             @errors = ();
         }
-        $msg //= 'Create failed. (Driver = '.$self->GetDescription.')';
+        $msg //= "Dataset '$name' creation failed. (Driver = ".$self->Name.")";
         confess $msg;
     }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';
 }
 
-sub CreateCopy {
-    my ($self, $name, $ds, $strict, $options, $progress, $progress_data) = @_;
-    my $o = 0;
-    for my $key (keys %$options) {
-        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options->{$key}");
-    }
-    my $copy = Geo::GDAL::FFI::GDALCreateCopy($$self, $name, $$ds, $strict, $o, $progress, $progress_data);
-    if (!$copy || @errors) {
-        my $msg;
-        if (@errors) {
-            $msg = join("\n", @errors);
-            @errors = ();
-        }
-        $msg //= 'CreateCopy failed. (Driver = '.$self->GetDescription.')';
-        confess $msg;
-    }
-    return bless \$copy, 'Geo::GDAL::FFI::Dataset';
-}
 
 package Geo::GDAL::FFI::SpatialReference;
 use v5.10;
@@ -1434,10 +1377,12 @@ sub new {
     my $sr;
     if (not defined $arg) {
         $sr = Geo::GDAL::FFI::OSRNewSpatialReference();
-    } elsif (not ref $arg) {
+    } elsif (not @arg) {
         $sr = Geo::GDAL::FFI::OSRNewSpatialReference($arg);
     } else {
         $sr = Geo::GDAL::FFI::OSRNewSpatialReference();
+        my $fake = Geo::GDAL::FFI->fake;
+        $arg = $fake->get_importer($arg);
         if ($arg->($sr, @arg) != 0) {
             Geo::GDAL::FFI::OSRDestroySpatialReference($sr);
             $sr = 0;
@@ -1456,7 +1401,9 @@ sub DESTROY {
 
 sub Export {
     my $self = shift;
-    my $exporter = shift;
+    my $format = shift;
+    my $fake = Geo::GDAL::FFI->fake;
+    my $exporter = $fake->get_exporter($format);
     my $x;
     if ($exporter->($$self, \$x, @_) != 0) {
         my $msg = join("\n", @errors);
@@ -1468,7 +1415,9 @@ sub Export {
 
 sub Set {
     my $self = shift;
-    my $setter = shift;
+    my $set = shift;
+    my $fake = Geo::GDAL::FFI->fake;
+    my $setter = $fake->get_setter($set);
     if ($setter->($$self, @_) != 0) {
         my $msg = join("\n", @errors);
         @errors = ();
@@ -1493,8 +1442,13 @@ use base 'Geo::GDAL::FFI::Object';
 sub DESTROY {
     my $self = shift;
     $self->FlushCache;
-    #say STDERR "DESTROY $self and $$self";
+    #say STDERR "DESTROY $self";
     Geo::GDAL::FFI::GDALClose($$self);
+}
+
+sub GetName {
+    my $self = shift;
+    return $self->GetDescription;
 }
 
 sub FlushCache {
@@ -1502,13 +1456,13 @@ sub FlushCache {
     Geo::GDAL::FFI::GDALFlushCache($$self);
 }
 
-sub Driver {
+sub GetDriver {
     my $self = shift;
     my $dr = Geo::GDAL::FFI::GDALGetDatasetDriver($$self);
     return bless \$dr, 'Geo::GDAL::FFI::Driver';
 }
 
-sub Info {
+sub GetInfo {
     my $self = shift;
     my $o = 0;
     for my $s (@_) {
@@ -1543,17 +1497,17 @@ sub Translate {
     confess $msg;
 }
 
-sub Width {
+sub GetWidth {
     my $self = shift;
     return Geo::GDAL::FFI::GDALGetRasterXSize($$self);
 }
 
-sub Height {
+sub GetHeight {
     my $self = shift;
     return Geo::GDAL::FFI::GDALGetRasterYSize($$self);
 }
 
-sub Size {
+sub GetSize {
     my $self = shift;
     return (
         Geo::GDAL::FFI::GDALGetRasterXSize($$self),
@@ -1589,11 +1543,6 @@ sub SetGeoTransform {
     Geo::GDAL::FFI::GDALSetGeoTransform($$self, $t);
 }
 
-sub GetBandCount {
-    my $self = shift;
-    return Geo::GDAL::FFI::GDALGetRasterCount($$self);
-}
-
 sub GetBand {
     my ($self, $i) = @_;
     $i //= 1;
@@ -1601,13 +1550,12 @@ sub GetBand {
     $parent{$b} = $self;
     return bless \$b, 'Geo::GDAL::FFI::Band';
 }
-*Band = *GetBand;
 
-sub Bands {
+sub GetBands {
     my $self = shift;
     my @bands;
     for my $i (1..Geo::GDAL::FFI::GDALGetRasterCount($$self)) {
-        push @bands, $self->Band($i);
+        push @bands, $self->GetBand($i);
     }
     return @bands;
 }
@@ -1617,6 +1565,7 @@ sub GetLayer {
     $i //= 0;
     my $l = Geo::GDAL::FFI::isint($i) ? Geo::GDAL::FFI::GDALDatasetGetLayer($$self, $i) :
         Geo::GDAL::FFI::GDALDatasetGetLayerByName($$self, $i);
+    $parent{$l} = $self;
     return bless \$l, 'Geo::GDAL::FFI::Layer';
 }
 
@@ -1647,7 +1596,6 @@ sub CreateLayer {
         confess $msg;
     }
     $parent{$l} = $self;
-    #say STDERR "parent of $l is $self";
     my $layer = bless \$l, 'Geo::GDAL::FFI::Layer';
     if (exists $args->{Fields}) {
         for my $f (@{$args->{Fields}}) {
@@ -1676,7 +1624,6 @@ sub CopyLayer {
         confess $msg;
     }
     $parent{$l} = $self;
-    #say STDERR "parent of $l is $self";
     return bless \$l, 'Geo::GDAL::FFI::Layer';
 }
 
@@ -1689,27 +1636,25 @@ use FFI::Platypus::Buffer;
 
 sub DESTROY {
     my $self = shift;
-    #say STDERR "delete parent of $$self $parent{$$self}";
     delete $parent{$$self};
 }
 
 sub GetDataType {
     my $self = shift;
-    return $datatypes_reverse{Geo::GDAL::FFI::GDALGetRasterDataType($$self)};
+    return $data_types_reverse{Geo::GDAL::FFI::GDALGetRasterDataType($$self)};
 }
-*DataType = *GetDataType;
 
-sub Width {
+sub GetWidth {
     my $self = shift;
     Geo::GDAL::FFI::GDALGetRasterBandXSize($$self);
 }
 
-sub Height {
+sub GetHeight {
     my $self = shift;
     Geo::GDAL::FFI::GDALGetRasterBandYSize($$self);
 }
 
-sub Size {
+sub GetSize {
     my $self = shift;
     return (
         Geo::GDAL::FFI::GDALGetRasterBandXSize($$self),
@@ -1746,9 +1691,8 @@ sub GetBlockSize {
     Geo::GDAL::FFI::GDALGetBlockSize($$self, \$w, \$h);
     return ($w, $h);
 }
-*BlockSize = *GetBlockSize;
 
-sub PackCharacter {
+sub pack_char {
     my $t = shift;
     my $is_big_endian = unpack("h*", pack("s", 1)) =~ /01/; # from Programming Perl
     return ('C', 1) if $t == 1;
@@ -1770,7 +1714,7 @@ sub Read {
     $yoff //= 0;
     my $t = Geo::GDAL::FFI::GDALGetRasterDataType($$self);
     my $buf;
-    my ($pc, $bytes_per_cell) = PackCharacter($t);
+    my ($pc, $bytes_per_cell) = pack_char($t);
     my $w;
     $xsize //= Geo::GDAL::FFI::GDALGetRasterBandXSize($$self);
     $ysize //= Geo::GDAL::FFI::GDALGetRasterBandYSize($$self);
@@ -1796,7 +1740,7 @@ sub ReadBlock {
     Geo::GDAL::FFI::GDALGetBlockSize($$self, \$xsize, \$ysize);
     my $t = Geo::GDAL::FFI::GDALGetRasterDataType($$self);
     my $buf;
-    my ($pc, $bytes_per_cell) = PackCharacter($t);
+    my ($pc, $bytes_per_cell) = pack_char($t);
     my $w = $xsize * $bytes_per_cell;
     $buf = ' ' x ($ysize * $w);
     my ($pointer, $size) = scalar_to_buffer $buf;
@@ -1820,7 +1764,7 @@ sub Write {
     $xsize //= $bufxsize;
     $ysize //= $bufysize;
     my $t = Geo::GDAL::FFI::GDALGetRasterDataType($$self);
-    my ($pc, $bytes_per_cell) = PackCharacter($t);
+    my ($pc, $bytes_per_cell) = pack_char($t);
     my $buf = '';
     for my $i (0..$bufysize-1) {
         $buf .= pack($pc."[$bufxsize]", @{$data->[$i]});
@@ -1834,7 +1778,7 @@ sub WriteBlock {
     my ($xsize, $ysize);
     Geo::GDAL::FFI::GDALGetBlockSize($$self, \$xsize, \$ysize);
     my $t = Geo::GDAL::FFI::GDALGetRasterDataType($$self);
-    my ($pc, $bytes_per_cell) = PackCharacter($t);
+    my ($pc, $bytes_per_cell) = pack_char($t);
     my $buf = '';
     for my $i (0..$ysize-1) {
         $buf .= pack($pc."[$xsize]", @{$data->[$i]});
@@ -1856,10 +1800,6 @@ sub SetColorInterpretation {
     confess "Unknown constant: $i\n" unless defined $tmp;
     $i = $tmp;
     Geo::GDAL::FFI::GDALSetRasterColorInterpretation($$self, $i);
-}
-
-sub GetPaletteInterp {
-    my $self = shift;
 }
 
 sub GetColorTable {
@@ -1886,41 +1826,16 @@ sub SetColorTable {
     Geo::GDAL::FFI::GDALDestroyColorTable($ct);
 }
 
-sub Piddle {
-    my $self = shift;
-    my ($w, $h) = $self->Size;
-    unless (defined wantarray) {
-        my $pdl = shift;
-        my $t = $pdl_datatype2datatype{$pdl->get_datatype};
-        confess "The Piddle datatype '".$pdl->get_datatype."' is unsuitable.\n" unless defined $t;
-        $t = $datatypes{$t};
-        my ($xdim, $ydim) = $pdl->dims();
-        my ($xoff, $yoff, $xsize, $ysize) = @_;
-        $xoff //= 0;
-        $yoff //= 0;
-        $xsize //= $xdim;
-        $ysize //= $ydim;
-        if ($xdim > $w - $xoff) {
-            warn "Piddle too wide ($xdim) for this raster band (width = $w, offset = $xoff).";
-            $xdim = $w - $xoff;
-        }
-        if ($ydim > $h - $yoff) {
-            $ydim = $h - $yoff;
-            warn "Piddle too tall ($ydim) for this raster band (height = $h, offset = $yoff).";
-        }
-        my $data = $pdl->get_dataref();
-        my ($pointer, $size) = scalar_to_buffer $$data;
-        Geo::GDAL::FFI::GDALRasterIO($$self, Geo::GDAL::FFI::Write, $xoff, $yoff, $xsize, $ysize, $pointer, $xdim, $ydim, $t, 0, 0);
-        return;
-    }
-    my $t = Geo::GDAL::FFI::GDALGetRasterDataType($$self);
-    my $pdl_t = $datatype2pdl_datatype{$datatypes_reverse{$t}};
-    confess "The Piddle datatype is unsuitable.\n" unless defined $pdl_t;
-    my ($xoff, $yoff, $xsize, $ysize, $xdim, $ydim, $alg) = @_;
+sub GetPiddle {
+    my ($self, $xoff, $yoff, $xsize, $ysize, $xdim, $ydim, $alg) = @_;
     $xoff //= 0;
     $yoff //= 0;
+    my ($w, $h) = $self->GetSize;
     $xsize //= $w - $xoff;
     $ysize //= $h - $yoff;
+    my $t = Geo::GDAL::FFI::GDALGetRasterDataType($$self);
+    my $pdl_t = $data_type2pdl_data_type{$data_types_reverse{$t}};
+    confess "The Piddle data_type is unsuitable.\n" unless defined $pdl_t;
     $xdim //= $xsize;
     $ydim //= $ysize;
     $alg //= 'NearestNeighbour';
@@ -1929,7 +1844,7 @@ sub Piddle {
     $alg = $tmp;
     my $bufxsize = $xsize;
     my $bufysize = $ysize;
-    my ($pc, $bytes_per_cell) = PackCharacter($t);
+    my ($pc, $bytes_per_cell) = pack_char($t);
     my $buf = ' ' x ($bufysize * $bufxsize * $bytes_per_cell);
     my ($pointer, $size) = scalar_to_buffer $buf;
     Geo::GDAL::FFI::GDALRasterIO($$self, Geo::GDAL::FFI::Read, $xoff, $yoff, $xsize, $ysize, $pointer, $bufxsize, $bufysize, $t, 0, 0);
@@ -1946,6 +1861,30 @@ sub Piddle {
     return $pdl;
 }
 
+sub SetPiddle {
+    my ($self, $pdl, $xoff, $yoff, $xsize, $ysize) = @_;
+    $xoff //= 0;
+    $yoff //= 0;
+    my ($w, $h) = $self->GetSize;
+    my $t = $pdl_data_type2data_type{$pdl->get_datatype};
+    confess "The Piddle data_type '".$pdl->get_datatype."' is unsuitable.\n" unless defined $t;
+    $t = $data_types{$t};
+    my ($xdim, $ydim) = $pdl->dims();
+    $xsize //= $xdim;
+    $ysize //= $ydim;
+    if ($xdim > $w - $xoff) {
+        warn "Piddle too wide ($xdim) for this raster band (width = $w, offset = $xoff).";
+        $xdim = $w - $xoff;
+    }
+    if ($ydim > $h - $yoff) {
+        $ydim = $h - $yoff;
+        warn "Piddle too tall ($ydim) for this raster band (height = $h, offset = $yoff).";
+    }
+    my $data = $pdl->get_dataref();
+    my ($pointer, $size) = scalar_to_buffer $$data;
+    Geo::GDAL::FFI::GDALRasterIO($$self, Geo::GDAL::FFI::Write, $xoff, $yoff, $xsize, $ysize, $pointer, $xdim, $ydim, $t, 0, 0);
+}
+
 package Geo::GDAL::FFI::Layer;
 use v5.10;
 use strict;
@@ -1956,13 +1895,9 @@ use base 'Geo::GDAL::FFI::Object';
 sub DESTROY {
     my $self = shift;
     Geo::GDAL::FFI::OGR_L_SyncToDisk($$self);
-    #say STDERR "delete parent of $$self $parent{$$self}";
+    #say STDERR "delete parent $parent{$$self}";
     delete $parent{$$self};
-}
-
-sub schema {
-    my $self = shift;
-    return $self->Defn->schema;
+    #say STDERR "destroy $self";
 }
 
 sub GetDefn {
@@ -1970,7 +1905,6 @@ sub GetDefn {
     my $d = Geo::GDAL::FFI::OGR_L_GetLayerDefn($$self);
     return bless \$d, 'Geo::GDAL::FFI::FeatureDefn';
 }
-*Defn = *GetDefn;
 
 sub CreateField {
     my $self = shift;
@@ -2076,7 +2010,7 @@ sub new {
         my $first = 1;
         for my $field (@{$args->{GeometryFields}}) {
             if ($first) {
-                my $d = bless \Geo::GDAL::FFI::OGR_FD_GetGeomFieldDefn($$self, 0), 
+                my $d = bless \Geo::GDAL::FFI::OGR_FD_GetGeomFieldDefn($$self, 0),
                 'Geo::GDAL::FFI::GeomFieldDefn';
                 $d->SetName($field->{Name}) if defined $field->{Name};
                 $self->SetGeomType($field->{Type});
@@ -2094,22 +2028,22 @@ sub new {
     return $self;
 }
 
-sub schema {
-    my $self = shift;
-    my $schema = {Name => $self->GetName};
-    for my $i (0..$self->GetFieldCount-1) {
-        push @{$schema->{Fields}}, $self->GetField($i)->schema;
-    }
-    for my $i (0..$self->GetGeomFieldCount-1) {
-        push @{$schema->{GeometryFields}}, $self->GetGeomField($i)->schema;
-    }
-    $schema->{StyleIgnored} = 1 if $self->IsStyleIgnored;
-    return $schema;
-}
-
 sub DESTROY {
     my $self = shift;
     #Geo::GDAL::FFI::OGR_FD_Release($$self);
+}
+
+sub GetSchema {
+    my $self = shift;
+    my $schema = {Name => $self->GetName};
+    for (my $i = 0; $i < Geo::GDAL::FFI::OGR_FD_GetFieldCount($$self); $i++) {
+        push @{$schema->{Fields}}, $self->GetFieldDefn($i)->GetSchema;
+    }
+    for (my $i = 0; $i < Geo::GDAL::FFI::OGR_FD_GetGeomFieldCount($$self); $i++) {
+        push @{$schema->{GeometryFields}}, $self->GetGeomFieldDefn($i)->GetSchema;
+    }
+    $schema->{StyleIgnored} = 1 if $self->IsStyleIgnored;
+    return $schema;
 }
 
 sub GetName {
@@ -2117,66 +2051,62 @@ sub GetName {
     return Geo::GDAL::FFI::OGR_FD_GetName($$self);
 }
 
-sub GetFieldCount {
-    my ($self) = @_;
-    return Geo::GDAL::FFI::OGR_FD_GetFieldCount($$self);
-}
-
-sub GetGeomFieldCount {
-    my ($self) = @_;
-    return Geo::GDAL::FFI::OGR_FD_GetGeomFieldCount($$self);
-}
-
-sub GetField {
-    my ($self, $i) = @_;
-    $i //= 0;
-    $i = $self->GetFieldIndex($i) unless Geo::GDAL::FFI::isint($i);
+sub GetFieldDefn {
+    my ($self, $fname) = @_;
+    my $i = $fname // 0;
+    $i = Geo::GDAL::FFI::OGR_FD_GetFieldIndex($$self, $i) unless Geo::GDAL::FFI::isint($i);
     my $d = Geo::GDAL::FFI::OGR_FD_GetFieldDefn($$self, $i);
-    confess "No such field: $i" unless $d;
+    confess "No such field: $fname" unless $d;
     ++$immutable{$d};
     return bless \$d, 'Geo::GDAL::FFI::FieldDefn';
 }
 
-sub GetGeomField {
-    my ($self, $i) = @_;
-    $i //= 0;
-    $i = $self->GetGeomFieldIndex($i) unless Geo::GDAL::FFI::isint($i);
+sub GetFieldDefns {
+    my $self = shift;
+    my @retval;
+    for my $i (0..Geo::GDAL::FFI::OGR_FD_GetFieldCount($$self)-1) {
+        push @retval, $self->GetFieldDefn($i);
+    }
+    return @retval;
+}
+
+sub GetGeomFieldDefn {
+    my ($self, $fname) = @_;
+    my $i = $fname // 0;
+    $i = Geo::GDAL::FFI::OGR_FD_GetGeomFieldIndex($$self, $i) unless Geo::GDAL::FFI::isint($i);
     my $d = Geo::GDAL::FFI::OGR_FD_GetGeomFieldDefn($$self, $i);
-    confess "No such field: $i" unless $d;
+    confess "No such field: $fname" unless $d;
     ++$immutable{$d};
     return bless \$d, 'Geo::GDAL::FFI::GeomFieldDefn';
 }
 
-sub GetFieldIndex {
-    my ($self, $name) = @_;
-    return 0 unless defined $name;
-    return Geo::GDAL::FFI::OGR_FD_GetFieldIndex($$self, $name);
+sub GetGeomFieldDefns {
+    my $self = shift;
+    my @retval;
+    for my $i (0..Geo::GDAL::FFI::OGR_FD_GetGeomFieldCount($$self)-1) {
+        push @retval, $self->GetGeomFieldDefn($i);
+    }
+    return @retval;
 }
 
-sub GetGeomFieldIndex {
-    my ($self, $name) = @_;
-    return 0 unless defined $name;
-    return Geo::GDAL::FFI::OGR_FD_GetGeomFieldIndex($$self, $name);
-}
-
-sub AddField {
+sub AddFieldDefn {
     my ($self, $d) = @_;
     Geo::GDAL::FFI::OGR_FD_AddFieldDefn($$self, $$d);
 }
 
-sub AddGeomField {
+sub AddGeomFieldDefn {
     my ($self, $d) = @_;
     Geo::GDAL::FFI::OGR_FD_AddGeomFieldDefn($$self, $$d);
 }
 
-sub DeleteField {
+sub DeleteFieldDefn {
     my ($self, $i) = @_;
     $i //= 0;
     $i = $self->GetFieldIndex($i) unless Geo::GDAL::FFI::isint($i);
     Geo::GDAL::FFI::OGR_FD_DeleteFieldDefn($$self, $i);
 }
 
-sub DeleteGeomField {
+sub DeleteGeomFieldDefn {
     my ($self, $i) = @_;
     $i //= 0;
     $i = $self->GetGeomFieldIndex($i) unless Geo::GDAL::FFI::isint($i);
@@ -2240,7 +2170,20 @@ sub new {
     return $self;
 }
 
-sub schema {
+sub DESTROY {
+    my $self = shift;
+    #say STDERR "destroy $self => $$self";
+    if ($immutable{$$self}) {
+        #say STDERR "remove it from immutable";
+        $immutable{$$self}--;
+        delete $immutable{$$self} if $immutable{$$self} == 0;
+    } else {
+        #say STDERR "destroy it";
+        Geo::GDAL::FFI::OGR_Fld_Destroy($$self);
+    }
+}
+
+sub GetSchema {
     my $self = shift;
     my $schema = {
         Name => $self->GetName,
@@ -2256,19 +2199,6 @@ sub schema {
     return $schema;
 }
 
-sub DESTROY {
-    my $self = shift;
-    #say STDERR "destroy $self => $$self";
-    if ($immutable{$$self}) {
-        #say STDERR "remove it from immutable";
-        $immutable{$$self}--;
-        delete $immutable{$$self} if $immutable{$$self} == 0;
-    } else {
-        #say STDERR "destroy it";
-        Geo::GDAL::FFI::OGR_Fld_Destroy($$self);
-    }
-}
-
 sub SetName {
     my ($self, $name) = @_;
     confess "Can't modify an immutable object." if $immutable{$$self};
@@ -2280,7 +2210,6 @@ sub GetName {
     my ($self) = @_;
     return Geo::GDAL::FFI::OGR_Fld_GetNameRef($$self);
 }
-*Name = *GetName;
 
 sub SetType {
     my ($self, $type) = @_;
@@ -2296,7 +2225,6 @@ sub GetType {
     my ($self) = @_;
     return $field_types_reverse{Geo::GDAL::FFI::OGR_Fld_GetType($$self)};
 }
-*Type = *GetType;
 
 sub GetDefault {
     my $self = shift;
@@ -2327,7 +2255,6 @@ sub GetSubtype {
     my ($self) = @_;
     return $field_subtypes_reverse{Geo::GDAL::FFI::OGR_Fld_GetSubType($$self)};
 }
-*Subtype = *GetSubtype;
 
 sub SetJustify {
     my ($self, $justify) = @_;
@@ -2343,7 +2270,6 @@ sub GetJustify {
     my ($self) = @_;
     return $justification_reverse{Geo::GDAL::FFI::OGR_Fld_GetJustify($$self)};
 }
-*Justify = *GetJustify;
 
 sub SetWidth {
     my ($self, $width) = @_;
@@ -2356,7 +2282,6 @@ sub GetWidth {
     my ($self) = @_;
     return Geo::GDAL::FFI::OGR_Fld_GetWidth($$self);
 }
-*Width = *GetWidth;
 
 sub SetPrecision {
     my ($self, $precision) = @_;
@@ -2369,7 +2294,6 @@ sub GetPrecision {
     my ($self) = @_;
     return Geo::GDAL::FFI::OGR_Fld_GetPrecision($$self);
 }
-*Precision = *GetPrecision;
 
 sub SetIgnored {
     my ($self, $ignored) = @_;
@@ -2414,17 +2338,6 @@ sub new {
     return $self;
 }
 
-sub schema {
-    my $self = shift;
-    my $schema = {
-        Name => $self->GetName,
-        Type => $self->GetType
-    };
-    $schema->{SpatialReference} = $self->GetSpatialRef;
-    $schema->{NotNullable} = 1 unless $self->IsNullable;
-    return $schema;
-}
-
 sub DESTROY {
     my $self = shift;
     if ($immutable{$$self}) {
@@ -2433,6 +2346,19 @@ sub DESTROY {
     } else {
         Geo::GDAL::FFI::OGR_GFld_Destroy($$self);
     }
+}
+
+sub GetSchema {
+    my $self = shift;
+    my $schema = {
+        Name => $self->GetName,
+        Type => $self->GetType
+    };
+    if (my $sr = $self->GetSpatialRef) {
+        $schema->{SpatialReference} = $sr->Export('Wkt');
+    }
+    $schema->{NotNullable} = 1 unless $self->IsNullable;
+    return $schema;
 }
 
 sub SetName {
@@ -2446,7 +2372,6 @@ sub GetName {
     my ($self) = @_;
     return Geo::GDAL::FFI::OGR_GFld_GetNameRef($$self);
 }
-*Name = *GetName;
 
 sub SetType {
     my ($self, $type) = @_;
@@ -2462,19 +2387,19 @@ sub GetType {
     my ($self) = @_;
     return $geometry_types_reverse{Geo::GDAL::FFI::OGR_GFld_GetType($$self)};
 }
-*Type = *GetType;
 
 sub SetSpatialRef {
     my ($self, $sr) = @_;
     confess "Can't modify an immutable object." if $immutable{$$self};
+    $sr = Geo::GDAL::FFI::SpatialReference->new($sr) unless ref $sr;
     Geo::GDAL::FFI::OGR_GFld_SetSpatialRef($$self, $$sr);
 }
 
 sub GetSpatialRef {
     my ($self) = @_;
-    return Geo::GDAL::FFI::OGR_GFld_GetSpatialRef($$self);
+    my $sr = Geo::GDAL::FFI::OGR_GFld_GetSpatialRef($$self);
+    return bless \$sr, 'Geo::GDAL::FFI::SpatialReference' if $sr;
 }
-*SpatialRef = *GetSpatialRef;
 
 sub SetIgnored {
     my ($self, $ignored) = @_;
@@ -2514,11 +2439,6 @@ sub new {
     return bless \$f, $class;
 }
 
-sub schema {
-    my $self = shift;
-    return $self->Defn->schema;
-}
-
 sub DESTROY {
     my $self = shift;
     Geo::GDAL::FFI::OGR_F_Destroy($$self);
@@ -2542,7 +2462,6 @@ sub GetDefn {
     #say STDERR "$d immutable";
     return bless \$d, 'Geo::GDAL::FFI::FeatureDefn';
 }
-*Defn = *GetDefn;
 
 sub Clone {
     my ($self) = @_;
@@ -2550,320 +2469,165 @@ sub Clone {
     return bless \$f, 'Geo::GDAL::FFI::Feature';
 }
 
-sub Equal {
+sub Equals {
     my ($self, $f) = @_;
     return Geo::GDAL::FFI::OGR_F_Equal($$self, $$f);
 }
 
-sub GetFieldCount {
-    my ($self) = @_;
-    return Geo::GDAL::FFI::OGR_F_GetFieldCount($$self);
-}
-
 sub SetField {
-    my ($self, $fname, $value) = @_;
-    $fname //= 0;
-    my $i = Geo::GDAL::FFI::isint($fname) ? $fname : $self->GetFieldIndex($fname);
-    $self->SetFieldNull($i) unless defined $value;
-    my $t = $self->GetFieldDefn($i)->Type;
-    $self->SetFieldInteger($i, $value) if $t eq 'Integer';
-    $self->SetFieldInteger64($i, $value) if $t eq 'Integer64';
-    $self->SetFieldDouble($i, $value) if $t eq 'Real';
-    $self->SetFieldString($i, $value) if $t eq 'String';
-    # Binary
-    if ($t eq 'IntegerList') {
-        $self->SetFieldIntegerList($i, $value);
-    } elsif ($t eq 'Integer64List') {
-        $self->SetFieldInteger64List($i, $value);
-    } elsif ($t eq 'RealList') {
-        $self->SetFieldRealList($i, $value);
-    } elsif ($t eq 'StringList') {
-        $self->SetFieldStringList($i, $value);
+    my $self = shift;
+    my $i = shift;
+    $i //= 0;
+    $i = Geo::GDAL::FFI::OGR_F_GetFieldIndex($$self, $i) unless Geo::GDAL::FFI::isint($i);
+    unless (@_) {
+        Geo::GDAL::FFI::OGR_F_UnsetField($$self, $i) ;
+        return;
+    }
+    my ($value) = @_;
+    unless (defined $value) {
+        Geo::GDAL::FFI::OGR_F_SetFieldNull($$self, $i);
+        return;
+    }
+    my $d = Geo::GDAL::FFI::OGR_F_GetFieldDefnRef($$self, $i);
+    my $t = $field_types_reverse{Geo::GDAL::FFI::OGR_Fld_GetType($d)};
+    Geo::GDAL::FFI::OGR_F_SetFieldInteger($$self, $i, $value) if $t eq 'Integer';
+    Geo::GDAL::FFI::OGR_F_SetFieldInteger64($$self, $i, $value) if $t eq 'Integer64';
+    Geo::GDAL::FFI::OGR_F_SetFieldDouble($$self, $i, $value) if $t eq 'Real';
+    Geo::GDAL::FFI::OGR_F_SetFieldString($$self, $i, $value) if $t eq 'String';
+
+    confess "Can't yet set binary fields." if $t eq 'Binary';
+
+    my @s = @_;
+    Geo::GDAL::FFI::OGR_F_SetFieldIntegerList($$self, $i, scalar @s, \@s) if $t eq 'IntegerList';
+    Geo::GDAL::FFI::OGR_F_SetFieldInteger64List($$self, $i, scalar @s, \@s) if $t eq 'Integer64List';
+    Geo::GDAL::FFI::OGR_F_SetFieldDoubleList($$self, $i, scalar @s, \@s) if $t eq 'RealList';
+    if ($t eq 'StringList') {
+        my $csl = 0;
+        for my $s (@s) {
+            $csl = Geo::GDAL::FFI::CSLAddString($csl, $s);
+        }
+        Geo::GDAL::FFI::OGR_F_SetFieldStringList($$self, $i, $csl);
+        Geo::GDAL::FFI::CSLDestroy($csl);
     } elsif ($t eq 'Date') {
-        $self->SetFieldDateTimeEx($i, $value);
+        my @dt = @_;
+        $dt[0] //= 2000; # year
+        $dt[1] //= 1; # month 1-12
+        $dt[2] //= 1; # day 1-31
+        $dt[3] //= 0; # hour 0-23
+        $dt[4] //= 0; # minute 0-59
+        $dt[5] //= 0.0; # second with millisecond accuracy
+        $dt[6] //= 100; # TZ
+        Geo::GDAL::FFI::OGR_F_SetFieldDateTimeEx($$self, $i, @dt);
     } elsif ($t eq 'Time') {
-        my @dt = (0, 0, 0, @$value);
-        $self->SetFieldDateTimeEx($i, \@dt);
+        my @dt = (0, 0, 0, @_);
+        $dt[3] //= 0; # hour 0-23
+        $dt[4] //= 0; # minute 0-59
+        $dt[5] //= 0.0; # second with millisecond accuracy
+        $dt[6] //= 100; # TZ
+        Geo::GDAL::FFI::OGR_F_SetFieldDateTimeEx($$self, $i, @dt);
     } elsif ($t eq 'DateTime') {
-        $self->SetFieldDateTimeEx($i, $value);
+        my @dt = @_;
+        $dt[0] //= 2000; # year
+        $dt[1] //= 1; # month 1-12
+        $dt[2] //= 1; # day 1-31
+        $dt[3] //= 0; # hour 0-23
+        $dt[4] //= 0; # minute 0-59
+        $dt[5] //= 0.0; # second with millisecond accuracy
+        $dt[6] //= 100; # TZ
+        Geo::GDAL::FFI::OGR_F_SetFieldDateTimeEx($$self, $i, @dt);
     }
 }
 
 sub GetField {
-    my ($self, $fname) = @_;
-    $fname //= 0;
-    my $i = Geo::GDAL::FFI::isint($fname) ? $fname : $self->GetFieldIndex($fname);
-    return unless $self->IsFieldSetAndNotNull($i);
-    my $t = $self->GetFieldDefn($i)->Type;
-    return $self->GetFieldAsInteger($i) if $t eq 'Integer';
-    return $self->GetFieldAsInteger64($i) if $t eq 'Integer64';
-    return $self->GetFieldAsDouble($i) if $t eq 'Real';
-    return $self->GetFieldAsString($i) if $t eq 'String';
-    # Binary
-    my $list;
-    if ($t eq 'IntegerList') {
-        $list = $self->GetFieldAsIntegerList($i);
-    } elsif ($t eq 'Integer64List') {
-        $list = $self->GetFieldAsInteger64List($i);
-    } elsif ($t eq 'RealList') {
-        $list = $self->GetFieldAsRealList($i);
-    } elsif ($t eq 'StringList') {
-        $list = $self->GetFieldAsStringList($i);
-    } elsif ($t eq 'Date') {
-        $list = $self->GetFieldAsDateTimeEx($i);
-        $list = [@$list[0..2]];
-    } elsif ($t eq 'Time') {
-        $list = $self->GetFieldAsDateTimeEx($i);
-        $list = [@$list[3..6]];
-    } elsif ($t eq 'DateTime') {
-        $list = $self->GetFieldAsDateTimeEx($i);
-    }
-    return wantarray ? @$list : $list;
-}
-
-sub GetFieldDefn {
-    my ($self, $i) = @_;
+    my ($self, $i, $encoding) = @_;
     $i //= 0;
+    $i = Geo::GDAL::FFI::OGR_F_GetFieldIndex($$self, $i) unless Geo::GDAL::FFI::isint($i);
+    return unless $self->IsFieldSetAndNotNull($i);
     my $d = Geo::GDAL::FFI::OGR_F_GetFieldDefnRef($$self, $i);
-    confess unless $d;
-    ++$immutable{$d};
-    return bless \$d, 'Geo::GDAL::FFI::FieldDefn';
-}
-
-sub GetFieldIndex {
-    my ($self, $name) = @_;
-    return 0 unless defined $name;
-    return Geo::GDAL::FFI::OGR_F_GetFieldIndex($$self, $name);
+    my $t = $field_types_reverse{Geo::GDAL::FFI::OGR_Fld_GetType($d)};
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsInteger($$self, $i) if $t eq 'Integer';
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsInteger64($$self, $i) if $t eq 'Integer64';
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsDouble($$self, $i) if $t eq 'Real';
+    if ($t eq 'String') {
+        my $retval = Geo::GDAL::FFI::OGR_F_GetFieldAsString($$self, $i);
+        $retval = decode $encoding => $retval if defined $encoding;
+        return $retval;
+    }
+    return Geo::GDAL::FFI::OGR_F_GetFieldAsBinary($$self, $i) if $t eq 'Binary';
+    my @list;
+    if ($t eq 'IntegerList') {
+        my $len;
+        my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsIntegerList($$self, $i, \$len);
+        @list = unpack("l[$len]", buffer_to_scalar($p, $len*4));
+    } elsif ($t eq 'Integer64List') {
+        my $len;
+        my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsInteger64List($$self, $i, \$len);
+        @list = unpack("q[$len]", buffer_to_scalar($p, $len*8));
+    } elsif ($t eq 'RealList') {
+        my $len;
+        my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsDoubleList($$self, $i, \$len);
+        @list = unpack("d[$len]", buffer_to_scalar($p, $len*8));
+    } elsif ($t eq 'StringList') {
+        my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsStringList($$self, $i);
+        for my $i (0..Geo::GDAL::FFI::CSLCount($p)-1) {
+            push @list, Geo::GDAL::FFI::CSLGetField($p, $i);
+        }
+    } elsif ($t eq 'Date') {
+        my ($y, $m, $d, $h, $min, $s, $tz) = (0, 0, 0, 0, 0, 0.0, 0);
+        Geo::GDAL::FFI::OGR_F_GetFieldAsDateTimeEx($$self, $i, \$y, \$m, \$d, \$h, \$min, \$s, \$tz);
+        @list = ($y, $m, $d);
+    } elsif ($t eq 'Time') {
+        my ($y, $m, $d, $h, $min, $s, $tz) = (0, 0, 0, 0, 0, 0.0, 0);
+        Geo::GDAL::FFI::OGR_F_GetFieldAsDateTimeEx($$self, $i, \$y, \$m, \$d, \$h, \$min, \$s, \$tz);
+        $s = sprintf("%.3f", $s) + 0;
+        @list = ($h, $min, $s, $tz);
+    } elsif ($t eq 'DateTime') {
+        my ($y, $m, $d, $h, $min, $s, $tz) = (0, 0, 0, 0, 0, 0.0, 0);
+        Geo::GDAL::FFI::OGR_F_GetFieldAsDateTimeEx($$self, $i, \$y, \$m, \$d, \$h, \$min, \$s, \$tz);
+        $s = sprintf("%.3f", $s) + 0;
+        @list = ($y, $m, $d, $h, $min, $s, $tz);
+    }
+    return @list;
 }
 
 sub IsFieldSet {
     my ($self, $i) = @_;
     $i //= 0;
+    $i = Geo::GDAL::FFI::OGR_F_GetFieldIndex($$self, $i) unless Geo::GDAL::FFI::isint($i);
     return Geo::GDAL::FFI::OGR_F_IsFieldSet($$self, $i);
-}
-
-sub UnsetField {
-    my ($self, $i) = @_;
-    $i //= 0;
-    Geo::GDAL::FFI::OGR_F_UnsetField($$self, $i);
 }
 
 sub IsFieldNull {
     my ($self, $i) = @_;
     $i //= 0;
+    $i = Geo::GDAL::FFI::OGR_F_GetFieldIndex($$self, $i) unless Geo::GDAL::FFI::isint($i);
     return Geo::GDAL::FFI::OGR_F_IsFieldNull($$self, $i);
 }
 
 sub IsFieldSetAndNotNull {
     my ($self, $i) = @_;
     $i //= 0;
+    $i = Geo::GDAL::FFI::OGR_F_GetFieldIndex($$self, $i) unless Geo::GDAL::FFI::isint($i);
     return Geo::GDAL::FFI::OGR_F_IsFieldSetAndNotNull($$self, $i);
 }
 
-sub SetFieldNull {
-    my ($self, $i) = @_;
-    $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldNull($$self, $i);
-}
-
-sub GetFieldAsInteger {
-    my ($self, $i) = @_;
-    $i //= 0;
-    return Geo::GDAL::FFI::OGR_F_GetFieldAsInteger($$self, $i);
-}
-
-sub GetFieldAsInteger64 {
-    my ($self, $i) = @_;
-    $i //= 0;
-    return Geo::GDAL::FFI::OGR_F_GetFieldAsInteger64($$self, $i);
-}
-
-sub GetFieldAsDouble {
-    my ($self, $i) = @_;
-    $i //= 0;
-    return Geo::GDAL::FFI::OGR_F_GetFieldAsDouble($$self, $i);
-}
-
-sub GetFieldAsString {
-    my ($self, $i, $encoding) = @_;
-    $i //= 0;
-    my $retval = Geo::GDAL::FFI::OGR_F_GetFieldAsString($$self, $i);
-    $retval = decode $encoding => $retval if defined $encoding;
-    return $retval;
-}
-
-sub GetFieldAsIntegerList {
-    my ($self, $i) = @_;
-    $i //= 0;
-    my (@list, $len);
-    my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsIntegerList($$self, $i, \$len);
-    @list = unpack("l[$len]", buffer_to_scalar($p, $len*4));
-    return wantarray ? @list : \@list;
-}
-
-sub GetFieldAsInteger64List {
-    my ($self, $i) = @_;
-    $i //= 0;
-    my (@list, $len);
-    my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsInteger64List($$self, $i, \$len);
-    @list = unpack("q[$len]", buffer_to_scalar($p, $len*8));
-    return wantarray ? @list : \@list;
-}
-
-sub GetFieldAsDoubleList {
-    my ($self, $i) = @_;
-    $i //= 0;
-    my (@list, $len);
-    my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsDoubleList($$self, $i, \$len);
-    @list = unpack("d[$len]", buffer_to_scalar($p, $len*8));
-    return wantarray ? @list : \@list;
-}
-
-sub GetFieldAsStringList {
-    my ($self, $i) = @_;
-    $i //= 0;
-    my $p = Geo::GDAL::FFI::OGR_F_GetFieldAsStringList($$self, $i);
-    my @list;
-    for my $i (0..Geo::GDAL::FFI::CSLCount($p)-1) {
-        push @list, Geo::GDAL::FFI::CSLGetField($p, $i);
-    }
-    return wantarray ? @list : \@list;
-}
-
-sub GetFieldAsBinary {
-    my ($self, $i) = @_;
-    $i //= 0;
-    return Geo::GDAL::FFI::OGR_F_GetFieldAsBinary($$self, $i);
-}
-
-sub GetFieldAsDateTime {
-    my ($self, $i) = @_;
-    $i //= 0;
-    return Geo::GDAL::FFI::OGR_F_GetFieldAsDateTime($$self, $i);
-}
-
-sub GetFieldAsDateTimeEx {
-    my ($self, $i) = @_;
-    $i //= 0;
-    my ($y, $m, $d, $h, $min, $s, $tz) = (0, 0, 0, 0, 0, 0.0, 0);
-    Geo::GDAL::FFI::OGR_F_GetFieldAsDateTimeEx($$self, $i, \$y, \$m, \$d, \$h, \$min, \$s, \$tz);
-    $s = sprintf("%.3f", $s) + 0;
-    return wantarray ? ($y, $m, $d, $h, $min, $s, $tz) : [$y, $m, $d, $h, $min, $s, $tz];
-}
-
-sub SetFieldInteger {
-    my ($self, $i, $value) = @_;
-    $i //= 0;
-    $value //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldInteger($$self, $i, $value);
-}
-
-sub SetFieldInteger64 {
-    my ($self, $i, $value) = @_;
-    $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldInteger64($$self, $i, $value);
-}
-
-sub SetFieldDouble {
-    my ($self, $i, $value) = @_;
-    $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldDouble($$self, $i, $value);
-}
-
-sub SetFieldString {
-    my ($self, $i, $value) = @_;
-    $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldString($$self, $i, $value);
-}
-
-sub SetFieldIntegerList {
-    my ($self, $i, $list) = @_;
-    $list //= [];
-    $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldIntegerList($$self, $i, scalar @$list, $list);
-}
-
-sub SetFieldInteger64List {
-    my ($self, $i, $list) = @_;
-    $list //= [];
-    $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldInteger64List($$self, $i, scalar @$list, $list);
-}
-
-sub SetFieldDoubleList {
-    my ($self, $i, $list) = @_;
-    $list //= [];
-    $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldDoubleList($$self, $i, scalar @$list, $list);
-}
-
-sub SetFieldStringList {
-    my ($self, $i, $list) = @_;
-    $list //= [];
-    $i //= 0;
-    my $csl = 0;
-    for my $s (@$list) {
-        $csl = Geo::GDAL::FFI::CSLAddString($csl, $s);
-    }
-    Geo::GDAL::FFI::OGR_F_SetFieldStringList($$self, $i, $csl);
-    Geo::GDAL::FFI::CSLDestroy($csl);
-}
-
-sub SetFieldDateTime {
-    my ($self, $i, $value) = @_;
-    $i //= 0;
-    Geo::GDAL::FFI::OGR_F_SetFieldDateTime($$self, $i, $value);
-}
-
-sub SetFieldDateTimeEx {
-    my ($self, $i, $dt) = @_;
-    $dt //= [];
-    $i //= 0;
-    my @dt = @$dt;
-    $dt[0] //= 2000; # year
-    $dt[0] //= 1; # month 1-12
-    $dt[0] //= 1; # day 1-31
-    $dt[0] //= 0; # hour 0-23
-    $dt[0] //= 0; # minute 0-59
-    $dt[0] //= 0.0; # second with millisecond accuracy
-    $dt[0] //= 100; # TZ
-    Geo::GDAL::FFI::OGR_F_SetFieldDateTimeEx($$self, $i, @dt);
-}
-
-sub GetGeomFieldCount {
-    my ($self) = @_;
-    return Geo::GDAL::FFI::OGR_F_GetGeomFieldCount($$self);
-}
-
-sub GetGeomFieldIndex {
-    my ($self, $fname) = @_;
-    return 0 unless defined $fname;
-    return Geo::GDAL::FFI::OGR_F_GetGeomFieldIndex($$self, $fname);
-}
-
-sub GetGeomFieldDefn {
-    my ($self, $i) = @_;
-    $i //= 0;
-}
-
 sub GetGeomField {
-    my ($self, $fname) = @_;
-    $fname //= 0;
-    my $i = Geo::GDAL::FFI::isint($fname) ? $fname : $self->GetGeomFieldIndex($fname);
+    my ($self, $i) = @_;
+    $i //= 0;
+    $i = Geo::GDAL::FFI::OGR_F_GetGeomFieldIndex($$self, $i) unless Geo::GDAL::FFI::isint($i);
     my $g = Geo::GDAL::FFI::OGR_F_GetGeomFieldRef($$self, $i);
     confess "No such field: $i" unless $g;
     ++$immutable{$g};
     #say STDERR "$g immutable";
     return bless \$g, 'Geo::GDAL::FFI::Geometry';
 }
-*GetGeometry = *GetGeomField;
 
 sub SetGeomField {
     my $self = shift;
     my $g = pop;
-    my $fname = shift;
-    $fname //= 0;
-    my $i = Geo::GDAL::FFI::isint($fname) ? $fname : $self->GetGeomFieldIndex($fname);
+    my $i = shift;
+    $i //= 0;
+    $i = Geo::GDAL::FFI::OGR_F_GetGeomFieldIndex($$self, $i) unless Geo::GDAL::FFI::isint($i);
     if (ref $g eq 'ARRAY') {
         $g = Geo::GDAL::FFI::Geometry->new(@$g);
     }
@@ -2871,7 +2635,6 @@ sub SetGeomField {
     #say STDERR "$$g immutable";
     Geo::GDAL::FFI::OGR_F_SetGeomFieldDirectly($$self, $i, $$g);
 }
-*SetGeometry = *SetGeomField;
 
 package Geo::GDAL::FFI::Geometry;
 use v5.10;
@@ -2882,6 +2645,7 @@ use Carp;
 sub new {
     my $class = shift;
     my $g = 0;
+    confess "Must give either geometry type or format => data." unless @_;
     if (@_ == 1) {
         my $type = shift // '';
         my $tmp = $geometry_types{$type};
@@ -2917,7 +2681,7 @@ sub DESTROY {
     }
 }
 
-sub Type {
+sub GetType {
     my ($self, $mode) = @_;
     $mode //= '';
     my $t = Geo::GDAL::FFI::OGR_G_GetGeometryType($$self);
@@ -2930,7 +2694,6 @@ sub GetPointCount {
     my ($self) = @_;
     return Geo::GDAL::FFI::OGR_G_GetPointCount($$self);
 }
-*PointCount = *GetPointCount;
 
 sub SetPoint {
     my $self = shift;
@@ -2974,11 +2737,10 @@ sub GetPoint {
     return wantarray ? @point : \@point;
 }
 
-sub GetCount {
+sub GetGeometryCount {
     my ($self) = @_;
     return Geo::GDAL::FFI::OGR_G_GetGeometryCount($$self);
 }
-*GeometryCount = *GetCount;
 
 sub GetGeometry {
     my ($self, $i) = @_;
@@ -3006,29 +2768,146 @@ sub RemoveGeometry {
     confess $msg;
 }
 
-sub ImportFromWkt {
-    my ($self, $wkt) = @_;
-    confess "Can't modify an immutable object." if $immutable{$$self};
-    $wkt //= '';
-    Geo::GDAL::FFI::OGR_G_ImportFromWkt($$self, \$wkt);
-    return $wkt;
-}
-
-sub ExportToWkt {
-    my ($self) = @_;
-    my $wkt = '';
-    Geo::GDAL::FFI::OGR_G_ExportToWkt($$self, \$wkt);
-    return $wkt;
-}
-
-sub ExportToIsoWkt {
+sub ExportToWKT {
     my ($self) = @_;
     my $wkt = '';
     Geo::GDAL::FFI::OGR_G_ExportToIsoWkt($$self, \$wkt);
     return $wkt;
 }
-*AsWKT = *ExportToIsoWkt;
-*AsText = *ExportToIsoWkt;
+*AsText = *ExportToWKT;
+
+sub Intersects {
+    my ($self, $geom) = @_;
+    return Geo::GDAL::FFI::OGR_G_Intersects($$self, $$geom);
+}
+
+sub Equals {
+    my ($self, $geom) = @_;
+    return Geo::GDAL::FFI::OGR_G_Equals($$self, $$geom);
+}
+
+sub Disjoint {
+    my ($self, $geom) = @_;
+    return Geo::GDAL::FFI::OGR_G_Disjoint($$self, $$geom);
+}
+
+sub Touches {
+    my ($self, $geom) = @_;
+    return Geo::GDAL::FFI::OGR_G_Touches($$self, $$geom);
+}
+
+sub Crosses {
+    my ($self, $geom) = @_;
+    return Geo::GDAL::FFI::OGR_G_Crosses($$self, $$geom);
+}
+
+sub Within {
+    my ($self, $geom) = @_;
+    return Geo::GDAL::FFI::OGR_G_Within($$self, $$geom);
+}
+
+sub Contains {
+    my ($self, $geom) = @_;
+    return Geo::GDAL::FFI::OGR_G_Contains($$self, $$geom);
+}
+
+sub Overlaps {
+    my ($self, $geom) = @_;
+    return Geo::GDAL::FFI::OGR_G_Overlaps($$self, $$geom);
+}
+
+sub Boundary {
+    my ($self) = @_;
+    return bless \Geo::GDAL::FFI::OGR_G_Boundary($$self), 'Geo::GDAL::FFI::Geometry';
+}
+
+sub ConvexHull {
+    my ($self) = @_;
+    return bless \Geo::GDAL::FFI::OGR_G_ConvexHull($$self), 'Geo::GDAL::FFI::Geometry';
+}
+
+sub Buffer {
+    my ($self, $dist, $quad_segs) = @_;
+    return bless \Geo::GDAL::FFI::OGR_G_Buffer($$self, $dist, $quad_segs), 'Geo::GDAL::FFI::Geometry';
+}
+
+sub Intersection {
+    my ($self, $geom) = @_;
+    return bless \Geo::GDAL::FFI::OGR_G_Intersection($$self, $$geom), 'Geo::GDAL::FFI::Geometry';
+}
+
+sub Union {
+    my ($self, $geom) = @_;
+    return bless \Geo::GDAL::FFI::OGR_G_Union($$self, $$geom), 'Geo::GDAL::FFI::Geometry';
+}
+
+sub Difference {
+    my ($self, $geom) = @_;
+    return bless \Geo::GDAL::FFI::OGR_G_Difference($$self, $$geom), 'Geo::GDAL::FFI::Geometry';
+}
+
+sub SymDifference {
+    my ($self, $geom) = @_;
+    return bless \Geo::GDAL::FFI::OGR_G_SymDifference($$self, $$geom), 'Geo::GDAL::FFI::Geometry';
+}
+
+sub Distance {
+    my ($self, $geom) = @_;
+    return Geo::GDAL::FFI::OGR_G_Distance($$self, $$geom);
+}
+
+sub Distance3D {
+    my ($self, $geom) = @_;
+    return Geo::GDAL::FFI::OGR_G_Distance3D($$self, $$geom);
+}
+
+sub Length {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_G_Length($$self);
+}
+
+sub Area {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_G_Area($$self);
+}
+
+sub Centroid {
+    my ($self) = @_;
+    my $centroid = Geo::GDAL::FFI::Geometry->new('Point');
+    Geo::GDAL::FFI::OGR_G_Centroid($$self, $$centroid);
+    if (@Geo::GDAL::FFI::errors) {
+        my $msg = join("\n", @Geo::GDAL::FFI::errors);
+        @Geo::GDAL::FFI::errors = ();
+        confess $msg;
+    }
+    return $centroid;
+}
+
+sub Empty {
+    my ($self) = @_;
+    Geo::GDAL::FFI::OGR_G_Empty($$self);
+}
+
+sub IsEmpty {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_G_IsEmpty($$self);
+}
+
+sub IsValid {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_G_IsValid($$self);
+}
+
+sub IsSimple {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_G_IsSimple($$self);
+}
+
+sub IsRing {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::OGR_G_IsRing($$self);
+}
+
 
 1;
 
@@ -3044,7 +2923,38 @@ Geo::GDAL::FFI - A foreign function interface to GDAL
 
     use Geo::GDAL::FFI;
     my $gdal = Geo::GDAL::FFI->new();
-    my $ds = $gdal->OpenEx('shapefile.shp');
+
+    my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
+    my $layer = $gdal
+        ->GetDriver('ESRI Shapefile')
+        ->Create('test.shp')
+        ->CreateLayer({
+            Name => 'test',
+            SpatialReference => $sr,
+            GeometryType => 'Point',
+            Fields => [
+            {
+                Name => 'name',
+                Type => 'String'
+            }
+            ]
+        });
+    my $f = Geo::GDAL::FFI::Feature->new($layer->Defn);
+    $f->SetField(name => 'a');
+    my $g = Geo::GDAL::FFI::Geometry->new('Point');
+    $g->SetPoint(1, 2);
+    $f->SetGeomField($g);
+    $layer->CreateFeature($f);
+
+    undef $layer; # this flushes and closes the shapefile files
+
+    $layer = $gdal->Open('test.shp')->GetLayer;
+    $layer->ResetReading;
+    while (my $feature = $layer->GetNextFeature) {
+        my $value = $feature->GetField('name');
+        my $geom = $feature->GetGeomField;
+        say $value, ' ', $geom->AsText;
+    }
 
 =head1 DESCRIPTION
 
@@ -3056,50 +2966,89 @@ access library.
 '$named_arguments' below means a reference to a hash whose keys are
 argument names.
 
+The progress function parameter used in many methods should be a
+reference to a subroutine. The subroutine is called with three
+parameters ($fraction, $msg, $data), where $fraction is a number, $msg
+is a string, and $data is a pointer that is given as the progress data
+parameter.
+
 =over 4
 
 =item C<new>
 
 Create a new Geo::GDAL::FFI object.
 
-=item C<capabilities>
+=item C<Capabilities>
 
-Returns the list of capabilities (strings) a Geo::GDAL::FFI::Object can have.
+Returns the list of capabilities (strings) an Object can have.
 
-=item C<open_flags>
+=item C<OpenFlags>
 
-=item C<datatypes>
+Returns the list of opening flags to be used in the Open method.
 
-=item C<VersionInfo>
+=item C<DataTypes>
 
-=item C<Drivers>
+Returns the list of raster cell data types to be used in e.g. the
+CreateDataset method of the Driver class.
 
-=item C<Driver($name)>
+=item C<FieldTypes>
 
-=item C<OpenEx($name, $named_arguments)>
+Returns the list of field types.
 
-=item C<Importer($format)>
+=item C<FieldSubtypes>
 
-Return a function for importing a SpatialReference object from a
-format. The format is one of EPSG, EPSGA, Wkt, Proj4, ESRI, PCI, USGS,
-XML, Dict, Panorama, Ozi, MICoordSys, ERM, Url.
+Returns the list of field subtypes.
 
-=item C<Exporter($format)>
+=item C<Justifications>
 
-Return a function for exporting a SpatialReference object to a
-format. The format is one of Wkt, PrettyWkt, Proj4, PCI, USGS, XML,
-Panorama, MICoordSys, ERM.
+Returns the list of field justifications.
 
-=item C<Setter($arg)>
+=item C<ColorInterpretations>
 
-Return a function for setting projection parameters in a
-SpatialReference object. The arg is one of Axes, ACEA, AE, Bonne, CEA,
-CS, EC, Eckert, EckertIV, EckertVI, Equirectangular, Equirectangular2,
-GS, GH, IGH, GEOS, GaussSchreiberTMercator, Gnomonic, HOM, HOMAC,
-HOM2PNO, IWMPolyconic, Krovak, LAEA, LCC, LCC1SP, LCCB, MC, Mercator,
-Mercator2SP, Mollweide, NZMG, OS, Orthographic, Polyconic, PS,
-Robinson, Sinusoidal, Stereographic, SOC, TM, TMVariant, TMG, TMSO,
-TPED, VDG, Wagner, QSC, SCH
+Returns the list of color interpretations.
+
+=item C<GeometryTypes>
+
+Returns the list of geometry types.
+
+=item C<GetVersionInfo>
+
+Returns version information from the underlying GDAL library.
+
+=item C<GetDrivers>
+
+Returns a list of all available driver objects.
+
+=item C<GetDriver($name)>
+
+Returns the specific driver object.
+
+=item C<Open($name, $named_arguments)>
+
+Open a dataset. $name is the name of the dataset. Named arguments are
+the following.
+
+=over 8
+
+=item C<Flags>
+
+Optional, default is a reference to an empty array.
+
+=item C<AllowedDrivers>
+
+Optional, default is all drivers. Use a reference to an array of
+driver names to limit drivers to test.
+
+=item C<SiblingFiles>
+
+Optional, default is to probe the file system. You may use a reference
+to an array of auxiliary file names.
+
+=item C<Options>
+
+Optional, a reference to an array of driver specific open options.
+
+=back
 
 =back
 
@@ -3111,6 +3060,8 @@ and Layer.
 =head2 Methods
 
 =over 4
+
+=item C<GetDescription>
 
 =item C<HasCapability($capability)>
 
@@ -3128,22 +3079,68 @@ and Layer.
 
 =head1 Geo::GDAL::FFI::Driver
 
+A format driver. Use the Driver method of a Geo::GDAL::FFI object to
+obtain one.
+
 =head2 Methods
 
 =over 4
 
-=item C<Name>
+=item C<GetName>
 
-=item C<CreateDataset($named_arguments)>
+Returns the name of the driver.
 
-Named arguments are Name (string, default = ''), Options (hashref,
-default = {}), Source (optional, the dataset to copy), Width and
-Height (optional but required to create a raster dataset), Bands
-(optional, the number of raster bands in the dataset), DataType
-(string, optional, used only when creating a raster dataset, default =
-'Byte'), Progress and ProgressData (optional, used only when copying a
-dataset), Strict (optional, default is false (0), used only when
-copying a dataset).
+=item C<Create($name, $named_arguments)>
+
+Create a dataset. $name is the name for the dataset to create.
+
+Named arguments are the following.
+
+=over 8
+
+=item C<Width>
+
+Optional, but required to create a raster dataset.
+
+=item C<Height>
+
+Optional, default is the same as width.
+
+=item C<Bands>
+
+Optional, the number of raster bands in the dataset, default is one.
+
+=item C<DataType>
+
+Optional, the data type (string) for the raster cells, default is
+'Byte'.
+
+=item C<Source>
+
+Optional, the dataset to copy.
+
+=item C<Progress>
+
+Optional, used only in dataset copy, a reference to a subroutine.
+
+=item C<ProgressData>
+
+Optional, used only in dataset copy, a reference.
+
+=item C<Strict>
+
+Optional, used only in dataset copy, default is false (0).
+
+=item C<Options>
+
+Optional, driver specific creation options, default is reference to an
+empty hash.
+
+=back
+
+=item C<Create($name, $width, $height)>
+
+A simple syntax for calling Create to create a raster dataset.
 
 =back
 
@@ -3153,80 +3150,114 @@ copying a dataset).
 
 =over 4
 
-=item C<new($arg, @arg)>
+=item C<new($arg, @args)>
 
 Create a new SpatialReference object. If only one argument is given,
-it is taken as WKT of a SRS. If there are more than one argument, the
-first argument is taken as a format importer and the rest of the
-arguments are taken as arguments to the importer. Importers are functions
-that are created with the Importer method of Geo::GDAL::FFI object.
+it is taken as the well known text (WKT) associated with the spatial
+reference system (SRS). If there are more than one argument, the first
+argument is taken as a format and the rest of the arguments are taken
+as arguments to the format. The list of formats known to GDAL (at the
+time of this writing) is EPSG, EPSGA, Wkt, Proj4, ESRI, PCI, USGS,
+XML, Dict, Panorama, Ozi, MICoordSys, ERM, Url.
 
-=item C<Export($exporter, @arg)>
+=item C<Export($format, @args)>
 
-=item C<Set($setter, @arg)>
+Export a SpatialReference object to a format. The list of formats
+known to GDAL (at the time of this writing) is Wkt, PrettyWkt, Proj4,
+PCI, USGS, XML, Panorama, MICoordSys, ERM.
+
+=item C<Set($setter, @args)>
+
+Set projection parameters in a SpatialReference object. The list of
+projection parameters known to GDAL (at the time of this writing) is
+Axes, ACEA, AE, Bonne, CEA, CS, EC, Eckert, EckertIV, EckertVI,
+Equirectangular, Equirectangular2, GS, GH, IGH, GEOS,
+GaussSchreiberTMercator, Gnomonic, HOM, HOMAC, HOM2PNO, IWMPolyconic,
+Krovak, LAEA, LCC, LCC1SP, LCCB, MC, Mercator, Mercator2SP, Mollweide,
+NZMG, OS, Orthographic, Polyconic, PS, Robinson, Sinusoidal,
+Stereographic, SOC, TM, TMVariant, TMG, TMSO, TPED, VDG, Wagner, QSC,
+SCH
 
 =back
 
 =head1 Geo::GDAL::FFI::Dataset
 
+Obtain a dataset object by opening it with the Open method of
+Geo::GDAL::FFI object or by creating it with the Create method of
+a Driver object.
+
 =head2 Methods
 
 =over 4
 
-=item C<Driver>
+=item C<GetDriver>
 
-=item C<Info(@options)>
+=item C<GetInfo(@options)>
 
-=item C<Translate(@options)>
+=item C<Translate($name, @options)>
 
-=item C<Size>
+Convert a raster dataset into another raster dataset. $name is the
+name of the target dataset. This is the same as the gdal_translate
+command line program, so the options are the same. See
+L<http://www.gdal.org/gdal_translate.html>.
 
-=item C<>
+=item C<GetWidth>
+=item C<GetHeight>
+=item C<GetSize>
 
-=item C<>
+Returns the size (width, height) of the bands of this raster dataset.
 
-=item C<>
+=item C<GetBand>
+=item C<GetBands>
 
-=item C<>
-
-=item C<Bands>
-
-Returns a list of band objects.
+Returns a list of Band objects representing the bands of this raster
+dataset.
 
 =item C<CreateLayer($named_arguments)>
 
-Create a new vector layer into this dataset.
+Create a new vector layer into this vector dataset.
 
-Named arguments are 
+Named arguments are the following.
 
 =over 8
 
-=item C<Name> (string, optional, default is ''),
+=item C<Name>
 
-=item C<GeometryType> (optional, default is 'Unknown', the type of the
-first geometry field; note: if 'None', the layer schema does not
-initially contain any geometry fields),
+Optional, string, default is ''.
 
-=item C<SpatialReference> (a SpatialReference object, optional, the
-spatial reference for the first geometry field),
+=item C<GeometryType>
 
-=item C<Options> (optional, driver specific options in an anonymous
-hash),
+Optional, default is 'Unknown', the type of the first geometry field;
+note: if type is 'None', the layer schema does not initially contain
+any geometry fields.
 
-=item C<Fields> (optional, a reference to an array of Field objects or
-schemas, the fields to create into the layer),
+=item C<SpatialReference>
 
-=item C<GeometryFields> (optional, a reference to an array of
-GeometryField objects or schemas, the geometry fields to create into
-the layer; note that if this argument is defined then the arguments
-GeometryType and SpatialReference are ignored).
+Optional, a SpatialReference object, the spatial reference for the
+first geometry field.
+
+=item C<Options>
+
+Optional, driver specific options in an anonymous hash.
+
+=item C<Fields>
+
+Optional, a reference to an array of Field objects or schemas, the
+fields to create into the layer.
+
+=item C<GeometryFields>
+
+Optional, a reference to an array of GeometryField objects or schemas,
+the geometry fields to create into the layer; note that if this
+argument is defined then the arguments GeometryType and
+SpatialReference are ignored.
 
 =back
 
-=item C<GetLayer($n)>
+=item C<GetLayer($name)>
 
-If $n is strictly an integer, then returns the (n-1)th layer in the
-dataset, otherwise returns the layer whose name is $n. Without
+If $name is strictly an integer, then returns the (name-1)th layer in
+the dataset, otherwise returns the layer whose name is $name. Without
 arguments returns the first layer.
 
 =item C<CopyLayer($layer, $name, $options)>
@@ -3235,15 +3266,18 @@ arguments returns the first layer.
 
 =head1 Geo::GDAL::FFI::Band
 
+A band (channel) in a raster dataset. Use the Band method of a dataset
+object to obtain a band object.
+
 =head2 Methods
 
 =over 4
 
-=item C<DataType>
+=item C<GetDataType>
 
-=item C<Size>
+=item C<GetSize>
 
-=item C<BlockSize>
+=item C<GetBlockSize>
 
 =item C<GetNoDataValue>
 
@@ -3265,19 +3299,29 @@ arguments returns the first layer.
 
 =item C<SetColorTable>
 
-=item C<Piddle>
+=item C<SetPiddle($pdl, $xoff, $yoff, $xsize, $ysize)>
+
+Read data from a piddle into this Band.
+
+=item C<GetPiddle($xoff, $yoff, $xsize, $ysize, $xdim, $ydim)>
+
+Read data from this Band into a piddle.
 
 =back
 
 =head1 Geo::GDAL::FFI::Layer
 
+A set of (vector) features having a same schema (the same Defn
+object). Obtain a layer object by the CreateLayer or GetLayer method
+of a vector dataset object.
+
 =head2 Methods
 
 =over 4
 
-=item C<Defn>
+=item C<GetDefn>
 
-Get the FeatureDefn object for this layer.
+Returns the FeatureDefn object for this layer.
 
 =item C<ResetReading>
 
@@ -3307,36 +3351,47 @@ The named arguments (optional) are the following.
 
 =over 8
 
-=item C<Name> Optional; the name for this feature class; default is
-the empty string.
+=item C<GetName>
 
-=item C<Fields> Optional, a reference to an array of FieldDefn objects
-or schemas.
+Optional; the name for this feature class; default is the empty
+string.
 
-=item C<GeometryFields> Optional, a reference to an array of GeomFieldDefn
-objects or schemas.
+=item C<Fields>
 
-=item C<GeometryType> Optional, the type for the first geometry field;
-default is Unknown. Note that this argument is ignored if GeometryFields
-is given.
+Optional, a reference to an array of FieldDefn objects or schemas.
+
+=item C<GeometryFields>
+
+Optional, a reference to an array of GeomFieldDefn objects or schemas.
+
+=item C<GeometryType>
+
+Optional, the type for the first geometry field; default is
+Unknown. Note that this argument is ignored if GeometryFields is
+given.
 
 =item C<StyleIgnored>
 
 =back
 
-=item C<schema>
+=item C<GetSchema>
 
-Return the object as a perl data structure.
+Returns the definition as a perl data structure.
 
-=item C<GetField($name)>
+=item C<GetFieldDefn($name)>
 
-Get the specified non spatial field. If the argument is explicitly an
-integer and not a string, it is taken as the field index.
+Get the specified non spatial field object. If the argument is
+explicitly an integer and not a string, it is taken as the field
+index.
 
-=item C<GetGeomField($name)>
+=item C<GetFieldDefns>
 
-Get the specified spatial field. If the argument is explicitly an
-integer and not a string, it is taken as the field index.
+=item C<GetGeomFieldDefn($name)>
+
+Get the specified spatial field object. If the argument is explicitly
+an integer and not a string, it is taken as the field index.
+
+=item C<GetGeomFieldDefns>
 
 =item C<SetGeometryIgnored($arg)>
 
@@ -3352,6 +3407,11 @@ layer.
 =back
 
 =head1 Geo::GDAL::FFI::FieldDefn
+
+There should not usually be any reason to directly access this method
+except for the ignore methods. This object is created/read from/to the
+Perl data structure in the CreateLayer method of a dataset, or in the
+constructor or schema method of FeatureDefn.
 
 =head2 Schema
 
@@ -3374,6 +3434,11 @@ Is this field ignored when reading features from a layer.
 =back
 
 =head1 Geo::GDAL::FFI::GeomFieldDefn
+
+There should not usually be any reason to directly access this method
+except for the ignore methods. This object is created/read from/to the
+Perl data structure in the CreateLayer method of a dataset, or in the
+constructor or schema method of FeatureDefn.
 
 =head2 Schema
 
@@ -3408,9 +3473,9 @@ which you can get from a Layer object (Defn method), another Feature
 object (Defn method), or by explicitly creating a new FeatureDefn
 object.
 
-=item C<Defn>
+=item C<GetDefn>
 
-Return the FeatureDefn object for this Feature.
+Returns the FeatureDefn object for this Feature.
 
 =item C<GetFID>
 
@@ -3418,19 +3483,24 @@ Return the FeatureDefn object for this Feature.
 
 =item C<Clone>
 
-=item C<Equal>
+=item C<Equals($feature)>
 
-=item C<SetField($fname, $value)>
+=item C<SetField($fname, ...)>
+
+Set the value of field $fname. If no parameters after the name is
+given, the field is unset. If the parameters after the name is
+undefined, sets the field to NULL. Otherwise sets the field according
+to the field type.
 
 =item C<GetField($fname)>
 
 =item C<SetGeomField($fname, $geom)>
 
-$fname is optional and by default zero.
+$fname is optional and by default the first geometry field.
 
 =item C<GetGeomField($fname)>
 
-$fname is optional and by default zero.
+$fname is optional and by default the first geometry field.
 
 =back
 
@@ -3442,17 +3512,17 @@ $fname is optional and by default zero.
 
 =item C<new($type)>
 
-$type must be one of Geo::GDAL::FFI::geometry_types().
+$type must be one of Geo::GDAL::FFI::GeometryTypes().
 
 =item C<new($format, $arg, $sr)>
 
-$format must be one of Geo::GDAL::FFI::geometry_formats().
+$format must be one of Geo::GDAL::FFI::GeometryFormats(), e.g., 'WKT'.
 
-$sr should be SpatialRef object if given.
+$sr should be a SpatialRef object if given.
 
-=item C<Type>
+=item C<GetType>
 
-=item C<PointCount>
+=item C<GetPointCount>
 
 =item C<SetPoint($i, $x, $y, $z, $m)>
 
@@ -3462,7 +3532,7 @@ $point is [$x, $y, $z, $m]
 
 =item C<GetPoint($i)>
 
-=item C<GeometryCount>
+=item C<GetGeometryCount>
 
 =item C<GetGeometry>
 
@@ -3471,6 +3541,56 @@ $point is [$x, $y, $z, $m]
 =item C<RemoveGeometry($i)>
 
 =item C<AsText>
+
+=item C<Intersects>
+
+=item C<Equals>
+
+=item C<Disjoint>
+
+=item C<Touches>
+
+=item C<Crosses>
+
+=item C<Within>
+
+=item C<Contains>
+
+=item C<Overlaps>
+
+=item C<Boundary>
+
+=item C<ConvexHull>
+
+=item C<Buffer>
+
+=item C<Intersection>
+
+=item C<Union>
+
+=item C<Difference>
+
+=item C<SymDifference>
+
+=item C<Distance>
+
+=item C<Distance3D>
+
+=item C<Length>
+
+=item C<Area>
+
+=item C<Centroid>
+
+=item C<Empty>
+
+=item C<IsEmpty>
+
+=item C<IsValid>
+
+=item C<IsSimple>
+
+=item C<IsRing>
 
 =back
 
@@ -3485,7 +3605,7 @@ Ari Jolma - Ari.Jolma at gmail.com
 
 =head1 SEE ALSO
 
-L<Alien::gdal>, L<FFI::Platypus>
+L<Alien::gdal>, L<FFI::Platypus>, L<www.gdal.org>
 
 =cut
 

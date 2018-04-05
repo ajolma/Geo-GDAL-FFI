@@ -12,24 +12,23 @@ use FFI::Platypus::Buffer;
 my $gdal = Geo::GDAL::FFI->new();
 
 {
-    my $geometry = Geo::GDAL::FFI::Geometry->new('Point');
-    $geometry->ImportFromWkt('POINT(1 1)');
-    ok($geometry->Type eq 'Point', "Create Point.");
-    ok($geometry->AsWKT eq 'POINT (1 1)', "Import and export WKT");
-}
-
-{
     my $geometry = Geo::GDAL::FFI::Geometry->new(WKT => 'POINT(1 1)');
-    ok($geometry->Type eq 'Point', "Create Point from WKT (1).");
-    ok($geometry->AsWKT eq 'POINT (1 1)', "Create point from WKT (2).");
+    ok($geometry->GetType eq 'Point', "Create Point from WKT (1).");
+    ok($geometry->AsText eq 'POINT (1 1)', "Create point from WKT (2).");
 }
 
 {
     my $geometry = Geo::GDAL::FFI::Geometry->new(WKT => 'POINTM(1 2 3)');
-    my $type = $geometry->Type;
+    my $type = $geometry->GetType;
     ok($type eq 'PointM', "Create PointM from WKT: $type");
-    my $wkt = $geometry->AsWKT;
+    my $wkt = $geometry->AsText;
     ok($wkt eq 'POINT M (1 2 3)', "Create point from WKT: $wkt");
+}
+
+{
+    my $geometry = Geo::GDAL::FFI::Geometry->new(WKT => 'POINT(1 1)');
+    my $c = $geometry->Centroid;
+    ok($geometry->AsText eq 'POINT (1 1)', "Centroid.");
 }
 
 done_testing();
