@@ -19,6 +19,18 @@ use constant Warning => 2;
 use constant Failure => 3;
 use constant Fatal => 4;
 
+our %ogr_errors = (
+    1 => 'NOT_ENOUGH_DATA',
+    2 => 'NOT_ENOUGH_MEMORY',
+    3 => 'UNSUPPORTED_GEOMETRY_TYPE',
+    4 => 'UNSUPPORTED_OPERATION',
+    5 => 'CORRUPT_DATA',
+    6 => 'FAILURE',
+    7 => 'UNSUPPORTED_SRS',
+    8 => 'INVALID_HANDLE',
+    9 => 'NON_EXISTING_FEATURE',
+    );
+
 use constant Read => 0;
 use constant Write => 1;
 
@@ -2642,6 +2654,8 @@ use strict;
 use warnings;
 use Carp;
 
+my %ref;
+
 sub new {
     my $class = shift;
     my $g = 0;
@@ -2664,6 +2678,12 @@ sub new {
         $sr = $$sr if $sr;
         if ($format eq 'WKT') {
             my $e = Geo::GDAL::FFI::OGR_G_CreateFromWkt(\$string, $sr, \$g);
+            if ($e) {
+                confess $ogr_errors{$e} unless @errors;
+                my $msg = join("\n", @errors);
+                @errors = ();
+                confess $msg;
+            }
         }
     }
     return bless \$g, $class;
@@ -2671,6 +2691,11 @@ sub new {
 
 sub DESTROY {
     my ($self) = @_;
+    delete $parent{$$self};
+    if ($ref{$$self}) {
+        delete $ref{$$self};
+        return;
+    }
     if ($immutable{$$self}) {
         #say STDERR "forget $$self $immutable{$$self}";
         $immutable{$$self}--;
@@ -2679,6 +2704,12 @@ sub DESTROY {
         #say STDERR "destroy $$self";
         Geo::GDAL::FFI::OGR_G_DestroyGeometry($$self);
     }
+}
+
+sub Clone {
+    my ($self) = @_;
+    my $g = Geo::GDAL::FFI::OGR_G_Clone($$self);
+    return bless \$g, 'Geo::GDAL::FFI::Geometry';
 }
 
 sub GetType {
@@ -2698,19 +2729,24 @@ sub GetPointCount {
 sub SetPoint {
     my $self = shift;
     confess "Can't modify an immutable object." if $immutable{$$self};
-    my ($i, $x, $y, $z, $m);
-    $i = shift if
-        Geo::GDAL::FFI::OGR_GT_Flatten(
-            Geo::GDAL::FFI::OGR_G_GetGeometryType($$self)) != 1; # a point
-    if (@_ > 1) {
-        ($x, $y, $z, $m) = @_;
-    } elsif (@_) {
-        ($x, $y, $z, $m) = @{$_[0]};
+    my $i;
+    if (Geo::GDAL::FFI::OGR_G_GetDimension($$self) == 0) {
+        $i = 0;
+    } else {
+        $i = shift;
     }
-    $x //= 0;
-    $y //= 0;
-    my $is3d = Geo::GDAL::FFI::OGR_G_Is3D($$self);
-    my $ism = Geo::GDAL::FFI::OGR_G_IsMeasured($$self);
+    my ($x, $y, $z, $m, $is3d, $ism);
+    confess "SetPoint missing coordinate parameters." unless @_;
+    if (ref $_[0]) {
+        ($x, $y, $z, $m) = @{$_[0]};
+        $is3d = $_[1] // Geo::GDAL::FFI::OGR_G_Is3D($$self);
+        $ism = $_[2] // Geo::GDAL::FFI::OGR_G_IsMeasured($$self);
+    } else {
+        confess "SetPoint missing coordinate parameters." unless @_ > 1;
+        ($x, $y, $z, $m) = @_;
+        $is3d = Geo::GDAL::FFI::OGR_G_Is3D($$self);
+        $ism = Geo::GDAL::FFI::OGR_G_IsMeasured($$self);
+    }
     if ($is3d && $ism) {
         $z //= 0;
         $m //= 0;
@@ -2727,14 +2763,59 @@ sub SetPoint {
 }
 
 sub GetPoint {
-    my ($self, $i) = @_;
+    my ($self, $i, $is3d, $ism) = @_;
     $i //= 0;
+    $is3d //= Geo::GDAL::FFI::OGR_G_Is3D($$self);
+    $ism //= Geo::GDAL::FFI::OGR_G_IsMeasured($$self);
     my ($x, $y, $z, $m) = (0, 0, 0, 0);
     Geo::GDAL::FFI::OGR_G_GetPointZM($$self, $i, \$x, \$y, \$z, \$m);
     my @point = ($x, $y);
-    push @point, $z if Geo::GDAL::FFI::OGR_G_Is3D($$self);
-    push @point, $m if Geo::GDAL::FFI::OGR_G_IsMeasured($$self);
+    push @point, $z if $is3d;
+    push @point, $m if $ism;
     return wantarray ? @point : \@point;
+}
+
+sub GetPoints {
+    my ($self, $is3d, $ism) = @_;
+    $is3d //= Geo::GDAL::FFI::OGR_G_Is3D($$self);
+    $ism //= Geo::GDAL::FFI::OGR_G_IsMeasured($$self);
+    my $points = [];
+    my $n = $self->GetGeometryCount;
+    if ($n == 0) {
+        $n = $self->GetPointCount;
+        return scalar $self->GetPoint(0, $is3d, $ism) if $n == 0;
+        for my $i (0..$n-1) {
+            my $p = $self->GetPoint($i, $is3d, $ism);
+            push @$points, $p;
+        }
+        return $points;
+    }
+    for my $i (0..$n-1) {
+        push @$points, $self->GetGeometry($i)->GetPoints($is3d, $ism);
+    }
+    return $points;
+}
+
+sub SetPoints {
+    my ($self, $points, $is3d, $ism) = @_;
+    confess "SetPoints must be called with an arrayref." unless ref $points;
+    $is3d //= Geo::GDAL::FFI::OGR_G_Is3D($$self);
+    $ism //= Geo::GDAL::FFI::OGR_G_IsMeasured($$self);
+    my $n = $self->GetGeometryCount;
+    if ($n == 0) {
+        unless (ref $points->[0]) {
+            $self->SetPoint($points, $is3d, $ism);
+            return;
+        }
+        $n = @$points;
+        for my $i (0..$n-1) {
+            $self->SetPoint($i, $points->[$i], $is3d, $ism);
+        }
+        return;
+    }
+    for my $i (0..$n-1) {
+        $self->GetGeometry($i)->SetPoints($points->[$i], $is3d, $ism);
+    }
 }
 
 sub GetGeometryCount {
@@ -2744,14 +2825,16 @@ sub GetGeometryCount {
 
 sub GetGeometry {
     my ($self, $i) = @_;
-    my $g = Geo::GDAL::FFI::OGR_G_Clone(Geo::GDAL::FFI::OGR_G_GetGeometryRef($$self, $i));
+    my $g = Geo::GDAL::FFI::OGR_G_GetGeometryRef($$self, $i);
+    $parent{$g} = $self;
+    $ref{$g} = 1;
     return bless \$g, 'Geo::GDAL::FFI::Geometry';
 }
 
 sub AddGeometry {
     my ($self, $g) = @_;
     confess "Can't modify an immutable object." if $immutable{$$self};
-    my $e = Geo::GDAL::FFI::OGR_G_GetGeometryRef($$self, $$g);
+    my $e = Geo::GDAL::FFI::OGR_G_OGR_G_AddGeometry($$self, $$g);
     return unless $e;
     my $msg = join("\n", @errors);
     @errors = ();
@@ -2761,7 +2844,7 @@ sub AddGeometry {
 sub RemoveGeometry {
     my ($self, $i) = @_;
     confess "Can't modify an immutable object." if $immutable{$$self};
-    my $e = Geo::GDAL::FFI::OGR_G_GetGeometryRef($$self, $i, 1);
+    my $e = Geo::GDAL::FFI::OGR_G_RemoveGeometry($$self, $i, 1);
     return unless $e;
     my $msg = join("\n", @errors);
     @errors = ();
@@ -3520,21 +3603,82 @@ $format must be one of Geo::GDAL::FFI::GeometryFormats(), e.g., 'WKT'.
 
 $sr should be a SpatialRef object if given.
 
-=item C<GetType>
+=item C<Clone>
+
+Clones this geometry and returns the clone.
+
+=item C<GetType($mode)>
+
+Returns the type of this geometry. If $mode is 'flatten', returns the
+type without Z, M, or ZM postfix.
 
 =item C<GetPointCount>
 
+Returns the point count of this geometry.
+
+=item C<SetPoint($x, $y, $z, $m)>
+
+Set the coordinates of a point geometry. The usage of $z and $m in the
+method depend on the actual 3D or measured status of the geometry.
+
+=item C<SetPoint($coords)>
+
+$coords = [$x, $y, $z, $m]
+
+Set the coordinates of a point geometry. The usage of $z and $m in the
+method depend on the actual 3D or measured status of the geometry.
+
 =item C<SetPoint($i, $x, $y, $z, $m)>
 
-=item C<SetPoint($i, $point)>
+Set the coordinates of the ith (zero based index) point in a curve
+geometry. The usage of $z and $m in the method depend on the actual 3D
+or measured status of the geometry.
 
-$point is [$x, $y, $z, $m]
+Note that setting the nth point of a curve may create all points
+0..n-2.
+
+=item C<SetPoint($i, $coords)>
+
+Set the coordinates of the ith (zero based index) point in this
+curve. $coords must be a reference to an array of the coordinates. The
+usage of $z and $m in the method depend on the 3D or measured status
+of the geometry.
+
+Note that setting the nth point of a curve may create all points
+0..n-2.
 
 =item C<GetPoint($i)>
 
+Get the coordinates of the ith (zero based index) point in this
+curve. This method can also be used to set the coordinates of a point
+geometry and then the $i must be zero if it is given.
+
+Returns the coordinates either as a list or a reference to an
+anonymous array depending on the context. The coordinates contain $z
+and $m depending on the 3D or measured status of the geometry.
+
+=item C<GetPoints>
+
+Returns the coordinates of the vertices of this geometry in an obvious
+array based data structure. Note that different geometry types have
+similar data structures.
+
+=item C<SetPoints($points)>
+
+Sets the coordinates of the vertices of this geometry from an obvious
+array based data structure. Note that different geometry types have
+similar data structures. If the geometry contains subgeometries (like
+polygon contains rings for example) the data structure is assumed to
+adhere to this structure. Uses SetPoint and may thus add points to
+curves.
+
 =item C<GetGeometryCount>
 
-=item C<GetGeometry>
+=item C<GetGeometry($i)>
+
+Returns the ith subgeometry (zero based index) in this geometry. The
+returned geometry object is only a wrapper to the underlying C++
+reference and thus changing that geometry will change the parent.
 
 =item C<AddGeometry($geom)>
 

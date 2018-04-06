@@ -26,9 +26,32 @@ my $gdal = Geo::GDAL::FFI->new();
 }
 
 {
+    my $g = Geo::GDAL::FFI::Geometry->new('Point');
+    $g->SetPoint(5, 8);
+    my @p = $g->GetPoint;
+    ok($p[0] == 5, "Set/GetPoint");
+}
+
+{
     my $geometry = Geo::GDAL::FFI::Geometry->new(WKT => 'POINT(1 1)');
     my $c = $geometry->Centroid;
-    ok($geometry->AsText eq 'POINT (1 1)', "Centroid.");
+    ok($geometry->AsText eq 'POINT (1 1)', "Centroid");
+}
+
+{
+    my $g = Geo::GDAL::FFI::Geometry->new(WKT => 'POLYHEDRALSURFACE Z ( '.
+    '((0 0 0, 0 1 0, 1 1 0, 1 0 0, 0 0 0)), '.
+    '((0 0 0, 0 1 0, 0 1 1, 0 0 1, 0 0 0)), '.
+    '((0 0 0, 1 0 0, 1 0 1, 0 0 1, 0 0 0)), '.
+    '((1 1 1, 1 0 1, 0 0 1, 0 1 1, 1 1 1)), '.
+    '((1 1 1, 1 0 1, 1 0 0, 1 1 0, 1 1 1)), '.
+    '((1 1 1, 1 1 0, 0 1 0, 0 1 1, 1 1 1))) ');
+    my $p = $g->GetPoints;
+    ok(@$p == 6, "GetPoints");
+    $p->[0][0][0][0] = 2;
+    $g->SetPoints($p);
+    $p = $g->GetPoints;
+    ok($p->[0][0][0][0] == 2, "SetPoints");
 }
 
 done_testing();
