@@ -3,12 +3,13 @@ abstract: unknown
 author:
   - unknown
 build_requires:
+  Data::Dumper: '0'
   ExtUtils::MakeMaker: '0'
   JSON: '0'
   Test::More: '0'
 configure_requires:
   Alien::gdal: '0'
-dynamic_config: 1
+dynamic_config: 0
 generated_by: 'ExtUtils::MakeMaker version 7.24, CPAN::Meta::Converter version 2.150010'
 license: unknown
 meta-spec:
