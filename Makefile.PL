@@ -17,6 +17,17 @@ WriteMakefile(
     },
     TEST_REQUIRES => {
         'Test::More' => 0,
-        'JSON' => 0
-    }
+        'JSON' => 0,
+        'Data::Dumper' => 0
+    },
+    META_MERGE => {
+        "meta-spec" => { version => 2 },
+        resources => {
+            repository => {
+                type => 'git',
+                url => 'git://github.com/ajolma/Geo-GDAL-FFI.git',
+                web => 'https://github.com/ajolma/Geo-GDAL-FFI',
+            },
+        },
+    },
 );
