@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use Carp;
 
+our $VERSION = 0.02;
+
 sub new {
     my ($class, $args) = @_;
     my $name = $args->{Name} // 'Unnamed';

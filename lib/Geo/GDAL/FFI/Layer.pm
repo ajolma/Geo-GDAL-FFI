@@ -5,6 +5,8 @@ use warnings;
 use Carp;
 use base 'Geo::GDAL::FFI::Object';
 
+our $VERSION = 0.02;
+
 sub DESTROY {
     my $self = shift;
     Geo::GDAL::FFI::OGR_L_SyncToDisk($$self);

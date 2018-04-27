@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use Carp;
 
+our $VERSION = 0.02;
+
 my %ref;
 
 sub new {

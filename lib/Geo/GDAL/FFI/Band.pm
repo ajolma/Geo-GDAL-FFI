@@ -5,6 +5,8 @@ use warnings;
 use Carp;
 use FFI::Platypus::Buffer;
 
+our $VERSION = 0.02;
+
 sub DESTROY {
     my $self = shift;
     delete $Geo::GDAL::FFI::parent{$$self};

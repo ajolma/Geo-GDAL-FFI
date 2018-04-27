@@ -4,6 +4,8 @@ use strict;
 use warnings;
 use Carp;
 
+our $VERSION = 0.02;
+
 sub GetDescription {
     my $self = shift;
     return Geo::GDAL::FFI::GDALGetDescription($$self);

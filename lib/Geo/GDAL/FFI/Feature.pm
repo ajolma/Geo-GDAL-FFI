@@ -6,6 +6,8 @@ use Carp;
 use Encode qw(decode encode);
 use FFI::Platypus::Buffer;
 
+our $VERSION = 0.02;
+
 sub new {
     my ($class, $defn) = @_;
     my $f = Geo::GDAL::FFI::OGR_F_Create($$defn);
