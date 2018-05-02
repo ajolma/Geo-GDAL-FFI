@@ -23,7 +23,7 @@ use Geo::GDAL::FFI::GeomFieldDefn;
 use Geo::GDAL::FFI::Feature;
 use Geo::GDAL::FFI::Geometry;
 
-our $VERSION = 0.02;
+our $VERSION = 0.03;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(@errors);
 
@@ -1273,6 +1273,21 @@ sub get_setter {
     my $setter = $self->can('OSRSet' . $proj);
     confess "Parameter setter for projection '$proj' not found!" unless $setter;
     return $setter;
+}
+
+sub HaveGEOS {
+    my $t = $geometry_types{Point};
+    my $g = OGR_G_CreateGeometry($t);
+    OGR_G_SetPoint($g, 0, 0, 0, 0);
+    my $c = OGR_G_CreateGeometry($t);
+    my $n = @errors;
+    OGR_G_Centroid($g, $c);
+    if (@errors > $n) {
+        pop @errors;
+        return undef;
+    } else {
+        return 1;
+    }
 }
 
 1;
