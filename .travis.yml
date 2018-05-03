@@ -3,9 +3,11 @@ matrix:
   include:
 
   - os: linux
+    sudo: required
     env:
     - BUILD_NAME=with-gdal-dev
   - os: linux
+    sudo: required
     env:
     - BUILD_NAME=without-gdal-dev
 
