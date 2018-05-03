@@ -1,4 +1,4 @@
 #!/bin/sh
 
 sudo apt-get install cpanminus
-cpanm -l local https://github.com/shawnlaffan/perl-alien-gdal/tarball/master
+sudo cpanm --verbose --no-interactive --notest git://github.com/shawnlaffan/perl-alien-gdal
