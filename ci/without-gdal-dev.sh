@@ -2,6 +2,7 @@
 
 sudo apt-get install cpanminus
 sudo cpanm --installdeps --notest git://github.com/shawnlaffan/perl-alien-gdal
+sudo cpanm --notest Alien::Build::MM
 git clone --depth=50 --branch=master https://github.com/shawnlaffan/perl-alien-gdal.git 
 cd perl-alien-gdal
 perl Makefile.PL
