@@ -15,7 +15,7 @@ WriteMakefile(
     },
     PREREQ_PM => {
         'FFI::Platypus' => 0,
-        'Alien::gdal' => 0,
+        'Alien::gdal' => 1.05, # data_dir
         'PDL' => 0
     },
     TEST_REQUIRES => {

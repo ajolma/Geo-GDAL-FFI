@@ -36,6 +36,21 @@ if(1){
     ok(@list == 1 && $list[0] eq 'foo', "list with one string: '@list'");
 }
 
+# test file finder
+if(1){
+    my $path = $gdal->FindFile('gcs.csv');
+    ok(defined $path, "GDAL support files found.");
+
+    $gdal->PopFinderLocation; #FinderClean;
+    my $path2 = $gdal->FindFile('gcs.csv');
+    ok(not(defined $path2), "GDAL support files not found after popping finder.");
+
+    $path =~ s/[\w.]+$//;
+    $gdal->PushFinderLocation($path);
+    $path = $gdal->FindFile('gcs.csv');
+    ok(defined $path, "GDAL support files found when working path inserted.");
+}
+
 # test VersionInfo
 if(1){
     my $info = $gdal->GetVersionInfo;
