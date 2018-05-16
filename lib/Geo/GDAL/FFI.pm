@@ -4,6 +4,7 @@ use v5.10;
 use strict;
 use warnings;
 use Carp;
+use PkgConfig;
 use Alien::gdal;
 use PDL;
 use FFI::Platypus;
@@ -1165,12 +1166,23 @@ eval{$ffi->attach('GDALBuildVRTOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALBuildVRTOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
 eval{$ffi->attach('GDALBuildVRT' => [qw/string int uint64* opaque opaque int*/] => 'opaque');};
 
-    my $dir = Alien::gdal->data_dir;
-    # this gdal.pc bug was fixed in GDAL 2.3.1
-    # we just hope the one configuring GDAL did not change it to something that ends '/data'
-    $dir =~ s/\/data$//;
-    CPLSetConfigOption(GDAL_DATA => $dir);
-    
+    # we do not use Alien::gdal->data_dir since it issues warnings due to GDAL bug
+    my $pc = PkgConfig->find('gdal');
+    if ($pc->errmsg) {
+        my $dir = Alien::gdal->dist_dir;
+        my %options = (search_path_override => [$dir . '/lib/pkgconfig']);
+        $pc = PkgConfig->find('gdal', %options);
+    }
+    if ($pc->errmsg) {
+        warn $pc->errmsg;
+    } else {
+        my $dir = $pc->get_var('datadir');
+        # this gdal.pc bug was fixed in GDAL 2.3.1
+        # we just hope the one configuring GDAL did not change it to something that ends '/data'
+        $dir =~ s/\/data$//;
+        CPLSetConfigOption(GDAL_DATA => $dir);
+    }
+
     my $self = {};
     $self->{ffi} = $ffi;
     $self->{CPLErrorHandler} = $ffi->closure(
