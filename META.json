@@ -3,7 +3,7 @@
    "author" : [
       "Ari Jolma <ari.jolma at gmail.com>"
    ],
-   "dynamic_config" : 1,
+   "dynamic_config" : 0,
    "generated_by" : "ExtUtils::MakeMaker version 7.24, CPAN::Meta::Converter version 2.150010",
    "license" : [
       "artistic_2"
@@ -32,9 +32,10 @@
       },
       "runtime" : {
          "requires" : {
-            "Alien::gdal" : "0",
+            "Alien::gdal" : "1.05",
             "FFI::Platypus" : "0",
-            "PDL" : "0"
+            "PDL" : "0",
+            "PkgConfig" : "0"
          }
       },
       "test" : {
