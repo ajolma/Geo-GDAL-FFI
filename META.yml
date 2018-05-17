@@ -9,7 +9,7 @@ build_requires:
   Test::More: '0'
 configure_requires:
   Alien::gdal: '0'
-dynamic_config: 0
+dynamic_config: 1
 generated_by: 'ExtUtils::MakeMaker version 7.24, CPAN::Meta::Converter version 2.150010'
 license: artistic_2
 meta-spec:
@@ -21,11 +21,11 @@ no_index:
     - t
     - inc
 requires:
-  Alien::gdal: '1.05'
+  Alien::gdal: '0'
   FFI::Platypus: '0'
   PDL: '0'
   PkgConfig: '0'
 resources:
   repository: git://github.com/ajolma/Geo-GDAL-FFI.git
-version: 0.05_01
+version: 0.0501
 x_serialization_backend: 'CPAN::Meta::YAML version 0.018'
