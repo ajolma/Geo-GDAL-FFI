@@ -40,15 +40,21 @@ if(1){
 if(1){
     my $path = $gdal->FindFile('gcs.csv');
     ok(defined $path, "GDAL support files found.");
+    unless (!$path) {
+        say STDERR "FYI: GDAL_DATA = ",$gdal->GetConfigOption(GDAL_DATA => '');
+    }
 
     $gdal->PopFinderLocation; #FinderClean;
     my $path2 = $gdal->FindFile('gcs.csv');
     ok(not(defined $path2), "GDAL support files not found after popping finder.");
 
-    $path =~ s/[\w.]+$//;
-    $gdal->PushFinderLocation($path);
-    $path = $gdal->FindFile('gcs.csv');
-    ok(defined $path, "GDAL support files found when working path inserted.");
+  SKIP: {
+      skip "GDAL support files not found.", 1 if !$path;
+      $path =~ s/[\w.]+$//;
+      $gdal->PushFinderLocation($path);
+      $path = $gdal->FindFile('gcs.csv');
+      ok(defined $path, "GDAL support files found when working path inserted.");
+    }
 }
 
 # test VersionInfo
@@ -182,8 +188,11 @@ if(1){
 if(1){
     my $dr = $gdal->GetDriver('ESRI Shapefile');
     my $ds = $dr->Create('test.shp');
-    my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
-    my $l = $ds->CreateLayer({Name => 'test', SpatialReference => $sr, GeometryType => 'Point'});
+    my @sr = ();
+    if ($gdal->FindFile('gcs.csv')) {
+        @sr = (SpatialReference => Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067));
+    }
+    my $l = $ds->CreateLayer({Name => 'test', GeometryType => 'Point', @sr});
     my $d = $l->GetDefn();
     my $f = Geo::GDAL::FFI::Feature->new($d);
     $l->CreateFeature($f);

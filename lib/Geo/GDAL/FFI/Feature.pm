@@ -6,7 +6,7 @@ use Carp;
 use Encode qw(decode encode);
 use FFI::Platypus::Buffer;
 
-our $VERSION = 0.05;
+our $VERSION = 0.05_01;
 
 sub new {
     my ($class, $defn) = @_;

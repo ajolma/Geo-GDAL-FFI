@@ -16,7 +16,7 @@ WriteMakefile(
     PREREQ_PM => {
         'PkgConfig' => 0,
         'FFI::Platypus' => 0,
-        'Alien::gdal' => 1.05, # data_dir
+        'Alien::gdal' => 0,
         'PDL' => 0
     },
     TEST_REQUIRES => {

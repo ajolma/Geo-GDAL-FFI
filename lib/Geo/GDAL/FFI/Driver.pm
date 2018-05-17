@@ -5,7 +5,7 @@ use warnings;
 use Carp;
 use base 'Geo::GDAL::FFI::Object';
 
-our $VERSION = 0.05;
+our $VERSION = 0.05_01;
 
 sub GetName {
     my $self = shift;
