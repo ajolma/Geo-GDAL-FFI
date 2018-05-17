@@ -40,9 +40,7 @@ if(1){
 if(1){
     my $path = $gdal->FindFile('gcs.csv');
     ok(defined $path, "GDAL support files found.");
-    unless (!$path) {
-        say STDERR "FYI: GDAL_DATA = ",$gdal->GetConfigOption(GDAL_DATA => '');
-    }
+    say STDERR "FYI: GDAL_DATA = ",$gdal->GetConfigOption(GDAL_DATA => '');
 
     $gdal->PopFinderLocation; #FinderClean;
     my $path2 = $gdal->FindFile('gcs.csv');
