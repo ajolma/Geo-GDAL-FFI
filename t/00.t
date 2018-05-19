@@ -1,6 +1,7 @@
 use v5.10;
 use strict;
 use warnings;
+use Config;
 use Carp;
 use Encode qw(decode encode);
 use Geo::GDAL::FFI;
@@ -374,10 +375,13 @@ if(1){
     $x = $f->GetField($n);
     ok($x == 13, "Set/get Integer field: $x");
 
-    $n = 'Integer64';
-    $f->SetField($n, 0x90000001);
-    $x = $f->GetField($n);
-    ok($x == 0x90000001, "Set/get Integer64 field: $x");
+  SKIP: {
+      skip "64 bit integers not supported in this Perl.",1 unless $Config{use64bitint} eq 'define';
+      $n = 'Integer64';
+      $f->SetField($n, 0x90000001);
+      $x = $f->GetField($n);
+      ok($x == 0x90000001, "Set/get Integer64 field: $x");
+    }
     
     $f->SetField(Real => 1.123);
     $x = $f->GetField('Real');
@@ -397,11 +401,14 @@ if(1){
     my @x = $f->GetField('IntegerList');
     is_deeply(\@x, \@s, "Set/get IntegerList field: @x");
 
-    $n = 'Integer64List';
-    @s = (0x90000001, 21, 7, 5);
-    $f->SetField($n, @s);
-    @x = $f->GetField($n);
-    is_deeply(\@x, \@s, "Set/get Integer64List field: @x");
+  SKIP: {
+      skip "64 bit integers not supported in this Perl.",1 unless $Config{use64bitint} eq 'define';
+      $n = 'Integer64List';
+      @s = (0x90000001, 21, 7, 5);
+      $f->SetField($n, @s);
+      @x = $f->GetField($n);
+      is_deeply(\@x, \@s, "Set/get Integer64List field: @x");
+    }
 
     @s = (3, 21.2, 7.4, 5.5);
     $f->SetField(RealList => @s);
@@ -442,8 +449,11 @@ if(1){
 if(1){
     my $dr = $gdal->GetDriver('Memory');
     my $ds = $dr->Create({Name => 'test'});
-    my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
-    my $l = $ds->CreateLayer({Name => 'test', SpatialReference => $sr, GeometryType => 'Point'});
+    my @sr = ();
+    if ($gdal->FindFile('gcs.csv')) {
+        @sr = (SpatialReference => Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067));
+    }
+    my $l = $ds->CreateLayer({Name => 'test', GeometryType => 'Point', @sr});
     $l->CreateField(Geo::GDAL::FFI::FieldDefn->new({Name => 'int', Type => 'Integer'}));
     my $f = Geo::GDAL::FFI::Feature->new($l->GetDefn);
     $f->SetField(int => 5);
