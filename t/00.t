@@ -41,7 +41,20 @@ if(1){
 if(1){
     my $path = $gdal->FindFile('gcs.csv');
     ok(defined $path, "GDAL support files found.");
-    say STDERR "FYI: GDAL_DATA = ",$gdal->GetConfigOption(GDAL_DATA => '');
+
+    my $gdal_data_dir = $gdal->GetConfigOption(GDAL_DATA => '');
+    say STDERR "FYI: GDAL_DATA = $gdal_data_dir";
+    if (!$path) {
+        # what's wrong with GDAL_DATA??
+        if (opendir(my $dh, $gdal_data_dir)) {
+            my @contents = grep { -f "$gdal_data_dir/$_" } readdir($dh);
+            closedir $dh;
+            @contents = sort @contents;
+            say STDERR "Contents of GDAL_DATA: @contents";
+        } else {
+            say STDERR "Can't opendir $gdal_data_dir: $!";
+        }
+    }
 
     $gdal->PopFinderLocation; #FinderClean;
     my $path2 = $gdal->FindFile('gcs.csv');
