@@ -32,6 +32,9 @@ WriteMakefile(
                 url => 'git://github.com/ajolma/Geo-GDAL-FFI.git',
                 web => 'https://github.com/ajolma/Geo-GDAL-FFI',
             },
+            bugtracker => {
+                web => 'https://github.com/ajolma/Geo-GDAL-FFI/issues/',
+            },
         },
     },
 );
