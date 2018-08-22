@@ -1385,7 +1385,7 @@ This is an example of creating a vector dataset.
          }
          ]
      });
- my $f = Geo::GDAL::FFI::Feature->new($layer->Defn);
+ my $f = Geo::GDAL::FFI::Feature->new($layer->GetDefn);
  $f->SetField(name => 'a');
  my $g = Geo::GDAL::FFI::Geometry->new('Point');
  $g->SetPoint(1, 2);
