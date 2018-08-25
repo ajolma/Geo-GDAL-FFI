@@ -332,8 +332,13 @@ sub fake {
     return bless $self, $class;
 }
 
+my $instance = undef;
+
 sub new {
     my $class = shift;
+
+    return $instance if $instance;
+
     my $ffi = FFI::Platypus->new;
     $ffi->load_custom_type('::StringPointer' => 'string_pointer');
     $ffi->lib(Alien::gdal->dynamic_libs);
@@ -366,7 +371,7 @@ sub new {
     # from ogr_core.h
     eval{$ffi->attach( 'OGR_GT_Flatten' => ['unsigned int'] => 'unsigned int');};
 
-# created with parse_h.pl
+# generated with parse_h.pl
 # from /home/ajolma/github/gdal/gdal/gcore/gdal.h
 eval{$ffi->attach('GDALGetDataTypeSize' => ['unsigned int'] => 'int');};
 eval{$ffi->attach('GDALGetDataTypeSizeBits' => ['unsigned int'] => 'int');};
@@ -437,11 +442,11 @@ eval{$ffi->attach('GDALGetRasterYSize' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALGetRasterCount' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALGetRasterBand' => [qw/opaque int/] => 'opaque');};
 eval{$ffi->attach('GDALAddBand' => ['opaque','unsigned int','opaque'] => 'int');};
-eval{$ffi->attach('GDALBeginAsyncReader' => ['opaque','int','int','int','int','opaque','int','int','unsigned int','int','int*','int','int','int','string_pointer'] => 'opaque');};
+eval{$ffi->attach('GDALBeginAsyncReader' => ['opaque','int','int','int','int','opaque','int','int','unsigned int','int','int*','int','int','int','opaque'] => 'opaque');};
 eval{$ffi->attach('GDALEndAsyncReader' => [qw/opaque opaque/] => 'void');};
 eval{$ffi->attach('GDALDatasetRasterIO' => ['opaque','unsigned int','int','int','int','int','opaque','int','int','unsigned int','int','int*','int','int','int'] => 'int');};
 eval{$ffi->attach('GDALDatasetRasterIOEx' => ['opaque','unsigned int','int','int','int','int','opaque','int','int','unsigned int','int','int*','sint64','sint64','sint64','opaque'] => 'int');};
-eval{$ffi->attach('GDALDatasetAdviseRead' => ['opaque','int','int','int','int','int','int','unsigned int','int','int*','string_pointer'] => 'int');};
+eval{$ffi->attach('GDALDatasetAdviseRead' => ['opaque','int','int','int','int','int','int','unsigned int','int','int*','opaque'] => 'int');};
 eval{$ffi->attach('GDALGetProjectionRef' => [qw/opaque/] => 'string');};
 eval{$ffi->attach('GDALSetProjection' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('GDALGetGeoTransform' => [qw/opaque double[6]/] => 'int');};
@@ -459,7 +464,7 @@ eval{$ffi->attach('GDALGetOpenDatasets' => [qw/uint64* int*/] => 'void');};
 eval{$ffi->attach('GDALGetAccess' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALFlushCache' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALCreateDatasetMaskBand' => [qw/opaque int/] => 'int');};
-eval{$ffi->attach('GDALDatasetCopyWholeRaster' => [qw/opaque opaque string_pointer GDALProgressFunc opaque/] => 'int');};
+eval{$ffi->attach('GDALDatasetCopyWholeRaster' => [qw/opaque opaque opaque GDALProgressFunc opaque/] => 'int');};
 eval{$ffi->attach('GDALRasterBandCopyWholeRaster' => [qw/opaque opaque string_pointer GDALProgressFunc opaque/] => 'int');};
 eval{$ffi->attach('GDALRegenerateOverviews' => [qw/opaque int uint64* string GDALProgressFunc opaque/] => 'int');};
 eval{$ffi->attach('GDALDatasetGetLayerCount' => [qw/opaque/] => 'int');};
@@ -482,7 +487,7 @@ eval{$ffi->attach('GDALDatasetRollbackTransaction' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALGetRasterDataType' => [qw/opaque/] => 'unsigned int');};
 eval{$ffi->attach('GDALGetBlockSize' => [qw/opaque int* int*/] => 'void');};
 eval{$ffi->attach('GDALGetActualBlockSize' => [qw/opaque int int int* int*/] => 'int');};
-eval{$ffi->attach('GDALRasterAdviseRead' => ['opaque','int','int','int','int','int','int','unsigned int','string_pointer'] => 'int');};
+eval{$ffi->attach('GDALRasterAdviseRead' => ['opaque','int','int','int','int','int','int','unsigned int','opaque'] => 'int');};
 eval{$ffi->attach('GDALRasterIO' => ['opaque','unsigned int','int','int','int','int','opaque','int','int','unsigned int','int','int'] => 'int');};
 eval{$ffi->attach('GDALRasterIOEx' => ['opaque','unsigned int','int','int','int','int','opaque','int','int','unsigned int','sint64','sint64','opaque'] => 'int');};
 eval{$ffi->attach('GDALReadBlock' => [qw/opaque int int opaque/] => 'int');};
@@ -502,8 +507,8 @@ eval{$ffi->attach('GDALGetOverview' => [qw/opaque int/] => 'opaque');};
 eval{$ffi->attach('GDALGetRasterNoDataValue' => [qw/opaque int*/] => 'double');};
 eval{$ffi->attach('GDALSetRasterNoDataValue' => [qw/opaque double/] => 'int');};
 eval{$ffi->attach('GDALDeleteRasterNoDataValue' => [qw/opaque/] => 'int');};
-eval{$ffi->attach('GDALGetRasterCategoryNames' => [qw/opaque/] => 'string_pointer');};
-eval{$ffi->attach('GDALSetRasterCategoryNames' => [qw/opaque string_pointer/] => 'int');};
+eval{$ffi->attach('GDALGetRasterCategoryNames' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('GDALSetRasterCategoryNames' => [qw/opaque opaque/] => 'int');};
 eval{$ffi->attach('GDALGetRasterMinimum' => [qw/opaque int*/] => 'double');};
 eval{$ffi->attach('GDALGetRasterMaximum' => [qw/opaque int*/] => 'double');};
 eval{$ffi->attach('GDALGetRasterStatistics' => [qw/opaque int int double* double* double* double*/] => 'int');};
@@ -556,7 +561,7 @@ eval{$ffi->attach('GDALPackedDMSToDec' => [qw/double/] => 'double');};
 eval{$ffi->attach('GDALDecToPackedDMS' => [qw/double/] => 'double');};
 eval{$ffi->attach('GDALVersionInfo' => [qw/string/] => 'string');};
 eval{$ffi->attach('GDALCheckVersion' => [qw/int int string/] => 'int');};
-eval{$ffi->attach('GDALExtractRPCInfo' => [qw/string_pointer opaque/] => 'int');};
+eval{$ffi->attach('GDALExtractRPCInfo' => [qw/opaque opaque/] => 'int');};
 eval{$ffi->attach('GDALCreateColorTable' => ['unsigned int'] => 'opaque');};
 eval{$ffi->attach('GDALDestroyColorTable' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALCloneColorTable' => [qw/opaque/] => 'opaque');};
@@ -583,7 +588,7 @@ eval{$ffi->attach('GDALRATSetValueAsDouble' => [qw/opaque int int double/] => 'v
 eval{$ffi->attach('GDALRATChangesAreWrittenToFile' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALRATValuesIOAsDouble' => ['opaque','unsigned int','int','int','int','double*'] => 'int');};
 eval{$ffi->attach('GDALRATValuesIOAsInteger' => ['opaque','unsigned int','int','int','int','int*'] => 'int');};
-eval{$ffi->attach('GDALRATValuesIOAsString' => ['opaque','unsigned int','int','int','int','string_pointer'] => 'int');};
+eval{$ffi->attach('GDALRATValuesIOAsString' => ['opaque','unsigned int','int','int','int','opaque'] => 'int');};
 eval{$ffi->attach('GDALRATSetRowCount' => [qw/opaque int/] => 'void');};
 eval{$ffi->attach('GDALRATCreateColumn' => ['opaque','string','unsigned int','unsigned int'] => 'int');};
 eval{$ffi->attach('GDALRATSetLinearBinning' => [qw/opaque double double/] => 'int');};
@@ -601,13 +606,13 @@ eval{$ffi->attach('GDALSetCacheMax64' => [qw/sint64/] => 'void');};
 eval{$ffi->attach('GDALGetCacheMax64' => [] => 'sint64');};
 eval{$ffi->attach('GDALGetCacheUsed64' => [] => 'sint64');};
 eval{$ffi->attach('GDALFlushCacheBlock' => [] => 'int');};
-eval{$ffi->attach('GDALDatasetGetVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','int','int*','int','sint64','sint64','size_t','size_t','int','string_pointer'] => 'opaque');};
-eval{$ffi->attach('GDALRasterBandGetVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','int','sint64','size_t','size_t','int','string_pointer'] => 'opaque');};
-eval{$ffi->attach('GDALGetVirtualMemAuto' => ['opaque','unsigned int','int*','sint64*','string_pointer'] => 'opaque');};
-eval{$ffi->attach('GDALDatasetGetTiledVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','int','int*','unsigned int','size_t','int','string_pointer'] => 'opaque');};
-eval{$ffi->attach('GDALRasterBandGetTiledVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','size_t','int','string_pointer'] => 'opaque');};
+eval{$ffi->attach('GDALDatasetGetVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','int','int*','int','sint64','sint64','size_t','size_t','int','opaque'] => 'opaque');};
+eval{$ffi->attach('GDALRasterBandGetVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','int','sint64','size_t','size_t','int','opaque'] => 'opaque');};
+eval{$ffi->attach('GDALGetVirtualMemAuto' => ['opaque','unsigned int','int*','sint64*','opaque'] => 'opaque');};
+eval{$ffi->attach('GDALDatasetGetTiledVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','int','int*','unsigned int','size_t','int','opaque'] => 'opaque');};
+eval{$ffi->attach('GDALRasterBandGetTiledVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','size_t','int','opaque'] => 'opaque');};
 eval{$ffi->attach('GDALCreatePansharpenedVRT' => [qw/string opaque int uint64*/] => 'opaque');};
-eval{$ffi->attach('GDALGetJPEG2000Structure' => [qw/string string_pointer/] => 'opaque');};
+eval{$ffi->attach('GDALGetJPEG2000Structure' => [qw/string opaque/] => 'opaque');};
 # from /home/ajolma/github/gdal/gdal/ogr/ogr_api.h
 eval{$ffi->attach('OGR_G_CreateFromWkb' => [qw/string opaque uint64* int/] => 'int');};
 eval{$ffi->attach('OGR_G_CreateFromWkt' => [qw/string_pointer opaque uint64*/] => 'int');};
@@ -1139,6 +1144,7 @@ eval{$ffi->attach('GDALTranslate' => [qw/string opaque opaque int*/] => 'opaque'
 eval{$ffi->attach('GDALWarpAppOptionsNew' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALWarpAppOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALWarpAppOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
+eval{$ffi->attach('GDALWarpAppOptionsSetQuiet' => [qw/opaque int/] => 'void');};
 eval{$ffi->attach('GDALWarpAppOptionsSetWarpOption' => [qw/opaque string string/] => 'void');};
 eval{$ffi->attach('GDALWarp' => [qw/string opaque int uint64* opaque int*/] => 'opaque');};
 eval{$ffi->attach('GDALVectorTranslateOptionsNew' => [qw/opaque opaque/] => 'opaque');};
@@ -1165,6 +1171,7 @@ eval{$ffi->attach('GDALBuildVRTOptionsNew' => [qw/opaque opaque/] => 'opaque');}
 eval{$ffi->attach('GDALBuildVRTOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALBuildVRTOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
 eval{$ffi->attach('GDALBuildVRT' => [qw/string int uint64* opaque opaque int*/] => 'opaque');};
+# end of generated code
 
     # we do not use Alien::gdal->data_dir since it issues warnings due to GDAL bug
     my $pc = PkgConfig->find('gdal');
@@ -1187,16 +1194,22 @@ eval{$ffi->attach('GDALBuildVRT' => [qw/string int uint64* opaque opaque int*/] 
         }
     }
 
-    my $self = {};
-    $self->{ffi} = $ffi;
-    $self->{CPLErrorHandler} = $ffi->closure(
+    $instance = {};
+    $instance->{ffi} = $ffi;
+    $instance->{CPLErrorHandler} = $ffi->closure(
         sub {
             my ($err, $err_num, $msg) = @_;
             push @errors, $msg;
         });
-    CPLPushErrorHandler($self->{CPLErrorHandler});
+    CPLPushErrorHandler($instance->{CPLErrorHandler});
     GDALAllRegister();
-    return bless $self, $class;
+    return bless $instance, $class;
+}
+
+sub get_instance {
+    my $class = shift;
+    $instance = $class->new() unless $instance;
+    return $instance;
 }
 
 sub GetVersionInfo {
@@ -1368,7 +1381,8 @@ Version 0.04
 This is an example of creating a vector dataset.
 
  use Geo::GDAL::FFI;
- my $gdal = Geo::GDAL::FFI->new();
+
+ my $gdal = Geo::GDAL::FFI->get_instance();
 
  my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
  my $layer = $gdal
@@ -1395,7 +1409,8 @@ This is an example of creating a vector dataset.
 This is an example of reading a vector dataset.
 
  use Geo::GDAL::FFI;
- my $gdal = Geo::GDAL::FFI->new();
+
+ my $gdal = Geo::GDAL::FFI->get_instance();
 
  my $layer = $gdal->Open('test.shp')->GetLayer;
  $layer->ResetReading;
@@ -1408,7 +1423,8 @@ This is an example of reading a vector dataset.
 This is an example of creating a raster dataset.
 
  use Geo::GDAL::FFI;
- my $gdal = Geo::GDAL::FFI->new();
+
+ my $gdal = Geo::GDAL::FFI->get_instance();
 
  my $tiff = $gdal->GetDriver('GTiff')->Create('test.tiff', 3, 2);
  my $ogc_wkt = 
@@ -1427,7 +1443,8 @@ and L<MCE::Shared> can greatly reduce the time needed to process large
 raster datasets.
 
  use Geo::GDAL::FFI;
- my $gdal = Geo::GDAL::FFI->new();
+
+ my $gdal = Geo::GDAL::FFI->get_instance();
 
  my $band = $gdal->Open($ARGV[0])->GetBand;
  my ($w_band, $h_band) = $band->GetSize;
@@ -1477,17 +1494,23 @@ arguments C<($fraction, $msg, $data)>, where C<$fraction> is a number,
 C<$msg> is a string, and C<$data> is a pointer that is given as the
 progress data argument.
 
-=head2 new
+=head2 new (deprecated, use get_instance)
 
  my $gdal = Geo::GDAL::FFI->new;
 
-Create a new Geo::GDAL::FFI object. All GDAL functions that are
+Create or obtain the Geo::GDAL::FFI singleton object. All GDAL
+functions that are available (the C API is used) are attached to this
+class. The other classes in this distribution are there to provide an
+easier to use object oriented Perl API.
+
+=head2 get_instance
+
+ my $gdal = Geo::GDAL::FFI->get_instance;
+
+Get the Geo::GDAL::FFI singleton. All GDAL functions that are
 available (the C API is used) are attached to this class. The other
 classes in this distribution are there to provide an easier to use
 object oriented Perl API.
-
-There should be one and only one Geo::GDAL::FFI object per
-application.
 
 =head2 Capabilities
 

@@ -10,7 +10,17 @@ use Data::Dumper;
 use JSON;
 use FFI::Platypus::Buffer;
 
-my $gdal = Geo::GDAL::FFI->new();
+my $gdal = Geo::GDAL::FFI->get_instance();
+
+# test the singleton
+
+if(1){
+    $gdal->{favourite_animal} = 'llama'; 
+    my $gdal2 = Geo::GDAL::FFI->get_instance();
+    ok($gdal->{favourite_animal} eq $gdal2->{favourite_animal}, "Instance is a singleton 1/2.");
+    $gdal2 = Geo::GDAL::FFI->new();
+    ok($gdal->{favourite_animal} eq $gdal2->{favourite_animal}, "Instance is a singleton 2/2.");
+}
 
 # test unavailable function
 if(1){
@@ -171,6 +181,10 @@ if(1){
     $b->WriteBlock($block);
     $block = $b->ReadBlock();
     ok($block->[1][2] == 7, "Write block ($block->[1][2])");
+
+    $b->SetCategoryNames('a', 'b');
+    my @names = $b->GetCategoryNames;
+    is_deeply(\@names, ['a', 'b'], "Set and get raster category names (got '@names').");
 
     my $v = $b->GetNoDataValue;
     ok(!defined($v), "Get nodata value.");

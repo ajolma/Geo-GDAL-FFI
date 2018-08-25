@@ -35,6 +35,25 @@ sub GetSize {
         );
 }
 
+sub GetCategoryNames {
+    my $self = shift;
+    my $csl = Geo::GDAL::FFI::GDALGetRasterCategoryNames($$self);
+    my @names;
+    for my $i (0..Geo::GDAL::FFI::CSLCount($csl)-1) {
+        push @names, Geo::GDAL::FFI::CSLGetField($csl, $i);
+    }
+    return @names;
+}
+
+sub SetCategoryNames {
+    my ($self, @names) = @_;
+    my $csl = 0;
+    for my $n (@names) {
+        $csl = Geo::GDAL::FFI::CSLAddString($csl, $n);
+    }
+    Geo::GDAL::FFI::GDALSetRasterCategoryNames($$self, $csl);
+}
+
 sub GetNoDataValue {
     my $self = shift;
     my $b = 0;

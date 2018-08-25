@@ -54,6 +54,7 @@ my %use_CSL = (
     GDALDatasetCopyLayer => 1,
     OGR_DS_CreateLayer => 1,
     OGR_DS_CopyLayer => 1,
+    GDALGetRasterCategoryNames => 1,
     OGR_F_GetFieldAsStringList => 1,
     OGR_F_SetFieldStringList => 1,
     GDALInfoOptionsNew => 1,
@@ -78,6 +79,12 @@ my %use_ret_pointer = (
     OGR_F_GetFieldAsIntegerList => 1,
     OGR_F_GetFieldAsInteger64List => 1,
     OGR_F_GetFieldAsDoubleList => 1,
+    );
+
+my %use_string = (
+    OGR_G_CreateFromWkb => 1,
+    OGR_G_CreateFromFgf => 1,
+    OGR_G_ImportFromWkb => 1,
     );
 
 my %opaque_pointers = (
@@ -112,11 +119,12 @@ my %defines;
 my %enums;
 my %structs;
 
-say "# created with parse_h.pl";
+say "# generated with parse_h.pl";
 for my $f (@ARGV) {
     say "# from $f";
     parse_h($f);
 }
+say "# end of generated code";
 
 sub parse_h {
     my $f = shift;
@@ -228,6 +236,9 @@ sub parse_type {
     } elsif ($arg =~ /^FILE\s*\*/) {
         $arg = 'opaque';
     } elsif ($arg =~ /void\s*\*/) {
+        for my $c (keys %use_string) {
+            return 'string' if $c eq $name;
+        }
         $arg = 'opaque';
     } elsif ($arg =~ /^char\s*\*\*/ or $arg =~ /^const char\s*\*\s*const\s*\*/) {
         if ($use_CSL{$name}) {
@@ -305,6 +316,8 @@ sub parse_type {
         $arg = 'sint64';
     } elsif ($arg =~ /^void/) {
         $arg = 'void';
+    } elsif ($arg =~ /^CSLConstList/) {
+        $arg = 'opaque';
     } else {
         die "can't parse arg '$arg'";
     }
