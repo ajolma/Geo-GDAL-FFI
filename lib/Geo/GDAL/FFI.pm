@@ -1486,6 +1486,9 @@ available (the C API is used) are attached to this class. The other
 classes in this distribution are there to provide an easier to use
 object oriented Perl API.
 
+There should be one and only one Geo::GDAL::FFI object per
+application.
+
 =head2 Capabilities
 
  my @caps = $gdal->Capabilities;
