@@ -310,6 +310,33 @@ Returns the FeatureDefn object for this layer.
 
  $layer->DeleteFeature($fid);
 
+=head2 Intersection, Union, SymDifference, Identity, Update, Clip, Erase
+
+ $result = $layer-><Method>($method, $args);
+
+Runs the <method> algorithm between layer and method layer. Named
+arguments are the following.
+
+=over 4
+
+=item C<Result>
+
+Optional, allows the user to define the result layer.
+
+=item C<Options>
+
+Optional, allows the user to define the options (see GDAL docs).
+
+=item C<Progress>
+
+Optional, the progress indicator callback.
+
+=item C<ProgressData>
+
+Optional, data for the progress callback.
+
+=back
+
 =head1 LICENSE
 
 This software is released under the Artistic License. See
