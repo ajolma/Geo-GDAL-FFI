@@ -119,6 +119,38 @@ sub DataTypes {
     return sort {$data_types{$a} <=> $data_types{$b}} keys %data_types;
 }
 
+our %rat_field_type = (
+    Integer => 0,
+    Real => 1,
+    String => 2
+    );
+
+our %rat_field_usage = (
+    Generic => 0,
+    PixelCount => 1,
+    Name => 2,
+    Min => 3,
+    Max => 4,
+    MinMax => 5,
+    Red => 6,
+    Green => 7,
+    Blue => 8,
+    Alpha => 9,
+    RedMin => 10,
+    GreenMin => 11,
+    BlueMin => 12,
+    AlphaMin => 13,
+    RedMax => 14,
+    GreenMax => 15,
+    BlueMax => 16,
+    AlphaMax => 17,
+    );
+
+our %rat_table_type = (
+    THEMATIC => 0,
+    ATHEMATIC => 1
+    );
+ 
 our %resampling = (
     NearestNeighbour => 0,
     Bilinear => 1,
@@ -593,12 +625,15 @@ eval{$ffi->attach('GDALRATSetRowCount' => [qw/opaque int/] => 'void');};
 eval{$ffi->attach('GDALRATCreateColumn' => ['opaque','string','unsigned int','unsigned int'] => 'int');};
 eval{$ffi->attach('GDALRATSetLinearBinning' => [qw/opaque double double/] => 'int');};
 eval{$ffi->attach('GDALRATGetLinearBinning' => [qw/opaque double* double*/] => 'int');};
+eval{$ffi->attach('GDALRATSetTableType' => ['opaque','unsigned int'] => 'int');};
+eval{$ffi->attach('GDALRATGetTableType' => [qw/opaque/] => 'unsigned int');};
 eval{$ffi->attach('GDALRATInitializeFromColorTable' => [qw/opaque opaque/] => 'int');};
 eval{$ffi->attach('GDALRATTranslateToColorTable' => [qw/opaque int/] => 'opaque');};
 eval{$ffi->attach('GDALRATDumpReadable' => [qw/opaque opaque/] => 'void');};
 eval{$ffi->attach('GDALRATClone' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('GDALRATSerializeJSON' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('GDALRATGetRowOfValue' => [qw/opaque double/] => 'int');};
+eval{$ffi->attach('GDALRATRemoveStatistics' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALSetCacheMax' => [qw/int/] => 'void');};
 eval{$ffi->attach('GDALGetCacheMax' => [] => 'int');};
 eval{$ffi->attach('GDALGetCacheUsed' => [] => 'int');};
@@ -907,13 +942,13 @@ eval{$ffi->attach('OGR_L_GetStyleTable' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_L_SetStyleTableDirectly' => [qw/opaque opaque/] => 'void');};
 eval{$ffi->attach('OGR_L_SetStyleTable' => [qw/opaque opaque/] => 'void');};
 eval{$ffi->attach('OGR_L_SetIgnoredFields' => [qw/opaque string/] => 'int');};
-eval{$ffi->attach('OGR_L_Intersection' => [qw/opaque opaque opaque string_pointer GDALProgressFunc opaque/] => 'int');};
-eval{$ffi->attach('OGR_L_Union' => [qw/opaque opaque opaque string_pointer GDALProgressFunc opaque/] => 'int');};
-eval{$ffi->attach('OGR_L_SymDifference' => [qw/opaque opaque opaque string_pointer GDALProgressFunc opaque/] => 'int');};
-eval{$ffi->attach('OGR_L_Identity' => [qw/opaque opaque opaque string_pointer GDALProgressFunc opaque/] => 'int');};
-eval{$ffi->attach('OGR_L_Update' => [qw/opaque opaque opaque string_pointer GDALProgressFunc opaque/] => 'int');};
-eval{$ffi->attach('OGR_L_Clip' => [qw/opaque opaque opaque string_pointer GDALProgressFunc opaque/] => 'int');};
-eval{$ffi->attach('OGR_L_Erase' => [qw/opaque opaque opaque string_pointer GDALProgressFunc opaque/] => 'int');};
+eval{$ffi->attach('OGR_L_Intersection' => [qw/opaque opaque opaque opaque GDALProgressFunc opaque/] => 'int');};
+eval{$ffi->attach('OGR_L_Union' => [qw/opaque opaque opaque opaque GDALProgressFunc opaque/] => 'int');};
+eval{$ffi->attach('OGR_L_SymDifference' => [qw/opaque opaque opaque opaque GDALProgressFunc opaque/] => 'int');};
+eval{$ffi->attach('OGR_L_Identity' => [qw/opaque opaque opaque opaque GDALProgressFunc opaque/] => 'int');};
+eval{$ffi->attach('OGR_L_Update' => [qw/opaque opaque opaque opaque GDALProgressFunc opaque/] => 'int');};
+eval{$ffi->attach('OGR_L_Clip' => [qw/opaque opaque opaque opaque GDALProgressFunc opaque/] => 'int');};
+eval{$ffi->attach('OGR_L_Erase' => [qw/opaque opaque opaque opaque GDALProgressFunc opaque/] => 'int');};
 eval{$ffi->attach('OGR_DS_Destroy' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OGR_DS_GetName' => [qw/opaque/] => 'string');};
 eval{$ffi->attach('OGR_DS_GetLayerCount' => [qw/opaque/] => 'int');};
@@ -1255,6 +1290,9 @@ sub Open {
         $files = Geo::GDAL::FFI::CSLAddString($files, $o);
     }
     my $ds = GDALOpenEx($name, $flags, $drivers, $options, $files);
+    Geo::GDAL::FFI::CSLDestroy($drivers);
+    Geo::GDAL::FFI::CSLDestroy($options);
+    Geo::GDAL::FFI::CSLDestroy($files);
     if (@errors) {
         my $msg = join("\n", @errors);
         @errors = ();

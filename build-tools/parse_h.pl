@@ -20,6 +20,7 @@ my %constants = (
     OGRwkbGeometryType => 1,
     GDALRATFieldUsage => 1,
     GDALRATFieldType => 1,
+    GDALRATTableType => 1,
     GDALTileOrganization => 1,
     OGRwkbByteOrder => 1,
     OGRFieldType => 1,
@@ -67,6 +68,13 @@ my %use_CSL = (
     GDALRasterizeOptionsNew => 1,
     GDALBuildVRTOptionsNew => 1,
     GDALBuildVRT => 1,
+    OGR_L_Intersection => 1,
+    OGR_L_Union => 1,
+    OGR_L_SymDifference => 1,
+    OGR_L_Identity => 1,
+    OGR_L_Update => 1,
+    OGR_L_Clip => 1,
+    OGR_L_Erase => 1,
     );
 
 my %use_array = (
@@ -205,7 +213,7 @@ sub parse_type {
     $arg =~ s/^\s+//;
     $arg =~ s/\s+$//;
     for my $c (keys %constants) {
-        if ($arg =~ /^$c/) {
+        if ($arg =~ /^$c/ or $arg =~ /^const $c/) {
             $arg = 'unsigned int';
         }
     }

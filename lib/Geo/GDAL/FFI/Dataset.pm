@@ -150,6 +150,7 @@ sub CreateLayer {
         }
     }
     my $l = Geo::GDAL::FFI::GDALDatasetCreateLayer($$self, $name, $sr, $gt, $o);
+    Geo::GDAL::FFI::CSLDestroy($o);
     Geo::GDAL::FFI::OSRRelease($sr) if $sr;
     my $msg = Geo::GDAL::FFI::error_msg();
     confess $msg if $msg;
@@ -176,6 +177,7 @@ sub CopyLayer {
         $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options->{$key}");
     }
     my $l = Geo::GDAL::FFI::GDALDatasetCopyLayer($$self, $$layer, $name, $o);
+    Geo::GDAL::FFI::CSLDestroy($o);
     unless ($l) {
         my $msg = Geo::GDAL::FFI::error_msg() // "GDALDatasetCopyLayer failed.";
         confess $msg if $msg;

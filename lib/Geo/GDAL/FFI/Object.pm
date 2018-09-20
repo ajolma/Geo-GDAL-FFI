@@ -59,6 +59,7 @@ sub SetMetadata {
             $csl = Geo::GDAL::FFI::CSLAddString($csl, "$name=$metadata->{$name}");
         }
         my $err = Geo::GDAL::FFI::GDALSetMetadata($$self, $csl, $domain);
+        Geo::GDAL::FFI::CSLDestroy($csl);
         confess Geo::GDAL::FFI::error_msg() if $err == $Geo::GDAL::FFI::Failure;
         warn Geo::GDAL::FFI::error_msg() if $err == $Geo::GDAL::FFI::Warning;
     }

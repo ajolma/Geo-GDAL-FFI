@@ -52,6 +52,7 @@ sub SetCategoryNames {
         $csl = Geo::GDAL::FFI::CSLAddString($csl, $n);
     }
     Geo::GDAL::FFI::GDALSetRasterCategoryNames($$self, $csl);
+    Geo::GDAL::FFI::CSLDestroy($csl);
 }
 
 sub GetNoDataValue {

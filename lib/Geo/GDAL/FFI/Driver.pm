@@ -36,9 +36,13 @@ sub Create {
         my $b = $args->{Bands} // 1;
         my $dt = $args->{DataType} // 'Byte';
         my $tmp = $Geo::GDAL::FFI::data_types{$dt};
-        confess "Unknown constant: $dt\n" unless defined $tmp;
+        unless (defined $tmp) {
+            confess "Unknown constant: $dt\n";
+            Geo::GDAL::FFI::CSLDestroy($o);
+        }
         $ds = Geo::GDAL::FFI::GDALCreate($$self, $name, $w, $h, $b, $tmp, $o);
     }
+    Geo::GDAL::FFI::CSLDestroy($o);
     my $msg = Geo::GDAL::FFI::error_msg();
     if (!$ds || $msg) {
         $msg //= "Dataset '$name' creation failed. (Driver = ".$self->Name.")";
