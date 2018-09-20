@@ -37,7 +37,7 @@ sub Create {
         my $dt = $args->{DataType} // 'Byte';
         my $tmp = $Geo::GDAL::FFI::data_types{$dt};
         unless (defined $tmp) {
-            confess "Unknown constant: $dt\n";
+            confess "Unknown constant: $dt.";
             Geo::GDAL::FFI::CSLDestroy($o);
         }
         $ds = Geo::GDAL::FFI::GDALCreate($$self, $name, $w, $h, $b, $tmp, $o);
@@ -45,7 +45,7 @@ sub Create {
     Geo::GDAL::FFI::CSLDestroy($o);
     my $msg = Geo::GDAL::FFI::error_msg();
     if (!$ds || $msg) {
-        $msg //= "Dataset '$name' creation failed. (Driver = ".$self->Name.")";
+        $msg //= "Driver " . $self->Name . " failed to create dataset '$name'.";
         confess $msg;
     }
     return bless \$ds, 'Geo::GDAL::FFI::Dataset';

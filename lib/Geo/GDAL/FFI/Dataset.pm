@@ -140,7 +140,7 @@ sub CreateLayer {
     } else {
         $gt = $args->{GeometryType} // 'Unknown';
         $gt = $Geo::GDAL::FFI::geometry_types{$gt};
-        confess "Unknown geometry type: '$args->{GeometryType}'\n" unless defined $gt;
+        confess "Unknown geometry type: '$args->{GeometryType}'." unless defined $gt;
         $sr = Geo::GDAL::FFI::OSRClone(${$args->{SpatialReference}}) if exists $args->{SpatialReference};
     }
     my $o = 0;

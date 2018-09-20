@@ -14,7 +14,7 @@ sub GetDescription {
 sub HasCapability {
     my ($self, $cap) = @_;
     my $tmp = $Geo::GDAL::FFI::capabilities{$cap};
-    confess "Unknown constant: $cap\n" unless defined $tmp;
+    confess "Unknown capability: $cap." unless defined $tmp;
     my $md = $self->GetMetadata('');
     return $md->{'DCAP_'.$cap};
 }

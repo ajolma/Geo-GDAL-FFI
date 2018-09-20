@@ -188,7 +188,7 @@ sub GetColorInterpretation {
 sub SetColorInterpretation {
     my ($self, $i) = @_;
     my $tmp = $Geo::GDAL::FFI::color_interpretations{$i};
-    confess "Unknown color interpretation: $i\n" unless defined $tmp;
+    confess "Unknown color interpretation: $i." unless defined $tmp;
     $i = $tmp;
     Geo::GDAL::FFI::GDALSetRasterColorInterpretation($$self, $i);
 }
@@ -226,12 +226,12 @@ sub GetPiddle {
     $ysize //= $h - $yoff;
     my $t = Geo::GDAL::FFI::GDALGetRasterDataType($$self);
     my $pdl_t = $Geo::GDAL::FFI::data_type2pdl_data_type{$Geo::GDAL::FFI::data_types_reverse{$t}};
-    confess "The Piddle data_type is unsuitable.\n" unless defined $pdl_t;
+    confess "The Piddle data_type is unsuitable." unless defined $pdl_t;
     $xdim //= $xsize;
     $ydim //= $ysize;
     $alg //= 'NearestNeighbour';
     my $tmp = $Geo::GDAL::FFI::resampling{$alg};
-    confess "Unknown resampling scheme: $alg\n" unless defined $tmp;
+    confess "Unknown resampling scheme: $alg." unless defined $tmp;
     $alg = $tmp;
     my $bufxsize = $xsize;
     my $bufysize = $ysize;
@@ -258,7 +258,7 @@ sub SetPiddle {
     $yoff //= 0;
     my ($w, $h) = $self->GetSize;
     my $t = $Geo::GDAL::FFI::pdl_data_type2data_type{$pdl->get_datatype};
-    confess "The Piddle data_type '".$pdl->get_datatype."' is unsuitable.\n" unless defined $t;
+    confess "The Piddle data_type '".$pdl->get_datatype."' is unsuitable." unless defined $t;
     $t = $Geo::GDAL::FFI::data_types{$t};
     my ($xdim, $ydim) = $pdl->dims();
     $xsize //= $xdim;

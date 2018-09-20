@@ -35,7 +35,7 @@ sub CreateField {
     my $approx_ok = shift // 1;
     my $e = Geo::GDAL::FFI::OGR_L_CreateField($$self, $$def, $approx_ok);
     return unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRerror => $e});
+    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
 }
 
 sub CreateGeomField {
@@ -52,7 +52,7 @@ sub CreateGeomField {
     my $approx_ok = shift // 1;
     my $e = Geo::GDAL::FFI::OGR_L_CreateGeomField($$self, $$def, $approx_ok);
     return unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRerror => $e});
+    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
 }
 
 sub GetSpatialRef {
@@ -96,7 +96,7 @@ sub DeleteFeature {
     my ($self, $fid) = @_;
     my $e = Geo::GDAL::FFI::OGR_L_DeleteFeature($$self, $fid);
     return unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRerror => $e});
+    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
 }
 
 sub Intersection {
@@ -119,7 +119,7 @@ sub Intersection {
     my $e = Geo::GDAL::FFI::OGR_L_Intersection($$self, $$method, $$result, $o, $p, $args->{ProgressData});
     Geo::GDAL::FFI::CSLDestroy($o);
     return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRerror => $e});
+    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
 }
 
 sub Union {
@@ -142,7 +142,7 @@ sub Union {
     my $e = Geo::GDAL::FFI::OGR_L_Union($$self, $$method, $$result, $o, $p, $args->{ProgressData});
     Geo::GDAL::FFI::CSLDestroy($o);
     return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRerror => $e});
+    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
 }
 
 sub SymDifference {
@@ -165,7 +165,7 @@ sub SymDifference {
     my $e = Geo::GDAL::FFI::OGR_L_SymDifference($$self, $$method, $$result, $o, $p, $args->{ProgressData});
     Geo::GDAL::FFI::CSLDestroy($o);
     return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRerror => $e});
+    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
 }
 
 sub Identity {
@@ -188,7 +188,7 @@ sub Identity {
     my $e = Geo::GDAL::FFI::OGR_L_Identity($$self, $$method, $$result, $o, $p, $args->{ProgressData});
     Geo::GDAL::FFI::CSLDestroy($o);
     return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRerror => $e});
+    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
 }
 
 sub Update {
@@ -211,7 +211,7 @@ sub Update {
     my $e = Geo::GDAL::FFI::OGR_L_Update($$self, $$method, $$result, $o, $p, $args->{ProgressData});
     Geo::GDAL::FFI::CSLDestroy($o);
     return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRerror => $e});
+    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
 }
 
 sub Clip {
@@ -234,7 +234,7 @@ sub Clip {
     my $e = Geo::GDAL::FFI::OGR_L_Clip($$self, $$method, $$result, $o, $p, $args->{ProgressData});
     Geo::GDAL::FFI::CSLDestroy($o);
     return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRerror => $e});
+    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
 }
 
 sub Erase {
@@ -257,7 +257,7 @@ sub Erase {
     my $e = Geo::GDAL::FFI::OGR_L_Erase($$self, $$method, $$result, $o, $p, $args->{ProgressData});
     Geo::GDAL::FFI::CSLDestroy($o);
     return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRerror => $e});
+    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
 }
 
 1;

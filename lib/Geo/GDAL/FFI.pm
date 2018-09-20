@@ -55,7 +55,7 @@ sub error_msg {
     return unless @errors || $args;
     unless (@errors) {
         return $ogr_errors{$args->{OGRError}} if $args->{OGRError};
-        return "Unknown error";
+        return "Unknown error.";
     }
     my $msg = join("\n", @errors);
     @errors = ();

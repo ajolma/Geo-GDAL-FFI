@@ -15,7 +15,7 @@ sub new {
     if (@_ == 1) {
         my $type = shift // '';
         my $tmp = $Geo::GDAL::FFI::geometry_types{$type};
-        confess "Empty or unknown geometry type: '$type'\n" unless defined $tmp;
+        confess "Empty or unknown geometry type: '$type'." unless defined $tmp;
         my $m = $type =~ /M$/;
         my $z = $type =~ /ZM$/ || $type =~ /25D$/;
         $g = Geo::GDAL::FFI::OGR_G_CreateGeometry($tmp);
@@ -26,7 +26,7 @@ sub new {
     } else {
         my ($format, $string, $sr) = @_;
         my $tmp = $Geo::GDAL::FFI::geometry_formats{$format};
-        confess "Empty or unknown geometry format: '$format'\n" unless defined $tmp;
+        confess "Empty or unknown geometry format: '$format'." unless defined $tmp;
         $sr = $$sr if $sr;
         if ($format eq 'WKT') {
             my $e = Geo::GDAL::FFI::OGR_G_CreateFromWkt(\$string, $sr, \$g);
@@ -259,31 +259,45 @@ sub Buffer {
 
 sub Intersection {
     my ($self, $geom) = @_;
-    return bless \Geo::GDAL::FFI::OGR_G_Intersection($$self, $$geom), 'Geo::GDAL::FFI::Geometry';
+    confess "Undefined geometry." unless $geom;
+    $self = Geo::GDAL::FFI::OGR_G_Intersection($$self, $$geom);
+    confess Geo::GDAL::FFI::error_msg() unless $self;
+    return bless \$self, 'Geo::GDAL::FFI::Geometry';
 }
 
 sub Union {
     my ($self, $geom) = @_;
-    return bless \Geo::GDAL::FFI::OGR_G_Union($$self, $$geom), 'Geo::GDAL::FFI::Geometry';
+    confess "Undefined geometry." unless $geom;
+    $self = Geo::GDAL::FFI::OGR_G_Union($$self, $$geom);
+    confess Geo::GDAL::FFI::error_msg() unless $self;
+    return bless \$self, 'Geo::GDAL::FFI::Geometry';
 }
 
 sub Difference {
     my ($self, $geom) = @_;
-    return bless \Geo::GDAL::FFI::OGR_G_Difference($$self, $$geom), 'Geo::GDAL::FFI::Geometry';
+    confess "Undefined geometry." unless $geom;
+    $self = Geo::GDAL::FFI::OGR_G_Difference($$self, $$geom);
+    confess Geo::GDAL::FFI::error_msg() unless $self;
+    return bless \$self, 'Geo::GDAL::FFI::Geometry';
 }
 
 sub SymDifference {
     my ($self, $geom) = @_;
-    return bless \Geo::GDAL::FFI::OGR_G_SymDifference($$self, $$geom), 'Geo::GDAL::FFI::Geometry';
+    confess "Undefined geometry." unless $geom;
+    $self = Geo::GDAL::FFI::OGR_G_SymDifference($$self, $$geom);
+    confess Geo::GDAL::FFI::error_msg() unless $self;
+    return bless \$self, 'Geo::GDAL::FFI::Geometry';
 }
 
 sub Distance {
     my ($self, $geom) = @_;
+    confess "Undefined geometry." unless $geom;
     return Geo::GDAL::FFI::OGR_G_Distance($$self, $$geom);
 }
 
 sub Distance3D {
     my ($self, $geom) = @_;
+    confess "Undefined geometry." unless $geom;
     return Geo::GDAL::FFI::OGR_G_Distance3D($$self, $$geom);
 }
 
