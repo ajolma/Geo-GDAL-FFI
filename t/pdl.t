@@ -9,7 +9,7 @@ use Data::Dumper;
 use JSON;
 use FFI::Platypus::Buffer;
 
-my $gdal = Geo::GDAL::FFI->new();
+my $gdal = Geo::GDAL::FFI->get_instance();
 my $band = $gdal->GetDriver('MEM')->Create('', {Width => 7, Height => 15})->GetBand;
 
 my $t = $band->Read;

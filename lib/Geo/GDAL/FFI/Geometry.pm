@@ -195,12 +195,67 @@ sub RemoveGeometry {
 }
 
 sub ExportToWKT {
-    my ($self) = @_;
+    my ($self, $variant) = @_;
+    $variant //= 'ISO';
     my $wkt = '';
-    Geo::GDAL::FFI::OGR_G_ExportToIsoWkt($$self, \$wkt);
+    if ($variant =~ /(?i)iso/) {
+        Geo::GDAL::FFI::OGR_G_ExportToIsoWkt($$self, \$wkt);
+    } else {
+        Geo::GDAL::FFI::OGR_G_ExportToWkt($$self, \$wkt);
+    }
     return $wkt;
 }
 *AsText = *ExportToWKT;
+
+sub ExportToGML {
+    my ($self, %options) = @_;
+    my $o = 0;
+    for my $key (keys %options) {
+        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options{$key}");
+    }
+    my $p;
+    if ($o) {
+        $p = Geo::GDAL::FFI::OGR_G_ExportToGMLEx($$self, $o);
+        Geo::GDAL::FFI::CSLDestroy($o);
+    } else {
+        $p = Geo::GDAL::FFI::OGR_G_ExportToGML($$self);
+    }
+    my $ffi = FFI::Platypus->new;
+    my $gml = $ffi->cast(opaque => 'string', $p);
+    Geo::GDAL::FFI::VSIFree($p);
+    confess Geo::GDAL::FFI::error_msg() unless $gml;
+    return $gml;
+}
+
+sub ExportToKML {
+    my ($self) = @_;
+    my $p = Geo::GDAL::FFI::OGR_G_ExportToKML($$self);
+    my $ffi = FFI::Platypus->new;
+    my $kml = $ffi->cast(opaque => 'string', $p);
+    Geo::GDAL::FFI::VSIFree($p);
+    confess Geo::GDAL::FFI::error_msg() unless $kml;
+    return $kml;
+}
+
+sub ExportToJSON {
+    my ($self, %options) = @_;
+    my $o = 0;
+    for my $key (keys %options) {
+        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options{$key}");
+    }
+    my $p;
+    if ($o) {
+        $p = Geo::GDAL::FFI::OGR_G_ExportToJsonEx($$self, $o);
+        Geo::GDAL::FFI::CSLDestroy($o);
+    } else {
+        $p = Geo::GDAL::FFI::OGR_G_ExportToJson($$self);
+    }
+    my $ffi = FFI::Platypus->new;
+    my $json = $ffi->cast(opaque => 'string', $p);
+    Geo::GDAL::FFI::VSIFree($p);
+    confess Geo::GDAL::FFI::error_msg() unless $json;
+    return $json;
+}
 
 sub Intersects {
     my ($self, $geom) = @_;
@@ -472,7 +527,29 @@ reference and thus changing that geometry will change the parent.
 
  $geom->RemoveGeometry($i);
 
+=head2 ExportToWKT($variant)
+
+ my $wkt = $geom->ExportToWKT($variant);
+
+Returns the geometry as WKT. $variant is optional (default is 'ISO').
+
 =head2 AsText
+
+Alias to ExportToWKT.
+
+=head2 ExportToGML($options)
+
+ my $gml = $geom->ExportToGML(%options);
+
+Returns the geometry as GML string. %options may contain options as
+described in GDAL documentation.
+
+=head2 ExportToJSON($options)
+
+ my $json = $geom->ExportToJSON(%options);
+
+Returns the geometry as JSON string. %options may contain options as
+described in GDAL documentation.
 
 =head2 Intersects
 

@@ -9,9 +9,8 @@ use Data::Dumper;
 use JSON;
 use FFI::Platypus::Buffer;
 
-my $gdal = Geo::GDAL::FFI->new();
-
 {
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $ds = $gdal->GetDriver('ESRI Shapefile')->Create('test.shp');
     my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
     my $l = $ds->CreateLayer({Name => 'test', SpatialReference => $sr, GeometryType => 'Point'});
@@ -23,6 +22,7 @@ my $gdal = Geo::GDAL::FFI->new();
 my $ds;
 
 eval {
+    my $gdal = Geo::GDAL::FFI->get_instance();
     $ds = $gdal->Open('test.shp', {
         Flags => [qw/READONLY VERBOSE_ERROR/], 
         AllowedDrivers => [('GML')]
@@ -33,6 +33,7 @@ $e[0] =~ s/ at .*//;
 ok($@, "Right driver not in AllowedDrivers: ".$e[0]);
 
 eval {
+    my $gdal = Geo::GDAL::FFI->get_instance();
     $ds = $gdal->Open('test.shp', {
         Flags => [qw/READONLY VERBOSE_ERROR/], 
         AllowedDrivers => [('GML', 'ESRI Shapefile')]

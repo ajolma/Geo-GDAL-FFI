@@ -7,9 +7,6 @@ use Geo::GDAL::FFI;
 use Test::More;
 use Data::Dumper;
 use JSON;
-use FFI::Platypus::Buffer;
-
-my $gdal = Geo::GDAL::FFI->new();
 
 {
     package Output;
@@ -35,7 +32,7 @@ my $gdal = Geo::GDAL::FFI->new();
 
 # test vsistdout redirection
 if(1){
-
+    my $gdal = Geo::GDAL::FFI->get_instance();
     # create a small layer and copy it to vsistdout with redirection
     my $layer = $gdal->GetDriver('Memory')->Create->CreateLayer({GeometryType => 'None'});
     $layer->CreateField(value => 'Integer');
@@ -63,6 +60,7 @@ if(1){
 
 # test Translate
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $ds = $gdal->GetDriver('GTiff')->Create('/vsimem/test.tiff', 10);
     my $translated = $ds->Translate('/vsimem/translated.tiff', -of => 'GTiff');
     ok($translated->GetDriver->GetName eq 'GTiff', "Translate");

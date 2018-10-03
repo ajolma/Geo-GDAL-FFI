@@ -2,6 +2,15 @@ use v5.10;
 use strict;
 use warnings;
 
+my $gdal_src_root = shift @ARGV;
+
+my @h_files = (
+    'gcore/gdal.h',
+    'ogr/ogr_api.h',
+    'ogr/ogr_srs_api.h',
+    'apps/gdal_utils.h'    
+    );
+
 my %pre = (
     CPL_C_START => '',
     CPL_DLL => '',
@@ -40,6 +49,19 @@ my %callbacks = (
     GDALContourWriter => 1,
     );
 
+my %char_p_p_ok = (
+    OGR_G_CreateFromWkt => 1,
+    OGR_G_ImportFromWkt => 1,
+    OGR_G_ExportToWkt => 1,
+    OGR_G_ExportToIsoWkt => 1,
+    OSRExportToWkt => 1,
+    OSRExportToPrettyWkt => 1,
+    OSRExportToProj4 => 1,
+    OSRExportToPCI => 1,
+    OSRExportToXML => 1,
+    OSRExportToMICoordSys => 1,
+    );
+
 my %use_CSL = (
     GDALCreate => 1,
     GDALOpenEx => 1,
@@ -58,6 +80,8 @@ my %use_CSL = (
     GDALGetRasterCategoryNames => 1,
     OGR_F_GetFieldAsStringList => 1,
     OGR_F_SetFieldStringList => 1,
+    OGR_G_ExportToGMLEx => 1,
+    OGR_G_ExportToJsonEx => 1,
     GDALInfoOptionsNew => 1,
     GDALTranslateOptionsNew => 1,
     GDALWarpAppOptionsNew => 1,
@@ -75,6 +99,33 @@ my %use_CSL = (
     OGR_L_Update => 1,
     OGR_L_Clip => 1,
     OGR_L_Erase => 1,
+    );
+
+# these return strings which must be freed
+my %use_ret_opaque = (
+    OGR_G_ExportToGML => 1,
+    OGR_G_ExportToGMLEx => 1,
+    OGR_G_ExportToKML => 1,
+    OGR_G_ExportToJson => 1,
+    OGR_G_ExportToJsonEx => 1,
+    );
+
+my %ret_string_ok = (
+    GDALGetDataTypeName => 1,
+    GDALGetAsyncStatusTypeName => 1,
+    GDALGetColorInterpretationName => 1,
+    GDALGetPaletteInterpretationName => 1,
+    GDALGetDriverShortName => 1,
+    GDALGetDriverLongName => 1,
+    GDALGetDriverHelpTopic => 1,
+    GDALGetDriverCreationOptionList => 1,
+    GDALGetMetadataItem => 1,
+    GDALGetDescription => 1,
+    GDALGetProjectionRef => 1,
+    GDALGetGCPProjection => 1,
+    GDALGetRasterUnitType => 1,
+    GDALDecToDMS => 1,
+    OGR_G_GetGeometryName => 1,
     );
 
 my %use_array = (
@@ -128,9 +179,9 @@ my %enums;
 my %structs;
 
 say "# generated with parse_h.pl";
-for my $f (@ARGV) {
+for my $f (@h_files) {
     say "# from $f";
-    parse_h($f);
+    parse_h($gdal_src_root . '/' . $f);
 }
 say "# end of generated code";
 
@@ -245,19 +296,26 @@ sub parse_type {
         $arg = 'opaque';
     } elsif ($arg =~ /void\s*\*/) {
         for my $c (keys %use_string) {
-            return 'string' if $c eq $name;
+            if ($c eq $name) {
+                say STDERR "$name returns a string" if $mode eq 'ret' && !$ret_string_ok{$name};
+                return 'string';
+            }
         }
         $arg = 'opaque';
     } elsif ($arg =~ /^char\s*\*\*/ or $arg =~ /^const char\s*\*\s*const\s*\*/) {
         if ($use_CSL{$name}) {
-            # CSL
             $arg = 'opaque';
         } else {
-            say STDERR "char ** in $name";
+            say STDERR "char ** in $name" unless $char_p_p_ok{$name};
             $arg = 'string_pointer';
         }
     } elsif ($arg =~ /char\s*\*/) {
-        $arg = 'string';
+        if ($mode eq 'ret' && $use_ret_opaque{$name}) {
+            $arg = 'opaque';
+        } else {
+            say STDERR "$name returns a string" if $mode eq 'ret' && !$ret_string_ok{$name};
+            $arg = 'string';
+        }
     } elsif ($arg =~ /^unsigned char\s*\*/) {
         $arg = 'pointer';
     } elsif ($arg =~ /int\s*\*/) {

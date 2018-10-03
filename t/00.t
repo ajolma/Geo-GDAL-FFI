@@ -4,17 +4,16 @@ use warnings;
 use Config;
 use Carp;
 use Encode qw(decode encode);
-use Geo::GDAL::FFI;
 use Test::More;
 use Data::Dumper;
 use JSON;
-use FFI::Platypus::Buffer;
 
-my $gdal = Geo::GDAL::FFI->get_instance();
+BEGIN { use_ok('Geo::GDAL::FFI', 'Open'); }
 
 # test the singleton
 
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     $gdal->{favourite_animal} = 'llama'; 
     my $gdal2 = Geo::GDAL::FFI->get_instance();
     ok($gdal->{favourite_animal} eq $gdal2->{favourite_animal}, "Instance is a singleton 1/2.");
@@ -24,6 +23,7 @@ if(1){
 
 # test unavailable function
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $can = $gdal->can('is_not_available');
     ok(!$can, "Can't call missing functions.");
 }
@@ -31,7 +31,7 @@ if(1){
 # test error handler:
 if(1){
     eval {
-        my $ds = $gdal->Open('itsnotthere.tiff');
+        my $ds = Open('itsnotthere.tiff');
     };
     ok(defined $@, "Got error: '$@'.");
 }
@@ -49,6 +49,7 @@ if(1){
 
 # test file finder
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $gdal_data_dir = $gdal->GetConfigOption(GDAL_DATA => '');
     SKIP: {
         skip "GDAL (Alien::gdal) is not properly installed; GDAL support files are not available.", 3 unless $gdal_data_dir;
@@ -82,18 +83,21 @@ if(1){
 
 # test VersionInfo
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $info = $gdal->GetVersionInfo;
     ok($info, "Got info: '$info'.");
 }
 
 # test driver count
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $n = $gdal->GetDrivers;
     ok($n > 0, "Have $n drivers.");
 }
 
 # test metadata
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $dr = $gdal->GetDriver('NITF');
     my $ds = $dr->Create('/vsimem/test.nitf', 10);
 
@@ -114,9 +118,10 @@ if(1){
 
 # test progress function
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $dr = $gdal->GetDriver('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff', 10);
-    my $was_at_fct;
+    my $was_at_fct = 0;
     my $progress = sub {
         my ($fraction, $msg, $data) = @_;
         #say STDERR "$fraction $data";
@@ -124,11 +129,12 @@ if(1){
     };
     my $data = 'whoa';
     my $ds2 = $dr->Create('/vsimem/copy.tiff', {Source => $ds, Progress => $progress, ProgressData => \$data});
-    ok($was_at_fct == 3, "Progress callback called");
+    ok($was_at_fct > 0, "Progress callback called $was_at_fct times.");
 }
 
 # test Info
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $dr = $gdal->GetDriver('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff', 10);
     my $info = decode_json $ds->GetInfo('-json');
@@ -137,6 +143,7 @@ if(1){
 
 # test dataset
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $dr = $gdal->GetDriver('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff', 10);
     my $ogc_wkt =
@@ -156,6 +163,7 @@ if(1){
 
 # test band
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $dr = $gdal->GetDriver('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff', 256);
     my $b = $ds->GetBand;
@@ -200,6 +208,7 @@ if(1){
     #$b->SetColorTable([[1,2,3,4],[5,6,7,8]]);
 }
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $dr = $gdal->GetDriver('MEM');
     my $ds = $dr->Create('', 10);
     my $b = $ds->GetBand;
@@ -213,6 +222,7 @@ if(1){
 
 # test creating a shapefile
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $dr = $gdal->GetDriver('ESRI Shapefile');
     my $ds = $dr->Create('test.shp');
     my @sr = ();
@@ -482,6 +492,7 @@ if(1){
 
 # test layer feature manipulation
 if(1){
+    my $gdal = Geo::GDAL::FFI->get_instance();
     my $dr = $gdal->GetDriver('Memory');
     my $ds = $dr->Create({Name => 'test'});
     my @sr = ();

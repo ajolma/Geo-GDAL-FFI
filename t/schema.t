@@ -6,7 +6,7 @@ use Geo::GDAL::FFI;
 use Test::More;
 use Data::Dumper;
 
-my $gdal = Geo::GDAL::FFI->new();
+my $gdal = Geo::GDAL::FFI->get_instance();
 
 my $schema = {
     Name => 'test',

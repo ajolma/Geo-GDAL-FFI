@@ -4,8 +4,6 @@ use v5.10;
 use strict;
 use warnings;
 use Carp;
-use PkgConfig;
-use Alien::gdal;
 use PDL;
 use FFI::Platypus;
 use FFI::Platypus::Buffer;
@@ -26,7 +24,7 @@ use Geo::GDAL::FFI::Geometry;
 
 our $VERSION = 0.05_03;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(@errors);
+our @EXPORT_OK = qw(@errors Open);
 
 our $Warning = 2;
 our $Failure = 3;
@@ -364,7 +362,7 @@ sub fake {
     return bless $self, $class;
 }
 
-my $instance = undef;
+my $instance;
 
 sub new {
     my $class = shift;
@@ -383,20 +381,21 @@ sub new {
     $ffi->type('(double,int,pointer,pointer,pointer)->int' => 'GDALContourWriter');
 
     # from port/*.h
-    eval{$ffi->attach('VSIFOpenL' => [qw/string string/] => 'opaque');};
-    croak "Can't attach to GDAL methods. Does Alien::gdal provide GDAL dynamic libs?" unless $class->can('VSIFOpenL');
-    eval{$ffi->attach('VSIFCloseL' => ['opaque'] => 'int');};
-    eval{$ffi->attach('VSIFWriteL' => [qw/pointer size_t size_t opaque/] => 'size_t');};
-    eval{$ffi->attach('VSIStdoutSetRedirection' => ['VSIWriteFunction', 'opaque'] => 'void');};
-    eval{$ffi->attach('CPLPushErrorHandler' => ['CPLErrorHandler'] => 'void');};
-    eval{$ffi->attach('CSLDestroy' => ['opaque'] => 'void');};
-    eval{$ffi->attach('CSLAddString' => ['opaque', 'string'] => 'opaque');};
-    eval{$ffi->attach('CSLCount' => ['opaque'] => 'int');};
-    eval{$ffi->attach('CSLGetField' => ['opaque', 'int'] => 'string');};
+    eval{$ffi->attach(VSIFree => ['opaque'] => 'void');};
+    croak "Can't attach to GDAL methods. Does Alien::gdal provide GDAL dynamic libs?" unless $class->can('VSIFree');
+    eval{$ffi->attach(VSIFOpenL => [qw/string string/] => 'opaque');};
+    eval{$ffi->attach(VSIFCloseL => ['opaque'] => 'int');};
+    eval{$ffi->attach(VSIFWriteL => [qw/pointer size_t size_t opaque/] => 'size_t');};
+    eval{$ffi->attach(VSIStdoutSetRedirection => ['VSIWriteFunction', 'opaque'] => 'void');};
+    eval{$ffi->attach(CPLPushErrorHandler => ['CPLErrorHandler'] => 'void');};
+    eval{$ffi->attach(CSLDestroy => ['opaque'] => 'void');};
+    eval{$ffi->attach(CSLAddString => ['opaque', 'string'] => 'opaque');};
+    eval{$ffi->attach(CSLCount => ['opaque'] => 'int');};
+    eval{$ffi->attach(CSLGetField => ['opaque', 'int'] => 'string');};
     eval{$ffi->attach(CPLGetConfigOption => ['string', 'string']  => 'string');};
     eval{$ffi->attach(CPLSetConfigOption => ['string', 'string']  => 'void');};
     eval{$ffi->attach(CPLFindFile => ['string', 'string']  => 'string');};
-    eval{$ffi->attach(CPLPushFinderLocation => ['string'] => 'string');};
+    eval{$ffi->attach(CPLPushFinderLocation => ['string'] => 'void');};
     eval{$ffi->attach(CPLPopFinderLocation => [] => 'void');};
     eval{$ffi->attach(CPLFinderClean => [] => 'void');};
 
@@ -404,7 +403,7 @@ sub new {
     eval{$ffi->attach( 'OGR_GT_Flatten' => ['unsigned int'] => 'unsigned int');};
 
 # generated with parse_h.pl
-# from /home/ajolma/github/gdal/gdal/gcore/gdal.h
+# from gcore/gdal.h
 eval{$ffi->attach('GDALGetDataTypeSize' => ['unsigned int'] => 'int');};
 eval{$ffi->attach('GDALGetDataTypeSizeBits' => ['unsigned int'] => 'int');};
 eval{$ffi->attach('GDALGetDataTypeSizeBytes' => ['unsigned int'] => 'int');};
@@ -648,7 +647,7 @@ eval{$ffi->attach('GDALDatasetGetTiledVirtualMem' => ['opaque','unsigned int','i
 eval{$ffi->attach('GDALRasterBandGetTiledVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','size_t','int','opaque'] => 'opaque');};
 eval{$ffi->attach('GDALCreatePansharpenedVRT' => [qw/string opaque int uint64*/] => 'opaque');};
 eval{$ffi->attach('GDALGetJPEG2000Structure' => [qw/string opaque/] => 'opaque');};
-# from /home/ajolma/github/gdal/gdal/ogr/ogr_api.h
+# from ogr/ogr_api.h
 eval{$ffi->attach('OGR_G_CreateFromWkb' => [qw/string opaque uint64* int/] => 'int');};
 eval{$ffi->attach('OGR_G_CreateFromWkt' => [qw/string_pointer opaque uint64*/] => 'int');};
 eval{$ffi->attach('OGR_G_CreateFromFgf' => [qw/string opaque uint64* int int*/] => 'int');};
@@ -685,14 +684,14 @@ eval{$ffi->attach('OGR_G_DumpReadable' => [qw/opaque opaque string/] => 'void');
 eval{$ffi->attach('OGR_G_FlattenTo2D' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OGR_G_CloseRings' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OGR_G_CreateFromGML' => [qw/string/] => 'opaque');};
-eval{$ffi->attach('OGR_G_ExportToGML' => [qw/opaque/] => 'string');};
-eval{$ffi->attach('OGR_G_ExportToGMLEx' => [qw/opaque string_pointer/] => 'string');};
+eval{$ffi->attach('OGR_G_ExportToGML' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('OGR_G_ExportToGMLEx' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_G_CreateFromGMLTree' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_G_ExportToGMLTree' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_G_ExportEnvelopeToGMLTree' => [qw/opaque/] => 'opaque');};
-eval{$ffi->attach('OGR_G_ExportToKML' => [qw/opaque string/] => 'string');};
-eval{$ffi->attach('OGR_G_ExportToJson' => [qw/opaque/] => 'string');};
-eval{$ffi->attach('OGR_G_ExportToJsonEx' => [qw/opaque string_pointer/] => 'string');};
+eval{$ffi->attach('OGR_G_ExportToKML' => [qw/opaque string/] => 'opaque');};
+eval{$ffi->attach('OGR_G_ExportToJson' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('OGR_G_ExportToJsonEx' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_G_CreateGeometryFromJson' => [qw/string/] => 'opaque');};
 eval{$ffi->attach('OGR_G_AssignSpatialReference' => [qw/opaque opaque/] => 'void');};
 eval{$ffi->attach('OGR_G_GetSpatialReference' => [qw/opaque/] => 'opaque');};
@@ -1017,7 +1016,7 @@ eval{$ffi->attach('OGR_STBL_Find' => [qw/opaque string/] => 'string');};
 eval{$ffi->attach('OGR_STBL_ResetStyleStringReading' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OGR_STBL_GetNextStyle' => [qw/opaque/] => 'string');};
 eval{$ffi->attach('OGR_STBL_GetLastStyleName' => [qw/opaque/] => 'string');};
-# from /home/ajolma/github/gdal/gdal/ogr/ogr_srs_api.h
+# from ogr/ogr_srs_api.h
 eval{$ffi->attach('OSRAxisEnumToName' => ['unsigned int'] => 'string');};
 eval{$ffi->attach('OSRNewSpatialReference' => [qw/string/] => 'opaque');};
 eval{$ffi->attach('OSRCloneGeogCS' => [qw/opaque/] => 'opaque');};
@@ -1168,7 +1167,7 @@ eval{$ffi->attach('OCTCleanupProjMutex' => [] => 'void');};
 eval{$ffi->attach('OPTGetProjectionMethods' => [] => 'string_pointer');};
 eval{$ffi->attach('OPTGetParameterList' => [qw/string string_pointer/] => 'string_pointer');};
 eval{$ffi->attach('OPTGetParameterInfo' => [qw/string string string_pointer string_pointer double*/] => 'int');};
-# from /home/ajolma/github/gdal/gdal/apps/gdal_utils.h
+# from apps/gdal_utils.h
 eval{$ffi->attach('GDALInfoOptionsNew' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALInfoOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALInfo' => [qw/opaque opaque/] => 'string');};
@@ -1400,6 +1399,13 @@ sub FinderClean {
     CPLFinderClean();
 }
 
+BEGIN {
+    require PkgConfig;
+    PkgConfig->import;
+    require Alien::gdal;
+    $instance = Geo::GDAL::FFI->new();
+}
+
 1;
 
 =pod
@@ -1420,10 +1426,8 @@ This is an example of creating a vector dataset.
 
  use Geo::GDAL::FFI;
 
- my $gdal = Geo::GDAL::FFI->get_instance();
-
  my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
- my $layer = $gdal
+ my $layer = Geo::GDAL::FFI->get_instance
      ->GetDriver('ESRI Shapefile')
      ->Create('test.shp')
      ->CreateLayer({
@@ -1446,11 +1450,9 @@ This is an example of creating a vector dataset.
 
 This is an example of reading a vector dataset.
 
- use Geo::GDAL::FFI;
+ use Geo::GDAL::FFI qw/Open/;
 
- my $gdal = Geo::GDAL::FFI->get_instance();
-
- my $layer = $gdal->Open('test.shp')->GetLayer;
+ my $layer = Open('test.shp')->GetLayer;
  $layer->ResetReading;
  while (my $feature = $layer->GetNextFeature) {
      my $value = $feature->GetField('name');
@@ -1480,11 +1482,9 @@ This is an example of reading a raster dataset. Note that using L<PDL>
 and L<MCE::Shared> can greatly reduce the time needed to process large
 raster datasets.
 
- use Geo::GDAL::FFI;
+ use Geo::GDAL::FFI qw/Open/;
 
- my $gdal = Geo::GDAL::FFI->get_instance();
-
- my $band = $gdal->Open($ARGV[0])->GetBand;
+ my $band = Open($ARGV[0])->GetBand;
  my ($w_band, $h_band) = $band->GetSize;
  my ($w_block, $h_block) = $band->GetBlockSize;
  my $nodata = $band->GetNoDataValue;
@@ -1532,23 +1532,14 @@ arguments C<($fraction, $msg, $data)>, where C<$fraction> is a number,
 C<$msg> is a string, and C<$data> is a pointer that is given as the
 progress data argument.
 
-=head2 new (deprecated, use get_instance)
-
- my $gdal = Geo::GDAL::FFI->new;
-
-Create or obtain the Geo::GDAL::FFI singleton object. All GDAL
-functions that are available (the C API is used) are attached to this
-class. The other classes in this distribution are there to provide an
-easier to use object oriented Perl API.
-
 =head2 get_instance
 
  my $gdal = Geo::GDAL::FFI->get_instance;
 
-Get the Geo::GDAL::FFI singleton. All GDAL functions that are
-available (the C API is used) are attached to this class. The other
-classes in this distribution are there to provide an easier to use
-object oriented Perl API.
+Obtain the Geo::GDAL::FFI singleton object. All GDAL functions that
+are available (the C API is used) are attached to this class. The
+other classes in this distribution are there to provide an easier to
+use object oriented Perl API.
 
 =head2 Capabilities
 
