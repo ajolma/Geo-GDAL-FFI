@@ -10,6 +10,7 @@ use FFI::Platypus::Buffer;
 require Exporter;
 require B;
 
+use Geo::GDAL::FFI::VSIFILE;
 use Geo::GDAL::FFI::SpatialReference;
 use Geo::GDAL::FFI::Object;
 use Geo::GDAL::FFI::Driver;
@@ -47,6 +48,26 @@ our $Write = 1;
 our @errors;
 our %immutable;
 our %parent;
+
+my $instance;
+
+sub SetErrorHandling {
+    return unless $instance;
+    return if exists $instance->{CPLErrorHandler};
+    $instance->{CPLErrorHandler} = $instance->{ffi}->closure(
+        sub {
+            my ($err, $err_num, $msg) = @_;
+            push @errors, $msg;
+        });
+    CPLPushErrorHandler($instance->{CPLErrorHandler});
+}
+
+sub UnsetErrorHandling {
+    return unless $instance;
+    return unless exists $instance->{CPLErrorHandler};
+    CPLPopErrorHandler($instance->{CPLErrorHandler});
+    delete $instance->{CPLErrorHandler};
+}
 
 sub error_msg {
     my $args = shift;
@@ -356,14 +377,6 @@ sub isint {
     return 1 if $flags & B::SVp_IOK() && !($flags & B::SVp_NOK()) && !($flags & B::SVp_POK());
 }
 
-sub fake {
-    my $class = shift;
-    my $self = {};
-    return bless $self, $class;
-}
-
-my $instance;
-
 sub new {
     my $class = shift;
 
@@ -384,10 +397,14 @@ sub new {
     eval{$ffi->attach(VSIFree => ['opaque'] => 'void');};
     croak "Can't attach to GDAL methods. Does Alien::gdal provide GDAL dynamic libs?" unless $class->can('VSIFree');
     eval{$ffi->attach(VSIFOpenL => [qw/string string/] => 'opaque');};
+    eval{$ffi->attach(VSIFOpenExL => [qw/string string int/] => 'opaque');};
     eval{$ffi->attach(VSIFCloseL => ['opaque'] => 'int');};
     eval{$ffi->attach(VSIFWriteL => [qw/pointer size_t size_t opaque/] => 'size_t');};
+    eval{$ffi->attach(VSIFReadL => [qw/opaque uint uint opaque/] => 'uint');};
+    eval{$ffi->attach(VSIIngestFile => [qw/opaque string string_pointer uint64* sint64/] => 'int');};
     eval{$ffi->attach(VSIStdoutSetRedirection => ['VSIWriteFunction', 'opaque'] => 'void');};
     eval{$ffi->attach(CPLPushErrorHandler => ['CPLErrorHandler'] => 'void');};
+    eval{$ffi->attach(CPLPopErrorHandler => ['CPLErrorHandler'] => 'void');};
     eval{$ffi->attach(CSLDestroy => ['opaque'] => 'void');};
     eval{$ffi->attach(CSLAddString => ['opaque', 'string'] => 'opaque');};
     eval{$ffi->attach(CSLCount => ['opaque'] => 'int');};
@@ -1230,12 +1247,7 @@ eval{$ffi->attach('GDALBuildVRT' => [qw/string int uint64* opaque opaque int*/] 
 
     $instance = {};
     $instance->{ffi} = $ffi;
-    $instance->{CPLErrorHandler} = $ffi->closure(
-        sub {
-            my ($err, $err_num, $msg) = @_;
-            push @errors, $msg;
-        });
-    CPLPushErrorHandler($instance->{CPLErrorHandler});
+    SetErrorHandling();
     GDALAllRegister();
     return bless $instance, $class;
 }
@@ -1244,6 +1256,10 @@ sub get_instance {
     my $class = shift;
     $instance = $class->new() unless $instance;
     return $instance;
+}
+
+sub DESTROY {
+    UnsetErrorHandling();
 }
 
 sub GetVersionInfo {
@@ -1639,6 +1655,21 @@ Optional, a reference to an array of driver specific open
 options. Consult the main GDAL documentation for open options.
 
 =back
+
+=head2 SetErrorHandling
+
+ Geo::GDAL::FFI::SetErrorHandling();
+
+Set a Perl function to catch errors reported within GDAL with
+CPLError. The errors are collected into @Geo::GDAL::FFI::errors and
+confessed if a method fails. This is the default.
+
+=head2 UnetErrorHandling
+
+ Geo::GDAL::FFI::SetErrorHandling();
+
+Unset the Perl function to catch GDAL errors. If no other error
+handler is set, GDAL prints the errors into stderr.
 
 =head1 LICENSE
 
