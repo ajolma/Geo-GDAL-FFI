@@ -61,7 +61,7 @@ if(1){
 # test Translate
 if(1){
     my $ds = GetDriver('GTiff')->Create('/vsimem/test.tiff', 10);
-    my $translated = $ds->Translate('/vsimem/translated.tiff', -of => 'GTiff');
+    my $translated = $ds->Translate('/vsimem/translated.tiff', [-of => 'GTiff']);
     ok($translated->GetDriver->GetName eq 'GTiff', "Translate");
 }
 

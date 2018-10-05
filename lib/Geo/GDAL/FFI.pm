@@ -1215,7 +1215,7 @@ eval{$ffi->attach('GDALWarp' => [qw/string opaque int opaque[] opaque int*/] => 
 eval{$ffi->attach('GDALVectorTranslateOptionsNew' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALVectorTranslateOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALVectorTranslateOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
-eval{$ffi->attach('GDALVectorTranslate' => [qw/string opaque int uint64* opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALVectorTranslate' => [qw/string opaque int opaque[] opaque int*/] => 'opaque');};
 eval{$ffi->attach('GDALDEMProcessingOptionsNew' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALDEMProcessingOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALDEMProcessingOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
@@ -1235,7 +1235,7 @@ eval{$ffi->attach('GDALRasterize' => [qw/string opaque opaque opaque int*/] => '
 eval{$ffi->attach('GDALBuildVRTOptionsNew' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALBuildVRTOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALBuildVRTOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
-eval{$ffi->attach('GDALBuildVRT' => [qw/string int uint64* opaque opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALBuildVRT' => [qw/string int opaque[] opaque opaque int*/] => 'opaque');};
 # end of generated code
 
     # we do not use Alien::gdal->data_dir since it issues warnings due to GDAL bug

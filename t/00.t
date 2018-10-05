@@ -131,7 +131,7 @@ if(1){
 if(1){
     my $dr = GetDriver('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff', 10);
-    my $info = decode_json $ds->GetInfo('-json');
+    my $info = decode_json $ds->GetInfo(['-json']);
     ok($info->{files}[0] eq '/vsimem/test.tiff', "Info");
 }
 

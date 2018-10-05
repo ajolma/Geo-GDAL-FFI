@@ -136,6 +136,8 @@ my %use_array = (
 
 my %use_opaque_array = (
     GDALWarp => 1,
+    GDALVectorTranslate => 1,
+    GDALBuildVRT => 1,
     );
 
 my %use_ret_pointer = (
