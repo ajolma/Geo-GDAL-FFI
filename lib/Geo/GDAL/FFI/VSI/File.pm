@@ -2,6 +2,7 @@ package Geo::GDAL::FFI::VSI::File;
 use v5.10;
 use strict;
 use warnings;
+use Encode qw(decode encode);
 use Carp;
 use FFI::Platypus::Buffer;
 use FFI::Platypus::Declare;
@@ -12,7 +13,7 @@ sub Open {
     my ($class, $path, $access) = @_;
     $access //= 'r';
     my $self = {};
-    $self->{handle} = Geo::GDAL::FFI::VSIFOpenExL($path, $access, 1);
+    $self->{handle} = Geo::GDAL::FFI::VSIFOpenExL(encode(utf8 => $path), $access, 1);
     unless ($self->{handle}) {
         confess Geo::GDAL::FFI::error_msg() // "Failed to open '$path' with access '$access'.";
     }

@@ -405,7 +405,10 @@ sub new {
     eval{$ffi->attach(VSIFReadL => [qw/opaque uint uint opaque/] => 'uint');};
     eval{$ffi->attach(VSIIngestFile => [qw/opaque string string_pointer uint64* sint64/] => 'int');};
     eval{$ffi->attach(VSIMkdir => [qw/string sint64/] => 'int');};
+    eval{$ffi->attach(VSIRmdir => [qw/string/] => 'int');};
     eval{$ffi->attach(VSIReadDirEx => [qw/string int/] => 'opaque');};
+    eval{$ffi->attach(VSIUnlink => [qw/string/] => 'int');};
+    eval{$ffi->attach(VSIRename => [qw/string string/] => 'int');};
     eval{$ffi->attach(VSIStdoutSetRedirection => ['VSIWriteFunction', 'opaque'] => 'void');};
     eval{$ffi->attach(CPLPushErrorHandler => ['CPLErrorHandler'] => 'void');};
     eval{$ffi->attach(CPLPopErrorHandler => ['CPLErrorHandler'] => 'void');};

@@ -12,8 +12,9 @@ use Test::More;
     Mkdir('/vsimem/x');
     FOpen('/vsimem/x/1', 'w');
     FOpen('/vsimem/x/2', 'w');
+    FOpen('/vsimem/x/ä', 'w');
     my @dir = ReadDir('/vsimem/x');
-    is_deeply(\@dir, [1, 2], "Mkdir FOpen ReadDir");
+    is_deeply(\@dir, [1, 2, 'ä'], "Mkdir FOpen ReadDir with UTF8");
 }
 
 {

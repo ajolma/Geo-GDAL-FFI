@@ -2,32 +2,51 @@ package Geo::GDAL::FFI::VSI;
 use v5.10;
 use strict;
 use warnings;
+use Encode qw(decode encode);
 use Carp;
 use FFI::Platypus::Buffer;
 require Exporter;
 
 our $VERSION = 0.05_03;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(Mkdir ReadDir FOpen);
+our @EXPORT_OK = qw(Mkdir Rmdir ReadDir FOpen Unlink Rename);
 
 sub FOpen {
     return Geo::GDAL::FFI::VSI::File->Open(@_);
 }
 
+sub Unlink {
+    my ($path) = @_;
+    my $e = Geo::GDAL::FFI::VSIUnlink(encode(utf8 => $path));
+    confess Geo::GDAL::FFI::error_msg() // "Failed to unlink '$path'." if $e == -1;
+}
+
+sub Rename {
+    my ($path, $new_path) = @_;
+    my $e = Geo::GDAL::FFI::VSIRename(encode(utf8 => $path), encode(utf8 => $new_path));
+    confess Geo::GDAL::FFI::error_msg() // "Failed to rename '$path' to '$new_path'." if $e == -1;
+}
+
 sub Mkdir {
     my ($path, $mode) = @_;
     $mode //= hex '0x0666';
-    my $e = Geo::GDAL::FFI::VSIMkdir($path, $mode);
+    my $e = Geo::GDAL::FFI::VSIMkdir(encode(utf8 => $path), $mode);
     confess Geo::GDAL::FFI::error_msg() // "Failed to mkdir '$path'." if $e == -1;
+}
+
+sub Rmdir {
+    my ($path) = @_;
+    my $e = Geo::GDAL::FFI::VSIRmdir(encode(utf8 => $path));
+    confess Geo::GDAL::FFI::error_msg() // "Failed to rmdir '$path'." if $e == -1;
 }
 
 sub ReadDir {
     my ($path, $max_files) = @_;
     $max_files //= 0;
-    my $csl = Geo::GDAL::FFI::VSIReadDirEx($path, $max_files);
+    my $csl = Geo::GDAL::FFI::VSIReadDirEx(encode(utf8 => $path), $max_files);
     my @dir;
     for my $i (0 .. Geo::GDAL::FFI::CSLCount($csl)-1) {
-        push @dir, Geo::GDAL::FFI::CSLGetField($csl, $i);
+        push @dir, decode utf8 => Geo::GDAL::FFI::CSLGetField($csl, $i);
     }
     Geo::GDAL::FFI::CSLDestroy($csl);
     return @dir;
