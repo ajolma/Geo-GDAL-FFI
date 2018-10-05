@@ -1,4 +1,4 @@
-package Geo::GDAL::FFI::VSIFILE;
+package Geo::GDAL::FFI::VSI::File;
 use v5.10;
 use strict;
 use warnings;
@@ -46,7 +46,7 @@ sub Ingest {
 
 =head1 NAME
 
-Geo::GDAL::FFI::VSIFILE - A GDAL virtual file
+Geo::GDAL::FFI::VSI::File - A GDAL virtual file
 
 =head1 SYNOPSIS
 
@@ -56,10 +56,10 @@ Geo::GDAL::FFI::VSIFILE - A GDAL virtual file
 
 =head2 Open
 
- my $vsifile = Geo::GDAL::FFI::VSIFILE->Open($name, $access);
+ my $vsifile = Geo::GDAL::FFI::VSI::File->Open($name, $access);
 
-Open a VSIFILE. $name is the name of the file to open. $access is 'r',
-'r+', 'a', or 'w'. 'r' is the default.
+Open a virtual file. $name is the name of the file to open. $access is
+'r', 'r+', 'a', or 'w'. 'r' is the default.
 
 =head1 LICENSE
 

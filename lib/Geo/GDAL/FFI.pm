@@ -10,7 +10,8 @@ use FFI::Platypus::Buffer;
 require Exporter;
 require B;
 
-use Geo::GDAL::FFI::VSIFILE;
+use Geo::GDAL::FFI::VSI;
+use Geo::GDAL::FFI::VSI::File;
 use Geo::GDAL::FFI::SpatialReference;
 use Geo::GDAL::FFI::Object;
 use Geo::GDAL::FFI::Driver;
@@ -402,6 +403,7 @@ sub new {
     eval{$ffi->attach(VSIFWriteL => [qw/pointer size_t size_t opaque/] => 'size_t');};
     eval{$ffi->attach(VSIFReadL => [qw/opaque uint uint opaque/] => 'uint');};
     eval{$ffi->attach(VSIIngestFile => [qw/opaque string string_pointer uint64* sint64/] => 'int');};
+    eval{$ffi->attach(VSIReadDirEx => [qw/string int/] => 'opaque');};
     eval{$ffi->attach(VSIStdoutSetRedirection => ['VSIWriteFunction', 'opaque'] => 'void');};
     eval{$ffi->attach(CPLPushErrorHandler => ['CPLErrorHandler'] => 'void');};
     eval{$ffi->attach(CPLPopErrorHandler => ['CPLErrorHandler'] => 'void');};

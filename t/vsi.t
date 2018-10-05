@@ -6,7 +6,7 @@ use Encode qw(decode encode);
 use Geo::GDAL::FFI;
 use Test::More;
 
-my $f = Geo::GDAL::FFI::VSIFILE->Open('/vsicurl/http://example.com/');
+my $f = Geo::GDAL::FFI::VSI::File->Open('/vsicurl/http://example.com/');
 my $html = $f->Read(1,80);
 ok($html =~  /Example Domain/, "Test example.com with vsicurl");
 $f->Close;
