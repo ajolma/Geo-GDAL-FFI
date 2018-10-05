@@ -26,7 +26,14 @@ use Geo::GDAL::FFI::Geometry;
 
 our $VERSION = 0.05_03;
 our @ISA = qw(Exporter);
-our @EXPORT_OK = qw(@errors Open);
+our @EXPORT_OK = qw(@errors GetVersionInfo SetErrorHandling UnsetErrorHandling 
+    Capabilities OpenFlags DataTypes ResamplingMethods 
+    FieldTypes FieldSubtypes Justifications ColorInterpretations
+    GeometryTypes GeometryFormats GridAlgorithms
+    GetDriver GetDrivers Open
+    HaveGEOS SetConfigOption GetConfigOption
+    FindFile PushFinderLocation PopFinderLocation FinderClean);
+our %EXPORT_TAGS = (all => \@EXPORT_OK);
 
 our $Warning = 2;
 our $Failure = 3;
@@ -1204,7 +1211,7 @@ eval{$ffi->attach('GDALWarpAppOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALWarpAppOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
 eval{$ffi->attach('GDALWarpAppOptionsSetQuiet' => [qw/opaque int/] => 'void');};
 eval{$ffi->attach('GDALWarpAppOptionsSetWarpOption' => [qw/opaque string string/] => 'void');};
-eval{$ffi->attach('GDALWarp' => [qw/string opaque int uint64* opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALWarp' => [qw/string opaque int opaque[] opaque int*/] => 'opaque');};
 eval{$ffi->attach('GDALVectorTranslateOptionsNew' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALVectorTranslateOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALVectorTranslateOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
@@ -1270,27 +1277,26 @@ sub DESTROY {
 }
 
 sub GetVersionInfo {
-    shift;
-    return GDALVersionInfo(@_);
+    my $request = shift // 'VERSION_NUM';
+    return GDALVersionInfo($request);
 }
 
 sub GetDriver {
-    my ($self, $i) = @_;
+    my ($i) = @_;
     my $d = isint($i) ? GDALGetDriver($i) : GDALGetDriverByName($i);
+    confess error_msg() // "Driver '$i' not found." unless $d;
     return bless \$d, 'Geo::GDAL::FFI::Driver';
 }
 
 sub GetDrivers {
-    my $self = shift;
     my @drivers;
     for my $i (0..GDALGetDriverCount()-1) {
-        push @drivers, $self->GetDriver($i);
+        push @drivers, GetDriver($i);
     }
     return @drivers;
 }
 
 sub Open {
-    shift;
     my ($name, $args) = @_;
     $name //= '';
     $args //= {};
@@ -1391,17 +1397,16 @@ sub HaveGEOS {
 }
 
 sub SetConfigOption {
-    my ($self, $key, $default) = @_;
+    my ($key, $default) = @_;
     CPLSetConfigOption($key, $default);
 }
 
 sub GetConfigOption {
-    my ($self, $key, $default) = @_;
+    my ($key, $default) = @_;
     return CPLGetConfigOption($key, $default);
 }
 
 sub FindFile {
-    my $self = shift;
     my ($class, $basename) = @_ == 2 ? @_ : ('', @_);
     $class //= '';
     $basename //= '';
@@ -1409,7 +1414,7 @@ sub FindFile {
 }
 
 sub PushFinderLocation {
-    my ($self, $location) = @_;
+    my ($location) = @_;
     $location //= '';
     CPLPushFinderLocation($location);
 }
@@ -1441,17 +1446,16 @@ Geo::GDAL::FFI - A foreign function interface to GDAL
 
 =head1 VERSION
 
-Version 0.04
+Version 0.06
 
 =head1 SYNOPSIS
 
 This is an example of creating a vector dataset.
 
- use Geo::GDAL::FFI;
+ use Geo::GDAL::FFI qw/GetDriver/;
 
  my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
- my $layer = Geo::GDAL::FFI->get_instance
-     ->GetDriver('ESRI Shapefile')
+ my $layer = GetDriver('ESRI Shapefile')
      ->Create('test.shp')
      ->CreateLayer({
          Name => 'test',
@@ -1485,11 +1489,9 @@ This is an example of reading a vector dataset.
 
 This is an example of creating a raster dataset.
 
- use Geo::GDAL::FFI;
+ use Geo::GDAL::FFI qw/GetDriver/;
 
- my $gdal = Geo::GDAL::FFI->get_instance();
-
- my $tiff = $gdal->GetDriver('GTiff')->Create('test.tiff', 3, 2);
+ my $tiff = GetDriver('GTiff')->Create('test.tiff', 3, 2);
  my $ogc_wkt = 
         'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS84",6378137,298.257223563,'.
         'AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,'.
@@ -1547,94 +1549,43 @@ raster datasets.
 This is a foreign function interface to the GDAL geospatial data
 access library.
 
-=head1 METHODS
+=head1 IMPORTABLE FUNCTIONS
 
-The progress function argument used in many methods should be a
-reference to a subroutine. The subroutine is called with three
-arguments C<($fraction, $msg, $data)>, where C<$fraction> is a number,
-C<$msg> is a string, and C<$data> is a pointer that is given as the
-progress data argument.
+The most important importable functions are GetDriver and Open, which
+return a driver and a dataset objects respectively. GetDrivers returns
+all available drivers as objects.
 
-=head2 get_instance
+Other importable functions include error handling configuration
+(SetErrorHandling and UnsetErrorHandling), functions that return lists
+of strings that are used in methods (Capabilities, OpenFlags,
+DataTypes, ResamplingMethods, FieldTypes, FieldSubtypes,
+Justifications, ColorInterpretations, GeometryTypes, GeometryFormats,
+GridAlgorithms), also functions GetVersionInfo, HaveGEOS,
+SetConfigOption, GetConfigOption, FindFile, PushFinderLocation,
+PopFinderLocation, and FinderClean can be imported.
 
- my $gdal = Geo::GDAL::FFI->get_instance;
-
-Obtain the Geo::GDAL::FFI singleton object. All GDAL functions that
-are available (the C API is used) are attached to this class. The
-other classes in this distribution are there to provide an easier to
-use object oriented Perl API.
-
-=head2 Capabilities
-
- my @caps = $gdal->Capabilities;
-
-Returns the list of capabilities (strings) a GDAL major object
-(Driver, Dataset, Band, or Layer in Geo::GDAL::FFI) can have.
-
-=head2 OpenFlags
-
- my @flags = $gdal->OpenFlags;
-
-Returns the list of opening flags to be used in the Open method.
-
-=head2 DataTypes
-
- my @types = $gdal->DataTypes;
-
-Returns the list of raster cell data types to be used in e.g. the
-CreateDataset method of the Driver class.
-
-=head2 FieldTypes
-
- my @types = $gdal->FieldTypes;
-
-Returns the list of field types.
-
-=head2 FieldSubtypes
-
- my @types = $gdal->FieldSubTypes;
-
-Returns the list of field subtypes.
-
-=head2 Justifications
-
- my @justifications = $gdal->Justifications;
-
-Returns the list of field justifications.
-
-=head2 ColorInterpretations
-
- my @interpretations = $gdal->ColorInterpretations;
-
-Returns the list of color interpretations.
-
-=head2 GeometryTypes
-
- my @types = $gdal->GeometryTypes;
-
-Returns the list of geometry types.
+:all imports all above functions.
 
 =head2 GetVersionInfo
 
- my $info = $gdal->GetVersionInfo;
+ my $info = GetVersionInfo($request);
 
-Returns the version information from the underlying GDAL library.
-
-=head2 GetDrivers
-
- my @drivers = $gdal->GetDrivers;
-
-Returns a list of all available driver objects.
+Returns the version information from the underlying GDAL
+library. $request is optional and by default 'VERSION_NUM'.
 
 =head2 GetDriver
 
- my @driver = $gdal->GetDriver($name);
+ my $driver = GetDriver($name);
 
 Returns the specific driver object.
 
+=head2 GetDrivers
+
+Returns a list of all available driver objects.
+
 =head2 Open
 
- my $dataset = $gdal->Open($name, {Flags => [qw/READONLY/], ...});
+ my $dataset = Open($name, {Flags => [qw/READONLY/], ...});
 
 Open a dataset. $name is the name of the dataset. Named arguments are
 the following.
@@ -1663,9 +1614,41 @@ options. Consult the main GDAL documentation for open options.
 
 =back
 
-=head2 SetErrorHandling
+=head2 Capabilities
 
- Geo::GDAL::FFI::SetErrorHandling();
+Returns the list of capabilities (strings) a GDAL major object
+(Driver, Dataset, Band, or Layer in Geo::GDAL::FFI) can have.
+
+=head2 OpenFlags
+
+Returns the list of opening flags to be used in the Open method.
+
+=head2 DataTypes
+
+Returns the list of raster cell data types to be used in e.g. the
+CreateDataset method of the Driver class.
+
+=head2 FieldTypes
+
+Returns the list of field types.
+
+=head2 FieldSubtypes
+
+Returns the list of field subtypes.
+
+=head2 Justifications
+
+Returns the list of field justifications.
+
+=head2 ColorInterpretations
+
+Returns the list of color interpretations.
+
+=head2 GeometryTypes
+
+Returns the list of geometry types.
+
+=head2 SetErrorHandling
 
 Set a Perl function to catch errors reported within GDAL with
 CPLError. The errors are collected into @Geo::GDAL::FFI::errors and
@@ -1673,10 +1656,16 @@ confessed if a method fails. This is the default.
 
 =head2 UnetErrorHandling
 
- Geo::GDAL::FFI::SetErrorHandling();
-
 Unset the Perl function to catch GDAL errors. If no other error
 handler is set, GDAL prints the errors into stderr.
+
+=head1 METHODS
+
+=head2 get_instance
+
+ my $gdal = Geo::GDAL::FFI->get_instance;
+
+Obtain the Geo::GDAL::FFI singleton object. The object is usually not needed.
 
 =head1 LICENSE
 
@@ -1710,6 +1699,10 @@ L<Geo::GDAL::FFI::Layer>
 L<Geo::GDAL::FFI::Feature>
 
 L<Geo::GDAL::FFI::Geometry>
+
+L<Geo::GDAL::FFI::VSI>
+
+L<Geo::GDAL::FFI::VSI::File>
 
 L<Alien::gdal>, L<FFI::Platypus>, L<http://www.gdal.org>
 

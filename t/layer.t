@@ -2,11 +2,9 @@ use v5.10;
 use strict;
 use warnings;
 use Carp;
-use Geo::GDAL::FFI;
+use Geo::GDAL::FFI qw/GetDriver HaveGEOS/;
 use Test::More;
 use Data::Dumper;
-
-my $gdal = Geo::GDAL::FFI->get_instance();
 
 my $schema = {
     GeometryType => 'Polygon',
@@ -18,7 +16,7 @@ my $schema = {
         ]
 };
 
-my $layer = $gdal->GetDriver('Memory')->Create->CreateLayer($schema);
+my $layer = GetDriver('Memory')->Create->CreateLayer($schema);
 
 my $f = Geo::GDAL::FFI::Feature->new($layer->GetDefn);
 $f->SetField(layer => 1);
@@ -28,7 +26,7 @@ $layer->CreateFeature($f);
 
 $schema->{Fields}[0]{Name} = 'method';
 
-my $method = $gdal->GetDriver('Memory')->Create->CreateLayer($schema);
+my $method = GetDriver('Memory')->Create->CreateLayer($schema);
 
 $f = Geo::GDAL::FFI::Feature->new($method->GetDefn);
 $f->SetField(method => 2);
@@ -43,7 +41,7 @@ eval {
     $result = $layer->Intersection($method, {Progress => sub {$progress = 1}});
 };
  SKIP: {
-     skip "No GEOS support in GDAL.", 5 if $@ =~ /^UNSUPPORTED/;
+     skip "No GEOS support in GDAL.", 5 unless HaveGEOS();
 
      ok($progress == 1, "Intersection progress.");
 

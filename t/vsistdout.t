@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Carp;
 use Encode qw(decode encode);
-use Geo::GDAL::FFI;
+use Geo::GDAL::FFI qw/GetDriver/;
 use Test::More;
 use Data::Dumper;
 use JSON;
@@ -32,9 +32,8 @@ use JSON;
 
 # test vsistdout redirection
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
     # create a small layer and copy it to vsistdout with redirection
-    my $layer = $gdal->GetDriver('Memory')->Create->CreateLayer({GeometryType => 'None'});
+    my $layer = GetDriver('Memory')->Create->CreateLayer({GeometryType => 'None'});
     $layer->CreateField(value => 'Integer');
     $layer->CreateGeomField(geom => 'Point');
     my $feature = Geo::GDAL::FFI::Feature->new($layer->GetDefn);
@@ -43,8 +42,9 @@ if(1){
     $layer->CreateFeature($feature);
 
     my $output = Output->new;
+    my $gdal = Geo::GDAL::FFI->get_instance;
     $gdal->SetWriter($output);
-    $gdal->GetDriver('GeoJSON')->Create('/vsistdout')->CopyLayer($layer);
+    GetDriver('GeoJSON')->Create('/vsistdout')->CopyLayer($layer);
     $gdal->CloseWriter;
 
     my $ret = $output->output;
@@ -60,8 +60,7 @@ if(1){
 
 # test Translate
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
-    my $ds = $gdal->GetDriver('GTiff')->Create('/vsimem/test.tiff', 10);
+    my $ds = GetDriver('GTiff')->Create('/vsimem/test.tiff', 10);
     my $translated = $ds->Translate('/vsimem/translated.tiff', -of => 'GTiff');
     ok($translated->GetDriver->GetName eq 'GTiff', "Translate");
 }

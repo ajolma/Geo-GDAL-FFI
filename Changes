@@ -1,6 +1,7 @@
 Revision history for Perl extension Geo::GDAL::FFI
 
 0.06
+     - BREAKING CHANGE: GetDriver and Open are not methods any more.
      - Refuse to handle 64 bit int data in non-64 bit Perl
      - Handle CSL arguments in GDAL API
      - Layer Intersection etc methods

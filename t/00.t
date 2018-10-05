@@ -8,7 +8,7 @@ use Test::More;
 use Data::Dumper;
 use JSON;
 
-BEGIN { use_ok('Geo::GDAL::FFI', 'Open'); }
+BEGIN { use_ok('Geo::GDAL::FFI', qw/:all/); }
 
 # test the singleton
 
@@ -49,12 +49,11 @@ if(1){
 
 # test file finder
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
-    my $gdal_data_dir = $gdal->GetConfigOption(GDAL_DATA => '');
+    my $gdal_data_dir = GetConfigOption(GDAL_DATA => '');
     SKIP: {
         skip "GDAL (Alien::gdal) is not properly installed; GDAL support files are not available.", 3 unless $gdal_data_dir;
 
-        my $path = $gdal->FindFile('gcs.csv');
+        my $path = FindFile('gcs.csv');
         ok(defined $path, "GDAL support files found.");
 
         say STDERR "FYI: GDAL_DATA = $gdal_data_dir";
@@ -70,35 +69,32 @@ if(1){
             }
         }
 
-        $gdal->PopFinderLocation; #FinderClean;
-        my $path2 = $gdal->FindFile('gcs.csv');
+        PopFinderLocation; #FinderClean;
+        my $path2 = FindFile('gcs.csv');
         ok(not(defined $path2), "GDAL support files not found after popping finder.");
 
         $path =~ s/[\w.]+$//;
-        $gdal->PushFinderLocation($path);
-        $path = $gdal->FindFile('gcs.csv');
+        PushFinderLocation($path);
+        $path = FindFile('gcs.csv');
         ok(defined $path, "GDAL support files found when working path inserted.");
     }
 }
 
 # test VersionInfo
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
-    my $info = $gdal->GetVersionInfo;
+    my $info = GetVersionInfo;
     ok($info, "Got info: '$info'.");
 }
 
 # test driver count
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
-    my $n = $gdal->GetDrivers;
+    my $n = GetDrivers();
     ok($n > 0, "Have $n drivers.");
 }
 
 # test metadata
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
-    my $dr = $gdal->GetDriver('NITF');
+    my $dr = GetDriver('NITF');
     my $ds = $dr->Create('/vsimem/test.nitf', 10);
 
     my @d = $ds->GetMetadataDomainList;
@@ -118,8 +114,7 @@ if(1){
 
 # test progress function
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
-    my $dr = $gdal->GetDriver('GTiff');
+    my $dr = GetDriver('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff', 10);
     my $was_at_fct = 0;
     my $progress = sub {
@@ -134,8 +129,7 @@ if(1){
 
 # test Info
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
-    my $dr = $gdal->GetDriver('GTiff');
+    my $dr = GetDriver('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff', 10);
     my $info = decode_json $ds->GetInfo('-json');
     ok($info->{files}[0] eq '/vsimem/test.tiff', "Info");
@@ -143,8 +137,7 @@ if(1){
 
 # test dataset
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
-    my $dr = $gdal->GetDriver('GTiff');
+    my $dr = GetDriver('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff', 10);
     my $ogc_wkt =
         'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS84",6378137,298.257223563,'.
@@ -163,8 +156,7 @@ if(1){
 
 # test band
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
-    my $dr = $gdal->GetDriver('GTiff');
+    my $dr = GetDriver('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff', 256);
     my $b = $ds->GetBand;
     #say STDERR $b;
@@ -208,8 +200,7 @@ if(1){
     #$b->SetColorTable([[1,2,3,4],[5,6,7,8]]);
 }
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
-    my $dr = $gdal->GetDriver('MEM');
+    my $dr = GetDriver('MEM');
     my $ds = $dr->Create('', 10);
     my $b = $ds->GetBand;
     my $table = [[1,2,3,4],[5,6,7,8]];
@@ -222,18 +213,17 @@ if(1){
 
 # test creating a shapefile
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
-    my $dr = $gdal->GetDriver('ESRI Shapefile');
+    my $dr = GetDriver('ESRI Shapefile');
     my $ds = $dr->Create('test.shp');
     my @sr = ();
-    if ($gdal->FindFile('gcs.csv')) {
+    if (FindFile('gcs.csv')) {
         @sr = (SpatialReference => Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067));
     }
     my $l = $ds->CreateLayer({Name => 'test', GeometryType => 'Point', @sr});
     my $d = $l->GetDefn();
     my $f = Geo::GDAL::FFI::Feature->new($d);
     $l->CreateFeature($f);
-    $ds = $gdal->Open('test.shp');
+    $ds = Open('test.shp');
     $l = $ds->GetLayer;
     $d = $l->GetDefn();
     ok($d->GetGeomType eq 'Point', "Create point shapefile and open it.");
@@ -492,11 +482,10 @@ if(1){
 
 # test layer feature manipulation
 if(1){
-    my $gdal = Geo::GDAL::FFI->get_instance();
-    my $dr = $gdal->GetDriver('Memory');
+    my $dr = GetDriver('Memory');
     my $ds = $dr->Create({Name => 'test'});
     my @sr = ();
-    if ($gdal->FindFile('gcs.csv')) {
+    if (FindFile('gcs.csv')) {
         @sr = (SpatialReference => Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067));
     }
     my $l = $ds->CreateLayer({Name => 'test', GeometryType => 'Point', @sr});

@@ -42,6 +42,7 @@ sub GetInfo {
     Geo::GDAL::FFI::GDALInfoOptionsFree($io);
     return $info;
 }
+*Info = *GetInfo;
 
 sub Translate {
     my $self = shift;
@@ -58,6 +59,34 @@ sub Translate {
     return bless \$ds, 'Geo::GDAL::FFI::Dataset' if $ds && ($e == 0);
     my $msg = Geo::GDAL::FFI::error_msg() // 'Translate failed.';
     confess $msg;
+}
+
+sub Warp {
+    my ($self, $args) = @_;
+    confess "Destination missing." unless $args->{Destination};
+    my ($path, $dst) = (undef, $args->{Destination});
+    unless (ref $dst) {
+        $path = $dst;
+        undef $dst;
+    }
+    my @src = ($$self);
+    if ($args->{Input}) {
+        for my $input (@{$args->{Input}}) {
+            push @src, $$input;
+        }
+    }
+    my $o = 0;
+    if ($args->{Options}) {
+        for my $option (@{$args->{Options}}) {
+            $o = Geo::GDAL::FFI::CSLAddString($o, $option);
+        }
+    }
+    my $io = Geo::GDAL::FFI::GDALWarpAppOptionsNew($o, 0);
+    Geo::GDAL::FFI::CSLDestroy($o);
+    my $e = 0;
+    my $ds = Geo::GDAL::FFI::GDALWarp($path, $$dst, scalar @src, \@src, $io, \$e);
+    Geo::GDAL::FFI::GDALWarpAppOptionsFree($io);
+    confess Geo::GDAL::FFI::error_msg() // 'Warp failed.' if !$ds || $e != 0;
 }
 
 sub GetWidth {
@@ -210,9 +239,11 @@ creating it with the Create method of a Driver object.
 
  my $driver = $dataset->GetDriver;
 
-=head2 GetInfo
+=head2 Info
 
- my $driver = $dataset->GetInfo(@options);
+ my $info = $dataset->Info(@options);
+
+This is the same as gdalinfo utility.
 
 =head2 Translate
 
@@ -220,7 +251,7 @@ creating it with the Create method of a Driver object.
 
 Convert a raster dataset into another raster dataset. $name is the
 name of the target dataset. This is the same as the gdal_translate
-command line program, so the options are the same. See
+utility, so the options are the same. See
 L<http://www.gdal.org/gdal_translate.html>.
 
 =head2 GetWidth

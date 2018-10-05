@@ -2,11 +2,9 @@ use v5.10;
 use strict;
 use warnings;
 use Carp;
-use Geo::GDAL::FFI;
+use Geo::GDAL::FFI qw/GetDriver/;
 use Test::More;
 use Data::Dumper;
-
-my $gdal = Geo::GDAL::FFI->get_instance();
 
 my $schema = {
     Name => 'test',
@@ -38,7 +36,7 @@ my $schema = {
         ]
 };
 
-my $layer = $gdal->GetDriver('Memory')->Create->CreateLayer($schema);
+my $layer = GetDriver('Memory')->Create->CreateLayer($schema);
 
 my $schema2 = {
     Name => 'test',

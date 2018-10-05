@@ -108,7 +108,7 @@ sub Intersection {
         my $schema = {
             GeometryType => 'Unknown'
         };
-        $result = Geo::GDAL::FFI->get_instance->GetDriver('Memory')->Create->CreateLayer($schema);
+        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
     }
     my $o = 0;
     for my $key (keys %{$args->{Options}}) {
@@ -131,7 +131,7 @@ sub Union {
         my $schema = {
             GeometryType => 'Unknown'
         };
-        $result = Geo::GDAL::FFI->get_instance->GetDriver('Memory')->Create->CreateLayer($schema);
+        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
     }
     my $o = 0;
     for my $key (keys %{$args->{Options}}) {
@@ -154,7 +154,7 @@ sub SymDifference {
         my $schema = {
             GeometryType => 'Unknown'
         };
-        $result = Geo::GDAL::FFI->get_instance->GetDriver('Memory')->Create->CreateLayer($schema);
+        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
     }
     my $o = 0;
     for my $key (keys %{$args->{Options}}) {
@@ -177,7 +177,7 @@ sub Identity {
         my $schema = {
             GeometryType => 'Unknown'
         };
-        $result = Geo::GDAL::FFI->get_instance->GetDriver('Memory')->Create->CreateLayer($schema);
+        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
     }
     my $o = 0;
     for my $key (keys %{$args->{Options}}) {
@@ -200,7 +200,7 @@ sub Update {
         my $schema = {
             GeometryType => 'Unknown'
         };
-        $result = Geo::GDAL::FFI->get_instance->GetDriver('Memory')->Create->CreateLayer($schema);
+        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
     }
     my $o = 0;
     for my $key (keys %{$args->{Options}}) {
@@ -223,7 +223,7 @@ sub Clip {
         my $schema = {
             GeometryType => 'Unknown'
         };
-        $result = Geo::GDAL::FFI->get_instance->GetDriver('Memory')->Create->CreateLayer($schema);
+        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
     }
     my $o = 0;
     for my $key (keys %{$args->{Options}}) {
@@ -246,7 +246,7 @@ sub Erase {
         my $schema = {
             GeometryType => 'Unknown'
         };
-        $result = Geo::GDAL::FFI->get_instance->GetDriver('Memory')->Create->CreateLayer($schema);
+        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
     }
     my $o = 0;
     for my $key (keys %{$args->{Options}}) {

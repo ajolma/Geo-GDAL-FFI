@@ -108,7 +108,10 @@ Optional, the dataset to copy.
 
 =item C<Progress>
 
-Optional, used only in dataset copy, a reference to a subroutine.
+Optional, used only in dataset copy, a reference to a subroutine. The
+subroutine is called with three arguments C<($fraction, $msg, $data)>,
+where C<$fraction> is a number, C<$msg> is a string, and C<$data> is a
+pointer that is given as the progress data argument.
 
 =item C<ProgressData>
 

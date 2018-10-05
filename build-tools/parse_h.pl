@@ -134,6 +134,10 @@ my %use_array = (
     OGR_F_SetFieldDoubleList => 1,
     );
 
+my %use_opaque_array = (
+    GDALWarp => 1,
+    );
+
 my %use_ret_pointer = (
     OGR_F_GetFieldAsIntegerList => 1,
     OGR_F_GetFieldAsInteger64List => 1,
@@ -279,7 +283,11 @@ sub parse_type {
         }
     }
     if ($arg =~ /^\w+?H\s*\*/) {
-        $arg = 'uint64*';
+        if ($use_opaque_array{$name}) {
+            $arg = 'opaque[]';
+        } else {
+            $arg = 'uint64*';
+        }
     } elsif ($arg =~ /^\w+?H/) {
         $arg = 'opaque';
     } elsif ($arg =~ /^const \w+?H/) {
