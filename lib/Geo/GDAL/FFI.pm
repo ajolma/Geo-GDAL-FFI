@@ -395,14 +395,16 @@ sub new {
     $ffi->type('(double,int,pointer,pointer,pointer)->int' => 'GDALContourWriter');
 
     # from port/*.h
+    eval{$ffi->attach(VSIMalloc => [qw/uint/] => 'opaque');};
+    croak "Can't attach to GDAL methods. Does Alien::gdal provide GDAL dynamic libs?" unless $class->can('VSIMalloc');
     eval{$ffi->attach(VSIFree => ['opaque'] => 'void');};
-    croak "Can't attach to GDAL methods. Does Alien::gdal provide GDAL dynamic libs?" unless $class->can('VSIFree');
     eval{$ffi->attach(VSIFOpenL => [qw/string string/] => 'opaque');};
     eval{$ffi->attach(VSIFOpenExL => [qw/string string int/] => 'opaque');};
     eval{$ffi->attach(VSIFCloseL => ['opaque'] => 'int');};
-    eval{$ffi->attach(VSIFWriteL => [qw/pointer size_t size_t opaque/] => 'size_t');};
+    eval{$ffi->attach(VSIFWriteL => [qw/opaque uint uint opaque/] => 'uint');};
     eval{$ffi->attach(VSIFReadL => [qw/opaque uint uint opaque/] => 'uint');};
     eval{$ffi->attach(VSIIngestFile => [qw/opaque string string_pointer uint64* sint64/] => 'int');};
+    eval{$ffi->attach(VSIMkdir => [qw/string sint64/] => 'int');};
     eval{$ffi->attach(VSIReadDirEx => [qw/string int/] => 'opaque');};
     eval{$ffi->attach(VSIStdoutSetRedirection => ['VSIWriteFunction', 'opaque'] => 'void');};
     eval{$ffi->attach(CPLPushErrorHandler => ['CPLErrorHandler'] => 'void');};

@@ -103,7 +103,6 @@ sub Read {
     $xoff //= 0;
     $yoff //= 0;
     my $t = Geo::GDAL::FFI::GDALGetRasterDataType($$self);
-    my $buf;
     my ($pc, $bytes_per_cell) = pack_char($t);
     my $w;
     $xsize //= Geo::GDAL::FFI::GDALGetRasterBandXSize($$self);
@@ -111,7 +110,7 @@ sub Read {
     $bufxsize //= $xsize;
     $bufysize //= $ysize;
     $w = $bufxsize * $bytes_per_cell;
-    $buf = ' ' x ($bufysize * $w);
+    my $buf = ' ' x ($bufysize * $w);
     my ($pointer, $size) = scalar_to_buffer $buf;
     Geo::GDAL::FFI::GDALRasterIO($$self, $Geo::GDAL::FFI::Read, $xoff, $yoff, $xsize, $ysize, $pointer, $bufxsize, $bufysize, $t, 0, 0);
     my $offset = 0;
