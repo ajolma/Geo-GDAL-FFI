@@ -7,7 +7,7 @@ use Carp;
 use FFI::Platypus::Buffer;
 require Exporter;
 
-our $VERSION = 0.06_00;
+our $VERSION = 0.06;
 
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(Mkdir Rmdir ReadDir FOpen Unlink Rename);

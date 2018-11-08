@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = 0.06_00;
+our $VERSION = 0.06;
 
 my %ref;
 
