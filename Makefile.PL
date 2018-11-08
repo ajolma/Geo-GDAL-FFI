@@ -14,8 +14,7 @@ WriteMakefile(
         'Alien::gdal' => 0
     },
     PREREQ_PM => {
-        #'PkgConfig' => 0.22027,
-        'PkgConfig' => 0,
+        'PkgConfig' => 0.23026,
         'FFI::Platypus' => 0,
         'Alien::gdal' => 0,
         'PDL' => 0
