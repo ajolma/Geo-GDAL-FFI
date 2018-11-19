@@ -99,166 +99,45 @@ sub DeleteFeature {
     confess Geo::GDAL::FFI::error_msg({OGRError => $e});
 }
 
-sub Intersection {
-    my ($self, $method, $args) = @_;
-    confess "Method layer missing." unless $method;
-    $args //= {};
-    my $result = $args->{Result};
-    unless ($result) {
-        my $schema = {
-            GeometryType => 'Unknown'
-        };
-        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
+__PACKAGE__->_make_overlay_methods();
+
+sub _make_overlay_methods {
+    my ($pkg) = @_;
+    my @methods = (qw /
+            Intersection Union  SymDifference
+            Identity     Update Clip    Erase
+        /);
+    
+    no strict 'refs';
+    foreach my $method_name (@methods) {
+        *{$pkg . '::' . $method_name} =
+            sub {
+                my ($self, $method, $args) = @_;
+                confess "Method layer missing." unless $method;
+                $args //= {};
+                my $result = $args->{Result};
+                unless ($result) {
+                    my $schema = {
+                        GeometryType => 'Unknown'
+                    };
+                    $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
+                }
+                my $o = 0;
+                for my $key (keys %{$args->{Options}}) {
+                    $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}{$key}");
+                }
+                my $p = 0;
+                $p = FFI::Platypus->new->closure($args->{Progress}) if $args->{Progress};
+                my $e = &{'Geo::GDAL::FFI::OGR_L_'.$method_name} ($$self, $$method, $$result, $o, $p, $args->{ProgressData});
+                Geo::GDAL::FFI::CSLDestroy($o);
+                return $result unless $e;
+                confess Geo::GDAL::FFI::error_msg({OGRError => $e});
+            };
     }
-    my $o = 0;
-    for my $key (keys %{$args->{Options}}) {
-        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}{$key}");
-    }
-    my $p = 0;
-    $p = FFI::Platypus->new->closure($args->{Progress}) if $args->{Progress};
-    my $e = Geo::GDAL::FFI::OGR_L_Intersection($$self, $$method, $$result, $o, $p, $args->{ProgressData});
-    Geo::GDAL::FFI::CSLDestroy($o);
-    return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
+
+    return;
 }
 
-sub Union {
-    my ($self, $method, $args) = @_;
-    confess "Method layer missing." unless $method;
-    $args //= {};
-    my $result = $args->{Result};
-    unless ($result) {
-        my $schema = {
-            GeometryType => 'Unknown'
-        };
-        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
-    }
-    my $o = 0;
-    for my $key (keys %{$args->{Options}}) {
-        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}{$key}");
-    }
-    my $p = 0;
-    $p = FFI::Platypus->new->closure($args->{Progress}) if $args->{Progress};
-    my $e = Geo::GDAL::FFI::OGR_L_Union($$self, $$method, $$result, $o, $p, $args->{ProgressData});
-    Geo::GDAL::FFI::CSLDestroy($o);
-    return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
-}
-
-sub SymDifference {
-    my ($self, $method, $args) = @_;
-    confess "Method layer missing." unless $method;
-    $args //= {};
-    my $result = $args->{Result};
-    unless ($result) {
-        my $schema = {
-            GeometryType => 'Unknown'
-        };
-        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
-    }
-    my $o = 0;
-    for my $key (keys %{$args->{Options}}) {
-        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}{$key}");
-    }
-    my $p = 0;
-    $p = FFI::Platypus->new->closure($args->{Progress}) if $args->{Progress};
-    my $e = Geo::GDAL::FFI::OGR_L_SymDifference($$self, $$method, $$result, $o, $p, $args->{ProgressData});
-    Geo::GDAL::FFI::CSLDestroy($o);
-    return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
-}
-
-sub Identity {
-    my ($self, $method, $args) = @_;
-    confess "Method layer missing." unless $method;
-    $args //= {};
-    my $result = $args->{Result};
-    unless ($result) {
-        my $schema = {
-            GeometryType => 'Unknown'
-        };
-        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
-    }
-    my $o = 0;
-    for my $key (keys %{$args->{Options}}) {
-        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}{$key}");
-    }
-    my $p = 0;
-    $p = FFI::Platypus->new->closure($args->{Progress}) if $args->{Progress};
-    my $e = Geo::GDAL::FFI::OGR_L_Identity($$self, $$method, $$result, $o, $p, $args->{ProgressData});
-    Geo::GDAL::FFI::CSLDestroy($o);
-    return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
-}
-
-sub Update {
-    my ($self, $method, $args) = @_;
-    confess "Method layer missing." unless $method;
-    $args //= {};
-    my $result = $args->{Result};
-    unless ($result) {
-        my $schema = {
-            GeometryType => 'Unknown'
-        };
-        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
-    }
-    my $o = 0;
-    for my $key (keys %{$args->{Options}}) {
-        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}{$key}");
-    }
-    my $p = 0;
-    $p = FFI::Platypus->new->closure($args->{Progress}) if $args->{Progress};
-    my $e = Geo::GDAL::FFI::OGR_L_Update($$self, $$method, $$result, $o, $p, $args->{ProgressData});
-    Geo::GDAL::FFI::CSLDestroy($o);
-    return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
-}
-
-sub Clip {
-    my ($self, $method, $args) = @_;
-    confess "Method layer missing." unless $method;
-    $args //= {};
-    my $result = $args->{Result};
-    unless ($result) {
-        my $schema = {
-            GeometryType => 'Unknown'
-        };
-        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
-    }
-    my $o = 0;
-    for my $key (keys %{$args->{Options}}) {
-        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}{$key}");
-    }
-    my $p = 0;
-    $p = FFI::Platypus->new->closure($args->{Progress}) if $args->{Progress};
-    my $e = Geo::GDAL::FFI::OGR_L_Clip($$self, $$method, $$result, $o, $p, $args->{ProgressData});
-    Geo::GDAL::FFI::CSLDestroy($o);
-    return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
-}
-
-sub Erase {
-    my ($self, $method, $args) = @_;
-    confess "Method layer missing." unless $method;
-    $args //= {};
-    my $result = $args->{Result};
-    unless ($result) {
-        my $schema = {
-            GeometryType => 'Unknown'
-        };
-        $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
-    }
-    my $o = 0;
-    for my $key (keys %{$args->{Options}}) {
-        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}{$key}");
-    }
-    my $p = 0;
-    $p = FFI::Platypus->new->closure($args->{Progress}) if $args->{Progress};
-    my $e = Geo::GDAL::FFI::OGR_L_Erase($$self, $$method, $$result, $o, $p, $args->{ProgressData});
-    Geo::GDAL::FFI::CSLDestroy($o);
-    return $result unless $e;
-    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
-}
 
 1;
 
