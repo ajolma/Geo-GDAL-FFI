@@ -63,4 +63,9 @@ eval {
      $result = $layer->Erase($method);
 };
 
+
+my $exp_extent = [1,3,1,2];
+is_deeply $layer->GetExtent(0), $exp_extent, 'Got correct layer extent, no forcing';
+is_deeply $layer->GetExtent(1), $exp_extent, 'Got correct layer extent when forced';
+
 done_testing();

@@ -138,6 +138,14 @@ sub _make_overlay_methods {
     return;
 }
 
+sub GetExtent {
+    my ($self, $force) = @_;
+    my $extent = [0,0,0,0];
+    $force = $force ? \1 : \0;  #  ensure $force is a ref
+    my $e = Geo::GDAL::FFI::OGR_L_GetExtent ($$self, $extent, $force);
+    return $extent unless $e;
+    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
+}
 
 1;
 
@@ -188,6 +196,14 @@ Returns the FeatureDefn object for this layer.
 =head2 DeleteFeature
 
  $layer->DeleteFeature($fid);
+ 
+=head2 GetExtent
+ $layer->GetExtent();
+ $layer->GetExtent(1);
+
+Returns an array ref with [minx, miny, maxx, maxy].
+Argument is a boolean to force calculation even
+if it is expensive.
 
 =head2 Intersection, Union, SymDifference, Identity, Update, Clip, Erase
 
