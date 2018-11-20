@@ -196,6 +196,14 @@ Returns the FeatureDefn object for this layer.
 =head2 DeleteFeature
 
  $layer->DeleteFeature($fid);
+ 
+=head2 GetExtent
+ $layer->GetExtent();
+ $layer->GetExtent(1);
+
+Returns an array ref with [minx, miny, maxx, maxy].
+Argument is a boolean to force calculation even
+if it is expensive.
 
 =head2 Intersection, Union, SymDifference, Identity, Update, Clip, Erase
 
