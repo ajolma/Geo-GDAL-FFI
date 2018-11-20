@@ -138,6 +138,14 @@ sub _make_overlay_methods {
     return;
 }
 
+sub GetExtent {
+    my ($self, $force) = @_;
+    my $extent = [0,0,0,0];
+    $force = $force ? \1 : \0;  #  ensure $force is a ref
+    my $e = Geo::GDAL::FFI::OGR_L_GetExtent ($$self, $extent, $force);
+    return $extent unless $e;
+    confess Geo::GDAL::FFI::error_msg({OGRError => $e});
+}
 
 1;
 
