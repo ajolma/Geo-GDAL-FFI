@@ -28,7 +28,13 @@ sub new {
 
 sub DESTROY {
     my $self = shift;
-    Geo::GDAL::FFI::OSRDestroySpatialReference($$self);
+    #  OSRGetReferenceCount method not yet implemented
+    my $refcount = (Geo::GDAL::FFI::OSRReference ($$self)-1);
+    Geo::GDAL::FFI::OSRDereference ($$self);  #  immediately decrement 
+    if ($refcount == 0) {
+        #warn "Calling DESTROY method for $$self\n";
+        Geo::GDAL::FFI::OSRDestroySpatialReference($$self);
+    }
 }
 
 sub Export {
