@@ -68,4 +68,28 @@ my $exp_extent = [1,3,1,2];
 is_deeply $layer->GetExtent(0), $exp_extent, 'Got correct layer extent, no forcing';
 is_deeply $layer->GetExtent(1), $exp_extent, 'Got correct layer extent when forced';
 
+
+
+{
+    #  need to test more than just the spatial index creation
+    my $ds = GetDriver ('ESRI Shapefile')->Create ('/vsimem/test_sql');
+    my $layer_name = 'test_sql_layer';
+    my $layer = $ds->CreateLayer ({%$schema, Name => $layer_name});
+    
+    my $f = Geo::GDAL::FFI::Feature->new($layer->GetDefn);
+    #$f->SetField(layer => 1);
+    $f->SetGeomField([WKT => 'POLYGON ((1 1, 1 2, 3 2, 3 1, 1 1))']);
+        
+    $layer->CreateFeature($f);
+    
+    my $result = eval {
+        $ds->ExecuteSQL (qq{CREATE SPATIAL INDEX ON "$layer_name"});
+    };
+    my $e = $@;
+    #  we expect 
+    ok (!$result, 'ExecuteSQL ran spatial index');
+    ok (!$e,      'ExecuteSQL did not error');
+
+}
+
 done_testing();
