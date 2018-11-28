@@ -147,6 +147,11 @@ sub GetExtent {
     confess Geo::GDAL::FFI::error_msg({OGRError => $e});
 }
 
+sub GetName {
+    my ($self) = @_;
+    return $self->GetDefn->GetName;
+}
+
 1;
 
 =pod
