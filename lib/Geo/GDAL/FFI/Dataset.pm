@@ -156,6 +156,19 @@ sub CopyLayer {
     return bless \$l, 'Geo::GDAL::FFI::Layer';
 }
 
+
+sub ExecuteSQL {
+    my ($self, $sql, $filter, $dialect) = @_;
+        
+    my $e = Geo::GDAL::FFI::GDALDatasetExecuteSQL(
+        $$self, $sql, $filter, $dialect
+    );
+    if ($e) {
+        confess Geo::GDAL::FFI::error_msg();
+    }
+}
+
+
 ## utilities
 
 sub new_options {
