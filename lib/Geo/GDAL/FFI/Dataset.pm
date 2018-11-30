@@ -10,8 +10,16 @@ our $VERSION = 0.06;
 sub DESTROY {
     my $self = shift;
     $self->FlushCache;
-    #say STDERR "DESTROY $self";
-    Geo::GDAL::FFI::GDALClose($$self);
+    #say STDERR "DESTROY CALLED FOR $self -> $$self";
+    #  this increments the ref count
+    #  if only we could get at the reference count directly...
+    my $refcount = (Geo::GDAL::FFI::GDALReferenceDataset ($$self)-1);
+    Geo::GDAL::FFI::GDALReleaseDataset ($$self);  #  this has side effects
+    if ($refcount == 0) {
+        #say STDERR "CALLING CLOSE ON $$self";
+        Geo::GDAL::FFI::GDALClose($$self);
+    }
+    
 }
 
 sub GetName {
