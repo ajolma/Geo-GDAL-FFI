@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Carp;
 use base 'Geo::GDAL::FFI::Object';
+use Scalar::Util qw /blessed/;
 
 our $VERSION = 0.06;
 
@@ -296,6 +297,7 @@ sub Rasterize {
     my $result = Geo::GDAL::FFI::GDALRasterize($path, $dst, $$self, $options, \$e);
     Geo::GDAL::FFI::GDALRasterizeOptionsFree($options);
     confess Geo::GDAL::FFI::error_msg() // 'Rasterize failed.' if !$result || $e != 0;
+    return if !defined wantarray;
     return bless \$result, 'Geo::GDAL::FFI::Dataset';
 }
 
