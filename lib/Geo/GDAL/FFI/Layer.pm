@@ -5,7 +5,7 @@ use warnings;
 use Carp;
 use base 'Geo::GDAL::FFI::Object';
 
-our $VERSION = 0.06;
+our $VERSION = 0.0601;
 
 sub DESTROY {
     my $self = shift;
@@ -145,6 +145,11 @@ sub GetExtent {
     my $e = Geo::GDAL::FFI::OGR_L_GetExtent ($$self, $extent, $force);
     return $extent unless $e;
     confess Geo::GDAL::FFI::error_msg({OGRError => $e});
+}
+
+sub GetName {
+    my ($self) = @_;
+    return $self->GetDefn->GetName;
 }
 
 1;

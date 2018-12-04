@@ -64,6 +64,16 @@ eval {
 };
 
 
+#  GetName
+{
+    my $name = $layer->GetName;
+    is ($name, '', 'Got correct default name for anonymous layer');
+    my $test_name = 'test_name';
+    my $named_layer = GetDriver('Memory')->Create->CreateLayer({Name => $test_name});
+    $name = $named_layer->GetName;
+    is ($name, $test_name, 'Got correct name for named layer');
+}
+
 my $exp_extent = [1,3,1,2];
 is_deeply $layer->GetExtent(0), $exp_extent, 'Got correct layer extent, no forcing';
 is_deeply $layer->GetExtent(1), $exp_extent, 'Got correct layer extent when forced';

@@ -4,8 +4,9 @@ use strict;
 use warnings;
 use Carp;
 use base 'Geo::GDAL::FFI::Object';
+use Scalar::Util qw /blessed/;
 
-our $VERSION = 0.06;
+our $VERSION = 0.0601;
 
 sub DESTROY {
     my $self = shift;
@@ -309,14 +310,26 @@ sub Grid {
 
 sub Rasterize {
     my ($self, $args) = @_;
-    my ($path, $dst) = destination($args->{Destination});
+    
+    my $dst = $args->{Destination};
+    confess "Destination argument should not be passed for non-void context"
+      if defined wantarray && blessed $dst;
+
     my $options = new_options(\&Geo::GDAL::FFI::GDALRasterizeOptionsNew, $args->{Options});
     set_progress($options, $args, \&Geo::GDAL::FFI::GDALRasterizeOptionsSetProgress);
+    
     my $e = 0;
-    my $result = Geo::GDAL::FFI::GDALRasterize($path, $dst, $$self, $options, \$e);
+    my $result;
+    if (blessed($dst)) {
+        Geo::GDAL::FFI::GDALRasterize(undef, $$dst, $$self, $options, \$e);
+    } else {
+        $result = Geo::GDAL::FFI::GDALRasterize($dst, undef, $$self, $options, \$e);
+    }
     Geo::GDAL::FFI::GDALRasterizeOptionsFree($options);
-    confess Geo::GDAL::FFI::error_msg() // 'Rasterize failed.' if !$result || $e != 0;
-    return bless \$result, 'Geo::GDAL::FFI::Dataset';
+    if (defined $result) {
+        confess Geo::GDAL::FFI::error_msg() // 'Rasterize failed.' if !$result || $e != 0;
+        return bless \$result, 'Geo::GDAL::FFI::Dataset';
+    }
 }
 
 sub BuildVRT {
@@ -443,17 +456,18 @@ returns the new layer. The options hash is mostly driver specific.
 =head2 Info
 
  my $info = $dataset->Info($options);
+ my $info = $dataset->Info(['-json', '-stats']);
 
 This is the same as gdalinfo utility. $options is a reference to an
-array.
+array.  Valid options are as per the L<gdalinfo|https://www.gdal.org/gdalinfo.html> utility.
 
 =head2 Translate
 
  my $target = $source->Translate($path, $options, $progress, $progress_data);
 
 Convert a raster dataset into another raster dataset. This is the same
-as the gdal_translate utility. $name is the name of the target
-dataset. $options is a reference to an array.
+as the L<gdal_translate|https://www.gdal.org/gdal_translate.html> utility. $name is the name of the target
+dataset. $options is a reference to an array of switches.
 
 =head2 Warp
 
@@ -462,12 +476,16 @@ dataset. $options is a reference to an array.
 $args is a hashref, keys may be Destination, Input, Options, Progress,
 ProgressData.
 
+Valid options are as per the L<gdalwarp|https://www.gdal.org/gdalwarp.html> utility.
+
 =head2 VectorTranslate
 
  my $result = $dataset->VectorTranslate($args);
 
 $args is a hashref, keys may be Destination, Input, Options, Progress,
 ProgressData.
+
+Valid options are as per the L<gdal_translate|https://www.gdal.org/gdal_translate.html> utility.  
 
 =head2 DEMProcessing
 
@@ -476,6 +494,8 @@ ProgressData.
 $args is a hashref, keys may be Processing, ColorFilename, Options,
 Progress, ProgressData.
 
+See also L<gdaldem|https://www.gdal.org/gdaldem.html>.
+
 =head2 NearBlack
 
  my $result = $dataset->NearBlack($args);
@@ -483,16 +503,23 @@ Progress, ProgressData.
 $args is a hashref, keys may be Destination, Options, Progress,
 ProgressData.
 
+Valid options are as per the L<nearblack|https://www.gdal.org/nearblack.html> utility.  
+
 =head2 Grid
 
  my $result = $dataset->Grid($path, $options, $progress, $progress_data);
+ 
+Valid options are as per the L<gdal_grid|https://www.gdal.org/gdal_grid.html> utility.  
 
 =head2 Rasterize
 
  my $result = $dataset->Rasterize($args);
+ my $result = $dataset->Rasterize({Options => [-b => 1, -at]});
 
 $args is a hashref, keys may be Destination, Options, Progress,
 ProgressData.
+
+Valid options are as per the L<gdal_rasterize|https://www.gdal.org/gdal_rasterize.html> utility.  
 
 =head2 BuildVRT
 
