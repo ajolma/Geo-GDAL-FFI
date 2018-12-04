@@ -423,17 +423,18 @@ returns the new layer. The options hash is mostly driver specific.
 =head2 Info
 
  my $info = $dataset->Info($options);
+ my $info = $dataset->Info(['-json', '-stats']);
 
 This is the same as gdalinfo utility. $options is a reference to an
-array.
+array.  Valid options are as per the L<gdalinfo|https://www.gdal.org/gdalinfo.html> utility.
 
 =head2 Translate
 
  my $target = $source->Translate($path, $options, $progress, $progress_data);
 
 Convert a raster dataset into another raster dataset. This is the same
-as the gdal_translate utility. $name is the name of the target
-dataset. $options is a reference to an array.
+as the L<gdal_translate|https://www.gdal.org/gdal_translate.html> utility. $name is the name of the target
+dataset. $options is a reference to an array of switches.
 
 =head2 Warp
 
@@ -442,12 +443,16 @@ dataset. $options is a reference to an array.
 $args is a hashref, keys may be Destination, Input, Options, Progress,
 ProgressData.
 
+Valid options are as per the L<gdalwarp|https://www.gdal.org/gdalwarp.html> utility.
+
 =head2 VectorTranslate
 
  my $result = $dataset->VectorTranslate($args);
 
 $args is a hashref, keys may be Destination, Input, Options, Progress,
 ProgressData.
+
+Valid options are as per the L<gdal_translate|https://www.gdal.org/gdal_translate.html> utility.  
 
 =head2 DEMProcessing
 
@@ -456,6 +461,8 @@ ProgressData.
 $args is a hashref, keys may be Processing, ColorFilename, Options,
 Progress, ProgressData.
 
+See also L<gdaldem|https://www.gdal.org/gdaldem.html>.
+
 =head2 NearBlack
 
  my $result = $dataset->NearBlack($args);
@@ -463,16 +470,23 @@ Progress, ProgressData.
 $args is a hashref, keys may be Destination, Options, Progress,
 ProgressData.
 
+Valid options are as per the L<nearblack|https://www.gdal.org/nearblack.html> utility.  
+
 =head2 Grid
 
  my $result = $dataset->Grid($path, $options, $progress, $progress_data);
+ 
+Valid options are as per the L<gdal_grid|https://www.gdal.org/gdal_grid.html> utility.  
 
 =head2 Rasterize
 
  my $result = $dataset->Rasterize($args);
+ my $result = $dataset->Rasterize({Options => [-b => 1, -at]});
 
 $args is a hashref, keys may be Destination, Options, Progress,
 ProgressData.
+
+Valid options are as per the L<gdal_rasterize|https://www.gdal.org/gdal_rasterize.html> utility.  
 
 =head2 BuildVRT
 
