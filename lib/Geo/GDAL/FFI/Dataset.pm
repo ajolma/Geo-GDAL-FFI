@@ -160,12 +160,15 @@ sub CopyLayer {
 sub ExecuteSQL {
     my ($self, $sql, $filter, $dialect) = @_;
         
-    my $e = Geo::GDAL::FFI::GDALDatasetExecuteSQL(
+    my $lyr = Geo::GDAL::FFI::GDALDatasetExecuteSQL(
         $$self, $sql, $filter, $dialect
     );
-    if ($e) {
-        confess Geo::GDAL::FFI::error_msg();
+    
+    if ($lyr && defined wantarray) {
+        $Geo::GDAL::FFI::parent{$lyr} = $self;
     }
+
+    return $lyr;
 }
 
 
