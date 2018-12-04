@@ -453,6 +453,19 @@ arguments returns the first layer.
 Copies the given layer into this dataset using the name $name and
 returns the new layer. The options hash is mostly driver specific.
 
+=head2 ExecuteSQL
+ $dataset->ExecuteSQL ($sql, $filter, $dialect);
+
+ #  build a spatial index
+ $dataset->ExecuteSQL (qq{CREATE SPATIAL INDEX ON "$some_layer_name"});
+ 
+ #  filter a data set using the SQLite dialect and a second geometry
+ my $filtered = $dataset->ExecuteSQL (
+   qq{SELECT "$fld1", "$fld2" FROM "$some_layer_name"},
+   $some_geometry,
+   'SQLite',
+ );
+ 
 =head2 Info
 
  my $info = $dataset->Info($options);
