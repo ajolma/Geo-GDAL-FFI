@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Carp;
 use base 'Geo::GDAL::FFI::Object';
+use Scalar::Util qw /blessed/;
 
 our $VERSION = 0.06;
 
@@ -289,14 +290,26 @@ sub Grid {
 
 sub Rasterize {
     my ($self, $args) = @_;
-    my ($path, $dst) = destination($args->{Destination});
+    
+    my $dst = $args->{Destination};
+    confess "Destination argument should not be passed for non-void context"
+      if defined wantarray && blessed $dst;
+
     my $options = new_options(\&Geo::GDAL::FFI::GDALRasterizeOptionsNew, $args->{Options});
     set_progress($options, $args, \&Geo::GDAL::FFI::GDALRasterizeOptionsSetProgress);
+    
     my $e = 0;
-    my $result = Geo::GDAL::FFI::GDALRasterize($path, $dst, $$self, $options, \$e);
+    my $result;
+    if (blessed($dst)) {
+        Geo::GDAL::FFI::GDALRasterize(undef, $$dst, $$self, $options, \$e);
+    } else {
+        $result = Geo::GDAL::FFI::GDALRasterize($dst, undef, $$self, $options, \$e);
+    }
     Geo::GDAL::FFI::GDALRasterizeOptionsFree($options);
-    confess Geo::GDAL::FFI::error_msg() // 'Rasterize failed.' if !$result || $e != 0;
-    return bless \$result, 'Geo::GDAL::FFI::Dataset';
+    if (defined $result) {
+        confess Geo::GDAL::FFI::error_msg() // 'Rasterize failed.' if !$result || $e != 0;
+        return bless \$result, 'Geo::GDAL::FFI::Dataset';
+    }
 }
 
 sub BuildVRT {
