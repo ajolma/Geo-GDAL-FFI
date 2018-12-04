@@ -5,7 +5,7 @@ use warnings;
 use Carp;
 use FFI::Platypus::Buffer;
 
-our $VERSION = 0.06;
+our $VERSION = 0.0601;
 
 sub DESTROY {
     my $self = shift;
