@@ -84,22 +84,71 @@ is_deeply $layer->GetExtent(1), $exp_extent, 'Got correct layer extent when forc
     #  need to test more than just the spatial index creation
     my $ds = GetDriver ('ESRI Shapefile')->Create ('/vsimem/test_sql');
     my $layer_name = 'test_sql_layer';
-    my $layer = $ds->CreateLayer ({%$schema, Name => $layer_name});
+    my $layer = $ds->CreateLayer ({
+        Name => $layer_name,
+        GeometryType => 'Polygon',
+        Fields => [
+            {
+                Name => 'int_fld',
+                Type => 'Integer'
+            }
+        ],
+    });
     
     my $f = Geo::GDAL::FFI::Feature->new($layer->GetDefn);
-    #$f->SetField(layer => 1);
+    $f->SetField(int_fld => 1);
     $f->SetGeomField([WKT => 'POLYGON ((1 1, 1 2, 3 2, 3 1, 1 1))']);
-        
     $layer->CreateFeature($f);
+    my $g = Geo::GDAL::FFI::Feature->new($layer->GetDefn);
+    $g->SetField(int_fld => 10);
+    $g->SetGeomField([WKT => 'POLYGON ((10 10, 10 20, 30 20, 30 10, 10 10))']);
+    $layer->CreateFeature($g);
     
     my $result = eval {
         $ds->ExecuteSQL (qq{CREATE SPATIAL INDEX ON "$layer_name"});
     };
     my $e = $@;
-    #  we expect 
-    ok (!$result, 'ExecuteSQL ran spatial index');
-    ok (!$e,      'ExecuteSQL did not error');
+    ok (!defined $result, 'ExecuteSQL ran spatial index and undef was returned');
+    ok (!$e, 'ExecuteSQL did not error');
+    
+    my $feature_count;
+    
+    my $filter1 = $ds->ExecuteSQL (
+        qq{SELECT * FROM "$layer_name" WHERE int_fld > 2},
+    );
+    $feature_count = 0;
+    while (my $feat = $filter1->GetNextFeature) {
+        $feature_count++;
+    }
+    is ($feature_count, 1, 'selected correct number of features');
+    
+    $filter1->ResetReading;
+    my $feat = $filter1->GetNextFeature;
+    is ($feat->GetField ('int_fld'), 10, 'correct field value from selection');
 
+    my $filt_poly = Geo::GDAL::FFI::Geometry->new(
+        WKT => 'POLYGON ((0 0, 0 4, 4 4, 4 0, 0 0))',
+    );
+
+    #  debug, but envelope method also fails
+    #my $ptlist = $filt_poly->GetPoints;
+    #my $env = [0,0,0,0];
+    #Geo::GDAL::FFI::OGR_G_GetEnvelope ($filt_poly, $env);
+
+    #  currently crashes when $filt_poly is passed
+    my $filter2 = $ds->ExecuteSQL (
+        qq{SELECT * FROM "$layer_name"},
+        $filt_poly,
+    );
+    $feature_count = 0;
+    while (my $feat = $filter2->GetNextFeature) {
+        $feature_count++;
+    }
+    is ($feature_count, 1, 'spatial filter selected correct number of features');
+    $filter2->ResetReading;
+    my $feat2 = $filter2->GetNextFeature;
+    is ($feat2->GetField ('int_fld'), 1, 'correct field value from spatial filter selection');
+    
 }
 
 done_testing();
