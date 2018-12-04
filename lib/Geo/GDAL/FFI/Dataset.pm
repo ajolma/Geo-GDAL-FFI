@@ -166,9 +166,13 @@ sub ExecuteSQL {
     
     if ($lyr && defined wantarray) {
         $Geo::GDAL::FFI::parent{$lyr} = $self;
+        return bless \$lyr, 'Geo::GDAL::FFI::Layer';
     }
 
-    return $lyr;
+    #  This is perhaps unnecessary, but ensures
+    #  internal  details do not leak if spatial
+    #  index is built in non-void context.
+    return undef;
 }
 
 
