@@ -167,7 +167,7 @@ sub ExecuteSQL {
     
     if ($lyr && defined wantarray) {
         $Geo::GDAL::FFI::parent{$lyr} = $self;
-        return bless \$lyr, 'Geo::GDAL::FFI::Layer::Filter';
+        return bless \$lyr, 'Geo::GDAL::FFI::Layer::ResultSet';
     }
 
     #  This is perhaps unnecessary, but ensures
@@ -347,14 +347,16 @@ sub BuildVRT {
 1;
 
 {
-    #  dummy class for filters from ExecuteSQL
-    package Geo::GDAL::FFI::Layer::Filter;
+    #  dummy class for result sets from ExecuteSQL
+    #  allows specialised destroy method
+    package Geo::GDAL::FFI::Layer::ResultSet;
     use base qw /Geo::GDAL::FFI::Layer/;
     
     sub DESTROY {
         my ($self) = @_;
         my $parent = $Geo::GDAL::FFI::parent{$$self};
         Geo::GDAL::FFI::GDALDatasetReleaseResultSet ($$parent, $$self);
+        delete $Geo::GDAL::FFI::parent{$$self};
     }
     
     1;
