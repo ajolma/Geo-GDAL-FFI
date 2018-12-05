@@ -127,13 +127,15 @@ is_deeply $layer->GetExtent(1), $exp_extent, 'Got correct layer extent when forc
     is ($feat->GetField ('int_fld'), 10, 'correct field value from selection');
 
     my $filt_poly = Geo::GDAL::FFI::Geometry->new(
-        WKT => 'POLYGON ((0 0, 0 4, 4 4, 4 0, 0 0))',
+        WKT => 'POLYGON ((4 0, 4 4, 0 4, 0 0, 4 0))',
     );
 
+    my $isvalid = $filt_poly->IsRing;
+    #say $filt_poly->ExportToJSON;
     #  debug, but envelope method also fails
-    #my $ptlist = $filt_poly->GetPoints;
-    #my $env = [0,0,0,0];
-    #Geo::GDAL::FFI::OGR_G_GetEnvelope ($filt_poly, $env);
+    my $ptlist = $filt_poly->GetPoints;
+    my $env = [0,0,0,0];
+    Geo::GDAL::FFI::OGR_G_GetEnvelope ($$filt_poly, $env);
 
     #  currently crashes when $filt_poly is passed
     my $filter2 = $ds->ExecuteSQL (

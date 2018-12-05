@@ -162,7 +162,7 @@ sub ExecuteSQL {
     my ($self, $sql, $filter, $dialect) = @_;
         
     my $lyr = Geo::GDAL::FFI::GDALDatasetExecuteSQL(
-        $$self, $sql, $filter, $dialect
+        $$self, $sql, $$filter, $dialect
     );
     
     if ($lyr && defined wantarray) {
