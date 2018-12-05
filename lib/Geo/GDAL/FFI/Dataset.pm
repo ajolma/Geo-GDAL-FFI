@@ -217,10 +217,10 @@ sub destination {
 sub dataset_input {
     my ($self, $input) = @_;
     $input //= [];
-    confess "The input must be a reference to an array of datasets." unless ref $input;
+    confess "The input must be a reference to an array of datasets." unless ref ($input) =~ /ARRAY/;
     my @datasets = ($$self);
-    for my $dataset (@$input) {
-        push @datasets, $$input;
+    for my $ds (@$input) {
+        push @datasets, $$ds;
     }
     return \@datasets;
 }
@@ -254,14 +254,27 @@ sub Warp {
 sub VectorTranslate {
     my ($self, $args) = @_;
     my ($path, $dst) = destination($args->{Destination});
+    confess "Destination object should not be passed for non-void context"
+      if defined wantarray && blessed $dst;
+
     my $input = $self->dataset_input($args->{Input});
+
     my $options = new_options(\&Geo::GDAL::FFI::GDALVectorTranslateOptionsNew, $args->{Options});
     set_progress($options, $args, \&Geo::GDAL::FFI::GDALVectorTranslateOptionsSetProgress);
+    
     my $e = 0;
-    my $result = Geo::GDAL::FFI::GDALVectorTranslate($path, $dst, scalar @$input, $input, $options, \$e);
+    my $result;
+    if (blessed($dst)) {
+        Geo::GDAL::FFI::GDALVectorTranslate(undef, $$dst, scalar @$input, $input, $options, \$e);
+    }
+    else {
+        my $result = Geo::GDAL::FFI::GDALVectorTranslate($path, undef, scalar @$input, $input, $options, \$e);
+    }
     Geo::GDAL::FFI::GDALVectorTranslateOptionsFree($options);
-    confess Geo::GDAL::FFI::error_msg() // 'VectorTranslate failed.' if !$result || $e != 0;
-    return bless \$result, 'Geo::GDAL::FFI::Dataset';
+    confess Geo::GDAL::FFI::error_msg() // 'VectorTranslate failed.' if $e != 0;
+    if (defined $result) {
+        return bless \$result, 'Geo::GDAL::FFI::Dataset';
+    }
 }
 
 sub DEMProcessing {
@@ -279,15 +292,7 @@ sub DEMProcessing {
 
 sub NearBlack {
     my ($self, $args) = @_;
-    #my ($path, $dst) = destination($args->{Destination});
-    #my $options = new_options(\&Geo::GDAL::FFI::GDALNearBlackOptionsNew, $args->{Options});
-    #set_progress($options, $args, \&Geo::GDAL::FFI::GDALNearBlackOptionsSetProgress);
-    #my $e = 0;
-    #my $result = Geo::GDAL::FFI::GDALNearBlack($path, $dst, $$self, $options, \$e);
-    #Geo::GDAL::FFI::GDALNearBlackOptionsFree($options);
-    #confess Geo::GDAL::FFI::error_msg() // 'NearBlack failed.' if !$result || $e != 0;
-    #return bless \$result, 'Geo::GDAL::FFI::Dataset';
-
+    
     my ($path, $dst) = destination($args->{Destination});
     confess "Destination object should not be passed for non-void context"
       if defined wantarray && blessed $dst;
@@ -300,13 +305,14 @@ sub NearBlack {
     my $e = 0;
     my $result;
     if (blessed($dst)) {
-        Geo::GDAL::FFI::GDALNearblack($path, $dst, $$self, $options, \$e);
+        Geo::GDAL::FFI::GDALNearblack($path, $$dst, $$self, $options, \$e);
     } else {
         $result = Geo::GDAL::FFI::GDALNearblack($path, undef, $$self, $options, \$e);
     }
     Geo::GDAL::FFI::GDALNearblackOptionsFree($options);
+
+    confess Geo::GDAL::FFI::error_msg() // 'NearBlack failed.' if $e != 0;
     if (defined $result) {
-        confess Geo::GDAL::FFI::error_msg() // 'NearBlack failed.' if !$result || $e != 0;
         return bless \$result, 'Geo::GDAL::FFI::Dataset';
     }
 
@@ -342,8 +348,9 @@ sub Rasterize {
         $result = Geo::GDAL::FFI::GDALRasterize($dst, undef, $$self, $options, \$e);
     }
     Geo::GDAL::FFI::GDALRasterizeOptionsFree($options);
+    
+    confess Geo::GDAL::FFI::error_msg() // 'Rasterize failed.' if $e != 0;
     if (defined $result) {
-        confess Geo::GDAL::FFI::error_msg() // 'Rasterize failed.' if !$result || $e != 0;
         return bless \$result, 'Geo::GDAL::FFI::Dataset';
     }
 }
@@ -501,7 +508,7 @@ Valid options are as per the L<gdalwarp|https://www.gdal.org/gdalwarp.html> util
 $args is a hashref, keys may be Destination, Input, Options, Progress,
 ProgressData.
 
-Valid options are as per the L<gdal_translate|https://www.gdal.org/gdal_translate.html> utility.  
+Valid options are as per the L<ogr2ogr|https://www.gdal.org/ogr2ogr.html> utility.  
 
 =head2 DEMProcessing
 

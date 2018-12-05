@@ -5,9 +5,45 @@ use Test::More;
 
 local $| = 1;
 
+test_VectorTranslate();
 test_NearBlack();
 test_Warp();
 test_Rasterize();
+
+sub test_VectorTranslate {
+    my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
+    my $source_ds = Geo::GDAL::FFI::GetDriver('ESRI Shapefile')
+        ->Create('/vsimem/test.shp');
+    my $layer = $source_ds->CreateLayer({
+            Name => 'test',
+            SpatialReference => $sr,
+            GeometryType => 'Polygon',
+            Fields => [
+            {
+                Name => 'name',
+                Type => 'String'
+            }
+            ]
+        });
+    my $f = Geo::GDAL::FFI::Feature->new($layer->GetDefn);
+    $f->SetField(name => 'a');
+    my $g = Geo::GDAL::FFI::Geometry->new('Polygon');
+    my $poly = 'POLYGON ((1 2, 2 2, 2 1, 1 1, 1 2))';
+    $f->SetGeomField([WKT => $poly]);
+    $layer->CreateFeature($f);
+
+    my $result = eval {
+        $source_ds->VectorTranslate ({
+            Destination => '/vsimem/test_VectorTranslate',
+            Options => [-f => "GML"],
+        })
+    };
+    my $e = $@;
+    
+    diag $e if $e;
+    ok (!$e, 'Ran basic VectorTranslate call without raising exception');
+
+}
 
 sub test_NearBlack {
     my $raster = get_test_raster();
