@@ -167,7 +167,7 @@ sub ExecuteSQL {
     
     if ($lyr && defined wantarray) {
         $Geo::GDAL::FFI::parent{$lyr} = $self;
-        return bless \$lyr, 'Geo::GDAL::FFI::Layer';
+        return bless \$lyr, 'Geo::GDAL::FFI::Layer::Filter';
     }
 
     #  This is perhaps unnecessary, but ensures
@@ -345,6 +345,22 @@ sub BuildVRT {
 }
 
 1;
+
+{
+    #  dummy class for filters from ExecuteSQL
+    package Geo::GDAL::FFI::Layer::Filter;
+    use base qw /Geo::GDAL::FFI::Layer/;
+    
+    sub DESTROY {
+        my ($self) = @_;
+        my $parent = $Geo::GDAL::FFI::parent{$$self};
+        Geo::GDAL::FFI::GDALDatasetReleaseResultSet ($$parent, $$self);
+    }
+    
+    1;
+}
+
+
 
 =pod
 
