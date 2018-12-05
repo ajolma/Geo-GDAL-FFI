@@ -5,9 +5,27 @@ use Test::More;
 
 local $| = 1;
 
-
+test_NearBlack();
 test_Warp();
 test_Rasterize();
+
+sub test_NearBlack {
+    my $raster = get_test_raster();
+
+    my $nb = eval {
+        $raster->NearBlack({
+            Destination => '/vsimem/test_near_black', 
+            Options     => [
+                '-white',
+            ],
+        })
+    };
+    my $e = $@;
+
+    diag $e if $e;
+    ok (!$e, 'ran NearBlack without raising exception');
+    
+}
 
 sub test_Warp {
     SKIP: {

@@ -279,14 +279,37 @@ sub DEMProcessing {
 
 sub NearBlack {
     my ($self, $args) = @_;
+    #my ($path, $dst) = destination($args->{Destination});
+    #my $options = new_options(\&Geo::GDAL::FFI::GDALNearBlackOptionsNew, $args->{Options});
+    #set_progress($options, $args, \&Geo::GDAL::FFI::GDALNearBlackOptionsSetProgress);
+    #my $e = 0;
+    #my $result = Geo::GDAL::FFI::GDALNearBlack($path, $dst, $$self, $options, \$e);
+    #Geo::GDAL::FFI::GDALNearBlackOptionsFree($options);
+    #confess Geo::GDAL::FFI::error_msg() // 'NearBlack failed.' if !$result || $e != 0;
+    #return bless \$result, 'Geo::GDAL::FFI::Dataset';
+
     my ($path, $dst) = destination($args->{Destination});
-    my $options = new_options(\&Geo::GDAL::FFI::GDALNearBlackOptionsNew, $args->{Options});
-    set_progress($options, $args, \&Geo::GDAL::FFI::GDALNearBlackOptionsSetProgress);
+    confess "Destination object should not be passed for non-void context"
+      if defined wantarray && blessed $dst;
+
+    my $input = $self->dataset_input($args->{Input});
+
+    my $options = new_options(\&Geo::GDAL::FFI::GDALNearblackOptionsNew, $args->{Options});
+    set_progress($options, $args, \&Geo::GDAL::FFI::GDALNearblackOptionsSetProgress);
+    
     my $e = 0;
-    my $result = Geo::GDAL::FFI::GDALNearBlack($path, $dst, $$self, $options, \$e);
-    Geo::GDAL::FFI::GDALNearBlackOptionsFree($options);
-    confess Geo::GDAL::FFI::error_msg() // 'NearBlack failed.' if !$result || $e != 0;
-    return bless \$result, 'Geo::GDAL::FFI::Dataset';
+    my $result;
+    if (blessed($dst)) {
+        Geo::GDAL::FFI::GDALNearblack($path, $dst, $$self, $options, \$e);
+    } else {
+        $result = Geo::GDAL::FFI::GDALNearblack($path, undef, $$self, $options, \$e);
+    }
+    Geo::GDAL::FFI::GDALNearblackOptionsFree($options);
+    if (defined $result) {
+        confess Geo::GDAL::FFI::error_msg() // 'NearBlack failed.' if !$result || $e != 0;
+        return bless \$result, 'Geo::GDAL::FFI::Dataset';
+    }
+
 }
 
 sub Grid {
