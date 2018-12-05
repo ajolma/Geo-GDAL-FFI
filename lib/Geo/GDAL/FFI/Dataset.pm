@@ -227,15 +227,28 @@ sub dataset_input {
 
 sub Warp {
     my ($self, $args) = @_;
+    
     my ($path, $dst) = destination($args->{Destination});
+    confess "Destination object should not be passed for non-void context"
+      if defined wantarray && blessed $dst;
+
     my $input = $self->dataset_input($args->{Input});
+
     my $options = new_options(\&Geo::GDAL::FFI::GDALWarpAppOptionsNew, $args->{Options});
     set_progress($options, $args, \&Geo::GDAL::FFI::GDALWarpAppOptionsSetProgress);
+    
     my $e = 0;
-    my $warped = Geo::GDAL::FFI::GDALWarp($path, $dst, scalar @$input, $input, $options, \$e);
+    my $result;
+    if (blessed($dst)) {
+        Geo::GDAL::FFI::GDALWarp($path, $dst, scalar @$input, $input, $options, \$e);
+    } else {
+        $result = Geo::GDAL::FFI::GDALWarp($path, undef, scalar @$input, $input, $options, \$e);
+    }
     Geo::GDAL::FFI::GDALWarpAppOptionsFree($options);
-    confess Geo::GDAL::FFI::error_msg() // 'Warp failed.' if !$warped || $e != 0;
-    return bless \$warped, 'Geo::GDAL::FFI::Dataset';
+    if (defined $result) {
+        confess Geo::GDAL::FFI::error_msg() // 'Warp failed.' if !$result || $e != 0;
+        return bless \$result, 'Geo::GDAL::FFI::Dataset';
+    }
 }
 
 sub VectorTranslate {
