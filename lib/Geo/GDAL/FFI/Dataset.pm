@@ -165,9 +165,14 @@ sub ExecuteSQL {
         $$self, $sql, $$filter, $dialect
     );
     
-    if ($lyr && defined wantarray) {
-        $Geo::GDAL::FFI::parent{$lyr} = $self;
-        return bless \$lyr, 'Geo::GDAL::FFI::Layer::ResultSet';
+    if ($lyr) {
+        if (defined wantarray) {
+            $Geo::GDAL::FFI::parent{$lyr} = $self;
+            return bless \$lyr, 'Geo::GDAL::FFI::Layer::ResultSet';
+        }
+        else {
+            Geo::GDAL::FFI::GDALDatasetReleaseResultSet ($lyr, $$self);            
+        }
     }
 
     #  This is perhaps unnecessary, but ensures
