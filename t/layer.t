@@ -78,4 +78,115 @@ my $exp_extent = [1,3,1,2];
 is_deeply $layer->GetExtent(0), $exp_extent, 'Got correct layer extent, no forcing';
 is_deeply $layer->GetExtent(1), $exp_extent, 'Got correct layer extent when forced';
 
+
+
+{
+    #  need to test more than just the spatial index creation
+    my $ds = GetDriver ('ESRI Shapefile')->Create ('/vsimem/test_sql');
+    my $layer_name = 'test_sql_layer';
+    my $layer = $ds->CreateLayer ({
+        Name => $layer_name,
+        GeometryType => 'Polygon',
+        Fields => [
+            {
+                Name => 'int_fld',
+                Type => 'Integer'
+            },
+            {
+                Name => 'str_fld',
+                Type => 'String',
+            }
+        ],
+    });
+    
+    my $f = Geo::GDAL::FFI::Feature->new($layer->GetDefn);
+    $f->SetField(int_fld => 1);
+    $f->SetField(str_fld => 'one');
+    $f->SetGeomField([WKT => 'POLYGON ((1 1, 1 2, 3 2, 3 1, 1 1))']);
+    $layer->CreateFeature($f);
+    my $g = Geo::GDAL::FFI::Feature->new($layer->GetDefn);
+    $g->SetField(int_fld => 10);
+    $g->SetField(str_fld => 'ten');
+    $g->SetGeomField([WKT => 'POLYGON ((10 10, 10 20, 30 20, 30 10, 10 10))']);
+    $layer->CreateFeature($g);
+    
+    my $distinct_items = $ds->ExecuteSQL (
+      qq{SELECT DISTINCT "str_fld" FROM "$layer_name"}
+    );
+    my @items;
+    $distinct_items->ResetReading;
+    while (my $feat = $distinct_items->GetNextFeature) {
+        push @items, $feat->GetField ('str_fld');
+    }
+    #diag "ITEMS: " . join ' ', @items;
+    TODO:
+    {
+        #local $TODO = 'sql DISTINCT not yet working, despite following GDAL doc example';
+        is_deeply (\@items, ['one','ten'], 'got correct distinct items');
+    }    
+
+    my $result = eval {
+        $ds->ExecuteSQL (qq{CREATE SPATIAL INDEX ON "$layer_name"});
+    };
+    my $e = $@;
+    ok (!defined $result, 'ExecuteSQL ran spatial index and undef was returned');
+    ok (!$e, 'ExecuteSQL did not error');
+    
+    my $feature_count;
+    
+    my $filter1 = $ds->ExecuteSQL (
+        qq{SELECT * FROM "$layer_name" WHERE int_fld > 2},
+    );
+    $feature_count = 0;
+    while (my $feat = $filter1->GetNextFeature) {
+        $feature_count++;
+    }
+    is ($feature_count, 1, 'selected correct number of features');
+    
+    $filter1->ResetReading;
+    my $feat = $filter1->GetNextFeature;
+    is ($feat->GetField ('int_fld'), 10, 'correct field value from selection');
+
+    
+    my $filt_poly = Geo::GDAL::FFI::Geometry->new(
+        WKT => 'POLYGON ((4 0, 4 4, 0 4, 0 0, 4 0))',
+    );
+
+    my $filter2 = $ds->ExecuteSQL (
+        qq{SELECT * FROM "$layer_name"},
+        $filt_poly,
+    );
+    $feature_count = 0;
+    while (my $feat = $filter2->GetNextFeature) {
+        $feature_count++;
+    }
+    is ($feature_count, 1, 'spatial filter selected correct number of features');
+    $filter2->ResetReading;
+    my $feat2 = $filter2->GetNextFeature;
+    is ($feat2->GetField ('int_fld'), 1, 'correct field value from spatial filter selection');
+    
+    #  At least one of these needs to be deleted for the next SELECT DISTINCT to work.
+    #  It does not matter if it is before or after the sql call.
+    #$filter1 = undef;
+    #$filter2 = undef;
+    #$distinct_items = undef;
+
+    my $distinct_items2 = $ds->ExecuteSQL (
+      qq{SELECT DISTINCT "str_fld" FROM "$layer_name"}
+    );
+    @items = ();
+    $distinct_items2->ResetReading;
+    while (my $feat = $distinct_items2->GetNextFeature) {
+        push @items, $feat->GetField ('str_fld');
+    }
+    #diag "ITEMS: " . join ' ', @items;
+    TODO:
+    {
+        local $TODO = 'sql DISTINCT not yet working, despite following GDAL doc example';
+        is_deeply (\@items, ['one','ten'], 'got correct distinct items');
+    }
+    
+}
+
 done_testing();
+

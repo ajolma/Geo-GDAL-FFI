@@ -157,6 +157,31 @@ sub CopyLayer {
     return bless \$l, 'Geo::GDAL::FFI::Layer';
 }
 
+
+sub ExecuteSQL {
+    my ($self, $sql, $filter, $dialect) = @_;
+        
+    my $lyr = Geo::GDAL::FFI::GDALDatasetExecuteSQL(
+        $$self, $sql, $$filter, $dialect
+    );
+    
+    if ($lyr) {
+        if (defined wantarray) {
+            $Geo::GDAL::FFI::parent{$lyr} = $self;
+            return bless \$lyr, 'Geo::GDAL::FFI::Layer::ResultSet';
+        }
+        else {
+            Geo::GDAL::FFI::GDALDatasetReleaseResultSet ($lyr, $$self);            
+        }
+    }
+
+    #  This is perhaps unnecessary, but ensures
+    #  internal  details do not leak if spatial
+    #  index is built in non-void context.
+    return undef;
+}
+
+
 ## utilities
 
 sub new_options {
@@ -326,6 +351,24 @@ sub BuildVRT {
 
 1;
 
+{
+    #  dummy class for result sets from ExecuteSQL
+    #  allows specialised destroy method
+    package Geo::GDAL::FFI::Layer::ResultSet;
+    use base qw /Geo::GDAL::FFI::Layer/;
+    
+    sub DESTROY {
+        my ($self) = @_;
+        my $parent = $Geo::GDAL::FFI::parent{$$self};
+        Geo::GDAL::FFI::GDALDatasetReleaseResultSet ($$parent, $$self);
+        delete $Geo::GDAL::FFI::parent{$$self};
+    }
+    
+    1;
+}
+
+
+
 =pod
 
 =encoding UTF-8
@@ -433,6 +476,19 @@ arguments returns the first layer.
 Copies the given layer into this dataset using the name $name and
 returns the new layer. The options hash is mostly driver specific.
 
+=head2 ExecuteSQL
+ $dataset->ExecuteSQL ($sql, $filter, $dialect);
+
+ #  build a spatial index
+ $dataset->ExecuteSQL (qq{CREATE SPATIAL INDEX ON "$some_layer_name"});
+ 
+ #  filter a data set using the SQLite dialect and a second geometry
+ my $filtered = $dataset->ExecuteSQL (
+   qq{SELECT "$fld1", "$fld2" FROM "$some_layer_name"},
+   $some_geometry,
+   'SQLite',
+ );
+ 
 =head2 Info
 
  my $info = $dataset->Info($options);
