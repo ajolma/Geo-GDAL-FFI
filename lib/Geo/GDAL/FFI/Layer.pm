@@ -16,6 +16,11 @@ sub DESTROY {
     #say STDERR "destroy $self";
 }
 
+sub GetParentDataset {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::_get_parent_ref ($$self);
+}
+
 sub GetDefn {
     my $self = shift;
     my $d = Geo::GDAL::FFI::OGR_L_GetLayerDefn($$self);
