@@ -55,4 +55,19 @@ SKIP: {
     ok($p->[0][0][0][0] == 2, "SetPoints");
 }
 
+#  GetEnvelope
+{
+    my $geom = Geo::GDAL::FFI::Geometry->new(
+        WKT => 'POLYGON ((0 -1 0, -1 0 0, 0 1 1, 1 0 1, 0 -1 1))',
+    );
+
+    my $envelope = $geom->GetEnvelope;
+    is_deeply ($envelope, [-1,1,-1,1], 'correct geometry envelope');
+
+    my $envelope3d = $geom->GetEnvelope3D;
+    is_deeply ($envelope3d, [-1,1,-1,1,0,1], 'correct 3D geometry envelope');
+    
+    
+}
+
 done_testing();

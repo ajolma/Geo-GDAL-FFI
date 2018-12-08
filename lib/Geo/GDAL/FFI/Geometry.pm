@@ -400,6 +400,21 @@ sub IsRing {
     return Geo::GDAL::FFI::OGR_G_IsRing($$self);
 }
 
+sub GetEnvelope {
+    my ($self) = @_;
+    my $envelope = [0,0,0,0];
+    Geo::GDAL::FFI::OGR_G_GetEnvelope ($$self, $envelope);
+    return $envelope;
+}
+
+sub GetEnvelope3D {
+    my ($self) = @_;
+    my $envelope = [0,0,0,0,0,0];
+    Geo::GDAL::FFI::OGR_G_GetEnvelope3D ($$self, $envelope);
+    return $envelope;
+}
+
+
 1;
 
 =pod
@@ -600,6 +615,17 @@ described in GDAL documentation.
 =head2 IsSimple
 
 =head2 IsRing
+
+=head2 GetEnvelope
+
+Returns a four element array reference containing
+[Xmin, Xmax, Ymin, Ymax].
+
+=head2 GetEnvelope3D
+
+Returns a six element array reference containing
+[Xmin, Xmax, Ymin, Ymax, Zmin, Zmax].
+
 
 =head1 LICENSE
 
