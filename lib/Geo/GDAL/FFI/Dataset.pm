@@ -79,7 +79,7 @@ sub GetBand {
     my ($self, $i) = @_;
     $i //= 1;
     my $b = Geo::GDAL::FFI::GDALGetRasterBand($$self, $i);
-    $Geo::GDAL::FFI::parent{$b} = $self;
+    Geo::GDAL::FFI::_register_parent_ref ($b, $self);
     return bless \$b, 'Geo::GDAL::FFI::Band';
 }
 
@@ -96,8 +96,8 @@ sub GetLayer {
     my ($self, $i) = @_;
     $i //= 0;
     my $l = Geo::GDAL::FFI::isint($i) ? Geo::GDAL::FFI::GDALDatasetGetLayer($$self, $i) :
-        Geo::GDAL::FFI::GDALDatasetGetLayerByName($$self, $i);
-    $Geo::GDAL::FFI::parent{$l} = $self;
+    Geo::GDAL::FFI::GDALDatasetGetLayerByName($$self, $i);
+    Geo::GDAL::FFI::_register_parent_ref ($l, $self);
     return bless \$l, 'Geo::GDAL::FFI::Layer';
 }
 
@@ -125,7 +125,7 @@ sub CreateLayer {
     Geo::GDAL::FFI::OSRRelease($sr) if $sr;
     my $msg = Geo::GDAL::FFI::error_msg();
     confess $msg if $msg;
-    $Geo::GDAL::FFI::parent{$l} = $self;
+    Geo::GDAL::FFI::_register_parent_ref ($l, $self);
     my $layer = bless \$l, 'Geo::GDAL::FFI::Layer';
     if (exists $args->{Fields}) {
         for my $f (@{$args->{Fields}}) {
@@ -153,7 +153,7 @@ sub CopyLayer {
         my $msg = Geo::GDAL::FFI::error_msg() // "GDALDatasetCopyLayer failed.";
         confess $msg if $msg;
     }
-    $Geo::GDAL::FFI::parent{$l} = $self;
+    Geo::GDAL::FFI::_register_parent_ref ($l, $self);
     return bless \$l, 'Geo::GDAL::FFI::Layer';
 }
 
@@ -167,7 +167,7 @@ sub ExecuteSQL {
     
     if ($lyr) {
         if (defined wantarray) {
-            $Geo::GDAL::FFI::parent{$lyr} = $self;
+            Geo::GDAL::FFI::_register_parent_ref ($lyr, $self);
             return bless \$lyr, 'Geo::GDAL::FFI::Layer::ResultSet';
         }
         else {
@@ -402,9 +402,9 @@ sub BuildVRT {
     
     sub DESTROY {
         my ($self) = @_;
-        my $parent = $Geo::GDAL::FFI::parent{$$self};
+        my $parent = Geo::GDAL::FFI::_get_parent_ref ($$self);
         Geo::GDAL::FFI::GDALDatasetReleaseResultSet ($$parent, $$self);
-        delete $Geo::GDAL::FFI::parent{$$self};
+        Geo::GDAL::FFI::_deregister_parent_ref ($$self);
     }
     
     1;

@@ -11,8 +11,13 @@ sub DESTROY {
     my $self = shift;
     Geo::GDAL::FFI::OGR_L_SyncToDisk($$self);
     #say STDERR "delete parent $parent{$$self}";
-    delete $Geo::GDAL::FFI::parent{$$self};
+    Geo::GDAL::FFI::_deregister_parent_ref ($$self);
     #say STDERR "destroy $self";
+}
+
+sub GetParentDataset {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::_get_parent_ref ($$self);
 }
 
 sub GetDefn {

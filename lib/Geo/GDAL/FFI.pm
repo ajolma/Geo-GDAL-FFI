@@ -56,7 +56,7 @@ our $Write = 1;
 
 our @errors;
 our %immutable;
-our %parent;
+my  %parent_ref_hash;
 
 my $instance;
 
@@ -89,6 +89,32 @@ sub error_msg {
     @errors = ();
     return $msg;
 }
+
+#  internal methods
+sub _register_parent_ref {
+    my ($gdal_handle, $parent) = @_;
+    #  ensure $gdal_handle is not blessed?
+    confess "gdal handle is undefined"
+      if !defined $gdal_handle;
+    confess "Parent ref is undefined"
+      if !$parent;
+    $parent_ref_hash{$gdal_handle} = $parent;
+}
+
+sub _deregister_parent_ref {
+    my ($gdal_handle) = @_;
+    #  we get undef vals in global cleanup
+    return if !$gdal_handle;  
+    delete $parent_ref_hash{$gdal_handle};
+}
+
+sub _get_parent_ref {
+    my ($gdal_handle) = @_;
+    warn "Attempting to access non-existent parent"
+      if !$parent_ref_hash{$gdal_handle}; 
+    return $parent_ref_hash{$gdal_handle}
+}
+
 
 our %capabilities = (
     OPEN => 1,

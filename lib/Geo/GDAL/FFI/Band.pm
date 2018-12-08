@@ -9,7 +9,7 @@ our $VERSION = 0.0601;
 
 sub DESTROY {
     my $self = shift;
-    delete $Geo::GDAL::FFI::parent{$$self};
+    Geo::GDAL::FFI::_deregister_parent_ref ($$self);
 }
 
 sub GetDataType {

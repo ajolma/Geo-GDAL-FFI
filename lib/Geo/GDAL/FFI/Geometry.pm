@@ -38,7 +38,7 @@ sub new {
 
 sub DESTROY {
     my ($self) = @_;
-    delete $Geo::GDAL::FFI::parent{$$self};
+    Geo::GDAL::FFI::_deregister_parent_ref ($$self);
     if ($ref{$$self}) {
         delete $ref{$$self};
         return;
@@ -173,7 +173,7 @@ sub GetGeometryCount {
 sub GetGeometry {
     my ($self, $i) = @_;
     my $g = Geo::GDAL::FFI::OGR_G_GetGeometryRef($$self, $i);
-    $Geo::GDAL::FFI::parent{$g} = $self;
+    Geo::GDAL::FFI::_register_parent_ref ($g, $self);
     $ref{$g} = 1;
     return bless \$g, 'Geo::GDAL::FFI::Geometry';
 }

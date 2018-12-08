@@ -188,5 +188,14 @@ is_deeply $layer->GetExtent(1), $exp_extent, 'Got correct layer extent when forc
     
 }
 
+
+{
+    my $ds = GetDriver('Memory')->Create;
+    my $layer  = $ds->CreateLayer($schema);
+    my $parent = $layer->GetParentDataset;
+
+    is ($parent, $ds, 'got parent dataset ref');
+}
+
 done_testing();
 
