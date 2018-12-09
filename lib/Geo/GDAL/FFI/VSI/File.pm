@@ -7,7 +7,7 @@ use Carp;
 use FFI::Platypus::Buffer;
 use FFI::Platypus::Declare;
 
-our $VERSION = 0.06;
+our $VERSION = 0.0700;
 
 sub Open {
     my ($class, $path, $access) = @_;
