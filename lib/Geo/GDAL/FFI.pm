@@ -1282,7 +1282,13 @@ eval{$ffi->attach('GDALBuildVRT' => [qw/string int opaque[] opaque opaque int*/]
         if (opendir(my $dh, $dir)) {
             CPLSetConfigOption(GDAL_DATA => $dir);
         } else {
-            warn "GDAL data directory ($dir) doesn't exist. Maybe Alien::gdal is not installed?";
+            my $dist_data_dir = Alien::gdal->dist_dir . '/share/gdal';
+            if (-d $dist_data_dir) {
+                CPLSetConfigOption(GDAL_DATA => $dist_data_dir);
+            }
+            else {
+                warn "GDAL data directory ($dir) doesn't exist. Maybe Alien::gdal is not installed?";
+            }
         }
     }
 
