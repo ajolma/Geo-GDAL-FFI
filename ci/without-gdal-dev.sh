@@ -5,6 +5,7 @@ cpanm --notest Sort::Versions
 
 # the -v ensures the progress dots are sent to stdout
 # and avoids travis timeouts
+cpanm --installdeps --notest Alien::geos::af
 cpanm --notest -v Alien::geos::af
 cpanm --installdeps --notest Alien::gdal
 cpanm --notest -v Alien::gdal
