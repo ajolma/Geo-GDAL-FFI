@@ -3,8 +3,11 @@
 # bug in Alien::gdal Makefile.PL requires
 cpanm --notest Sort::Versions
 
-#  SWL - this gets picked up later, but avoid throwing an error now
-cpanm --notest Alien::geos::af
+# the -v ensures the progress dots are sent to stdout
+# and avoids travis timeouts
+cpanm --notest -v Alien::geos::af
+cpanm --installdeps --notest Alien::gdal
+cpanm --notest -v Alien::gdal
 
 #cpanm --installdeps --notest git://github.com/shawnlaffan/perl-alien-gdal
 #cpanm --notest Alien::Build::MM
