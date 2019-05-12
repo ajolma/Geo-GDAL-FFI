@@ -11,12 +11,12 @@ sub new {
     $args //= {};
     my $name = $args->{Name} // '';
     my $self = bless \Geo::GDAL::FFI::OGR_FD_Create($name), $class;
-    if (exists $args->{Fields}) {
+    if ($args->{Fields}) {
         for my $field (@{$args->{Fields}}) {
             $self->AddField(Geo::GDAL::FFI::FieldDefn->new($field));
         }
     }
-    if (exists $args->{GeometryFields}) {
+    if ($args->{GeometryFields}) {
         my $first = 1;
         for my $field (@{$args->{GeometryFields}}) {
             if ($first) {

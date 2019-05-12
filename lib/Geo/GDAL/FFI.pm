@@ -25,6 +25,7 @@ use Geo::GDAL::FFI::Feature;
 use Geo::GDAL::FFI::Geometry;
 
 our $VERSION = 0.0700;
+our $DEBUG = 0;
 
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(@errors GetVersionInfo SetErrorHandling UnsetErrorHandling 
@@ -36,8 +37,11 @@ our @EXPORT_OK = qw(@errors GetVersionInfo SetErrorHandling UnsetErrorHandling
     FindFile PushFinderLocation PopFinderLocation FinderClean);
 our %EXPORT_TAGS = (all => \@EXPORT_OK);
 
+our $None = 0;
+our $Debug = 1;
 our $Warning = 2;
 our $Failure = 3;
+our $Fatal = 4;
 
 our %ogr_errors = (
     1 => 'NOT_ENOUGH_DATA',
@@ -65,8 +69,17 @@ sub SetErrorHandling {
     return if exists $instance->{CPLErrorHandler};
     $instance->{CPLErrorHandler} = $instance->{ffi}->closure(
         sub {
-            my ($err, $err_num, $msg) = @_;
-            push @errors, $msg;
+            my ($err_cat, $err_num, $msg) = @_;
+            if ($err_cat == $None) {
+            } elsif ($err_cat == $Debug) {
+                if ($DEBUG) {
+                    print STDERR $msg;
+                }
+            } elsif ($err_cat == $Warning) {
+                warn $msg;
+            } else {
+                push @errors, $msg;
+            }
         });
     CPLPushErrorHandler($instance->{CPLErrorHandler});
 }
@@ -432,6 +445,7 @@ sub new {
     eval{$ffi->attach(VSIMalloc => [qw/uint/] => 'opaque');};
     croak "Can't attach to GDAL methods. Does Alien::gdal provide GDAL dynamic libs?" unless $class->can('VSIMalloc');
     eval{$ffi->attach(VSIFree => ['opaque'] => 'void');};
+    eval{$ffi->attach(CPLError => [qw/int int string/] => 'void');};
     eval{$ffi->attach(VSIFOpenL => [qw/string string/] => 'opaque');};
     eval{$ffi->attach(VSIFOpenExL => [qw/string string int/] => 'opaque');};
     eval{$ffi->attach(VSIFCloseL => ['opaque'] => 'int');};
@@ -1687,7 +1701,7 @@ Set a Perl function to catch errors reported within GDAL with
 CPLError. The errors are collected into @Geo::GDAL::FFI::errors and
 confessed if a method fails. This is the default.
 
-=head2 UnetErrorHandling
+=head2 UnsetErrorHandling
 
 Unset the Perl function to catch GDAL errors. If no other error
 handler is set, GDAL prints the errors into stderr.

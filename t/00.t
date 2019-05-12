@@ -10,6 +10,48 @@ use JSON;
 
 BEGIN { use_ok('Geo::GDAL::FFI', qw/:all/); }
 
+if(1){
+    Geo::GDAL::FFI::UnsetErrorHandling();
+    print STDERR "test a - GDAL error messages without Geo::GDAL::FFI error handling:\n";
+    my $err_cat = $Geo::GDAL::FFI::Debug;
+    Geo::GDAL::FFI::CPLError(
+        $err_cat, 1, "A GDAL Debug message.");
+    $err_cat = $Geo::GDAL::FFI::Warning;
+    Geo::GDAL::FFI::CPLError(
+        $err_cat, 1, "A GDAL Warning message.");
+    $err_cat = $Geo::GDAL::FFI::Failure;
+    Geo::GDAL::FFI::CPLError(
+        $err_cat, 1, "A GDAL Failure error message.");
+    print STDERR "Fatal GDAL error ends the program even when run inside eval.\n";
+    # Fatal error dumps core
+    #eval {
+    #    $err_cat = $Geo::GDAL::FFI::Fatal;
+    #    Geo::GDAL::FFI::CPLError(
+    #        $err_cat, 1, "This is GDAL Fatal error ($Geo::GDAL::FFI::Fatal) without Geo::GDAL::FFI error handling...");
+    #};
+    #print STDERR "run in Perl eval {};\n";
+    Geo::GDAL::FFI::SetErrorHandling();
+    print STDERR "test b - GDAL error messages with Geo::GDAL::FFI error handling:\n";
+    $err_cat = $Geo::GDAL::FFI::Debug;
+    print STDERR "GDAL Debug message requires \$Geo::GDAL::FFI::DEBUG set to true.\n";
+    Geo::GDAL::FFI::CPLError(
+        $err_cat, 1, "You don't see this.");
+    $Geo::GDAL::FFI::DEBUG = 1;
+    Geo::GDAL::FFI::CPLError(
+        $err_cat, 1, "\$Geo::GDAL::FFI::DEBUG is now true.\n");
+    $Geo::GDAL::FFI::DEBUG = 0;
+    $err_cat = $Geo::GDAL::FFI::Warning;
+    $SIG{'__WARN__'} = sub {
+        print STDERR "Perl warning: $_[0]";
+    };
+    Geo::GDAL::FFI::CPLError(
+        $err_cat, 1, "A GDAL Warning is converted into a Perl warn call.");
+    $err_cat = $Geo::GDAL::FFI::Failure;
+    Geo::GDAL::FFI::CPLError(
+        $err_cat, 1, "A GDAL Failure.");
+    print STDERR "GDAL Failures are stored in \@Geo::GDAL::FFI::errors:\n@Geo::GDAL::FFI::errors\n";
+}
+
 # test the singleton
 
 if(1){

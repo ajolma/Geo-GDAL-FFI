@@ -106,16 +106,16 @@ sub CreateLayer {
     $args //= {};
     my $name = $args->{Name} // '';
     my ($gt, $sr);
-    if (exists $args->{GeometryFields}) {
+    if ($args->{GeometryFields}) {
         $gt = $Geo::GDAL::FFI::geometry_types{None};
     } else {
         $gt = $args->{GeometryType} // 'Unknown';
         $gt = $Geo::GDAL::FFI::geometry_types{$gt};
         confess "Unknown geometry type: '$args->{GeometryType}'." unless defined $gt;
-        $sr = Geo::GDAL::FFI::OSRClone(${$args->{SpatialReference}}) if exists $args->{SpatialReference};
+        $sr = Geo::GDAL::FFI::OSRClone(${$args->{SpatialReference}}) if $args->{SpatialReference};
     }
     my $o = 0;
-    if (exists $args->{Options}) {
+    if ($args->{Options}) {
         for my $key (keys %{$args->{Options}}) {
             $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}->{$key}");
         }
@@ -127,12 +127,12 @@ sub CreateLayer {
     confess $msg if $msg;
     Geo::GDAL::FFI::_register_parent_ref ($l, $self);
     my $layer = bless \$l, 'Geo::GDAL::FFI::Layer';
-    if (exists $args->{Fields}) {
+    if ($args->{Fields}) {
         for my $f (@{$args->{Fields}}) {
             $layer->CreateField($f);
         }
     }
-    if (exists $args->{GeometryFields}) {
+    if ($args->{GeometryFields}) {
         for my $f (@{$args->{GeometryFields}}) {
             $layer->CreateGeomField($f);
         }

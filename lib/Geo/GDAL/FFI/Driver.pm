@@ -22,7 +22,7 @@ sub Create {
         $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$args->{Options}{$key}");
     }
     my $ds;
-    if (exists $args->{Source}) {
+    if ($args->{Source}) {
         my $src = ${$args->{Source}};
         my $s = $args->{Strict} // 0;
         my $ffi = FFI::Platypus->new;
