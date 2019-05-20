@@ -516,6 +516,10 @@ SpatialReference are ignored.
 
 =back
 
+=head2 GetLayerCount
+ my $count = $dataset->GetLayerCount();
+
+
 =head2 GetLayer
 
  my $layer = $dataset->GetLayer($name);
