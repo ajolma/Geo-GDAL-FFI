@@ -95,7 +95,9 @@ if(1){
     SKIP: {
         skip "GDAL (Alien::gdal) is not properly installed; GDAL support files are not available.", 3 unless $gdal_data_dir;
 
-        my $path = FindFile('gcs.csv');
+        my $target_file= 'stateplane.csv';
+        
+        my $path = FindFile($target_file);
         ok(defined $path, "GDAL support files found.");
 
         say STDERR "FYI: GDAL_DATA = $gdal_data_dir";
@@ -112,12 +114,12 @@ if(1){
         }
 
         PopFinderLocation; #FinderClean;
-        my $path2 = FindFile('gcs.csv');
+        my $path2 = FindFile($target_file);
         ok(not(defined $path2), "GDAL support files not found after popping finder.");
 
         $path =~ s/[\w.]+$//;
         PushFinderLocation($path);
-        $path = FindFile('gcs.csv');
+        $path = FindFile($target_file);
         ok(defined $path, "GDAL support files found when working path inserted.");
     }
 }
@@ -258,7 +260,7 @@ if(1){
     my $dr = GetDriver('ESRI Shapefile');
     my $ds = $dr->Create('test.shp');
     my @sr = ();
-    if (FindFile('gcs.csv')) {
+    if (FindFile('gcs.csv')) {  #  should be version checked? GDAL 3 does not use gcs.csv
         @sr = (SpatialReference => Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067));
     }
     my $l = $ds->CreateLayer({Name => 'test', GeometryType => 'Point', @sr});
@@ -527,7 +529,7 @@ if(1){
     my $dr = GetDriver('Memory');
     my $ds = $dr->Create({Name => 'test'});
     my @sr = ();
-    if (FindFile('gcs.csv')) {
+    if (FindFile('stateplane.csv')) {
         @sr = (SpatialReference => Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067));
     }
     my $l = $ds->CreateLayer({Name => 'test', GeometryType => 'Point', @sr});
