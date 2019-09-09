@@ -13,7 +13,7 @@ matrix:
 
 language: perl
 perl:
-  - "5.10"
+  - "5.22"
 
 cache:
   directories:
