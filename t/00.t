@@ -95,7 +95,9 @@ if(1){
     SKIP: {
         skip "GDAL (Alien::gdal) is not properly installed; GDAL support files are not available.", 3 unless $gdal_data_dir;
 
-        my $path = FindFile('gcs.csv');
+        my $target_file= 'stateplane.csv';
+        
+        my $path = FindFile($target_file);
         ok(defined $path, "GDAL support files found.");
 
         say STDERR "FYI: GDAL_DATA = $gdal_data_dir";
@@ -112,12 +114,12 @@ if(1){
         }
 
         PopFinderLocation; #FinderClean;
-        my $path2 = FindFile('gcs.csv');
+        my $path2 = FindFile($target_file);
         ok(not(defined $path2), "GDAL support files not found after popping finder.");
 
         $path =~ s/[\w.]+$//;
         PushFinderLocation($path);
-        $path = FindFile('gcs.csv');
+        $path = FindFile($target_file);
         ok(defined $path, "GDAL support files found when working path inserted.");
     }
 }
@@ -186,9 +188,17 @@ if(1){
         'AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,'.
         'AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,'.
         'AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]';
+    if (Alien::gdal->version ge '3') {
+        $ogc_wkt =
+            'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS84",6378137,298.257223563,'.
+            'AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,'.
+            'AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,'.
+            'AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],'.
+            'AUTHORITY["EPSG","4326"]]';
+    }
     $ds->SetProjectionString($ogc_wkt);
     my $p = $ds->GetProjectionString;
-    ok($p eq $ogc_wkt, "Set/get projection string");
+    is($p, $ogc_wkt, "Set/get projection string");
     my $transform = [10,2,0,20,0,3];
     $ds->SetGeoTransform($transform);
     my $t = $ds->GetGeoTransform;
@@ -258,7 +268,7 @@ if(1){
     my $dr = GetDriver('ESRI Shapefile');
     my $ds = $dr->Create('test.shp');
     my @sr = ();
-    if (FindFile('gcs.csv')) {
+    if (FindFile('gcs.csv')) {  #  should be version checked? GDAL 3 does not use gcs.csv
         @sr = (SpatialReference => Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067));
     }
     my $l = $ds->CreateLayer({Name => 'test', GeometryType => 'Point', @sr});
@@ -527,7 +537,7 @@ if(1){
     my $dr = GetDriver('Memory');
     my $ds = $dr->Create({Name => 'test'});
     my @sr = ();
-    if (FindFile('gcs.csv')) {
+    if (FindFile('stateplane.csv')) {
         @sr = (SpatialReference => Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067));
     }
     my $l = $ds->CreateLayer({Name => 'test', GeometryType => 'Point', @sr});
