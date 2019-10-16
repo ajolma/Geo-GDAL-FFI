@@ -92,11 +92,23 @@ sub GetBands {
     return @bands;
 }
 
+sub GetLayerCount {
+    my ($self) = @_;
+    return Geo::GDAL::FFI::GDALDatasetGetLayerCount($$self);
+}
+
+
 sub GetLayer {
     my ($self, $i) = @_;
     $i //= 0;
-    my $l = Geo::GDAL::FFI::isint($i) ? Geo::GDAL::FFI::GDALDatasetGetLayer($$self, $i) :
-    Geo::GDAL::FFI::GDALDatasetGetLayerByName($$self, $i);
+    my $l = Geo::GDAL::FFI::isint($i)
+      ? Geo::GDAL::FFI::GDALDatasetGetLayer($$self, $i)
+      : Geo::GDAL::FFI::GDALDatasetGetLayerByName($$self, $i);
+    unless ($l) {
+        my $msg = Geo::GDAL::FFI::error_msg()
+          // "Could not access layer $i in data set.";
+        confess $msg if $msg;
+    }
     Geo::GDAL::FFI::_register_parent_ref ($l, $self);
     return bless \$l, 'Geo::GDAL::FFI::Layer';
 }
@@ -503,6 +515,10 @@ argument is defined then the arguments GeometryType and
 SpatialReference are ignored.
 
 =back
+
+=head2 GetLayerCount
+ my $count = $dataset->GetLayerCount();
+
 
 =head2 GetLayer
 

@@ -21,6 +21,7 @@ WriteMakefile(
     },
     TEST_REQUIRES => {
         'Test::More' => 0,
+        'Test::Exception' => 0,
         'JSON' => 0,
         'Data::Dumper' => 0
     },
