@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = 0.0700;
+our $VERSION = 0.0800;
 
 sub GetDescription {
     my $self = shift;

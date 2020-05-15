@@ -24,7 +24,7 @@ use Geo::GDAL::FFI::GeomFieldDefn;
 use Geo::GDAL::FFI::Feature;
 use Geo::GDAL::FFI::Geometry;
 
-our $VERSION = 0.0700;
+our $VERSION = 0.0800;
 our $DEBUG = 0;
 
 our @ISA = qw(Exporter);
@@ -32,7 +32,7 @@ our @EXPORT_OK = qw(@errors GetVersionInfo SetErrorHandling UnsetErrorHandling
     Capabilities OpenFlags DataTypes ResamplingMethods 
     FieldTypes FieldSubtypes Justifications ColorInterpretations
     GeometryTypes GeometryFormats GridAlgorithms
-    GetDriver GetDrivers Open
+    GetDriver GetDrivers IdentifyDriver Open
     HaveGEOS SetConfigOption GetConfigOption
     FindFile PushFinderLocation PopFinderLocation FinderClean);
 our %EXPORT_TAGS = (all => \@EXPORT_OK);
@@ -501,7 +501,7 @@ eval{$ffi->attach('GDALAllRegister' => [] => 'void');};
 eval{$ffi->attach('GDALCreate' => ['opaque','string','int','int','int','unsigned int','opaque'] => 'opaque');};
 eval{$ffi->attach('GDALCreateCopy' => [qw/opaque string opaque int opaque GDALProgressFunc opaque/] => 'opaque');};
 eval{$ffi->attach('GDALIdentifyDriver' => [qw/string opaque/] => 'opaque');};
-eval{$ffi->attach('GDALIdentifyDriverEx' => ['string','unsigned int','string_pointer','string_pointer'] => 'opaque');};
+eval{$ffi->attach('GDALIdentifyDriverEx' => ['string','unsigned int','opaque','opaque'] => 'opaque');};
 eval{$ffi->attach('GDALOpen' => ['string','unsigned int'] => 'opaque');};
 eval{$ffi->attach('GDALOpenShared' => ['string','unsigned int'] => 'opaque');};
 eval{$ffi->attach('GDALOpenEx' => ['string','unsigned int','opaque','opaque','opaque'] => 'opaque');};
@@ -551,13 +551,17 @@ eval{$ffi->attach('GDALDatasetRasterIO' => ['opaque','unsigned int','int','int',
 eval{$ffi->attach('GDALDatasetRasterIOEx' => ['opaque','unsigned int','int','int','int','int','opaque','int','int','unsigned int','int','int*','sint64','sint64','sint64','opaque'] => 'int');};
 eval{$ffi->attach('GDALDatasetAdviseRead' => ['opaque','int','int','int','int','int','int','unsigned int','int','int*','opaque'] => 'int');};
 eval{$ffi->attach('GDALGetProjectionRef' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALGetSpatialRef' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('GDALSetProjection' => [qw/opaque string/] => 'int');};
+eval{$ffi->attach('GDALSetSpatialRef' => [qw/opaque opaque/] => 'int');};
 eval{$ffi->attach('GDALGetGeoTransform' => [qw/opaque double[6]/] => 'int');};
 eval{$ffi->attach('GDALSetGeoTransform' => [qw/opaque double[6]/] => 'int');};
 eval{$ffi->attach('GDALGetGCPCount' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALGetGCPProjection' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALGetGCPSpatialRef' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('GDALGetGCPs' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('GDALSetGCPs' => [qw/opaque int opaque string/] => 'int');};
+eval{$ffi->attach('GDALSetGCPs2' => [qw/opaque int opaque opaque/] => 'int');};
 eval{$ffi->attach('GDALGetInternalHandle' => [qw/opaque string/] => 'opaque');};
 eval{$ffi->attach('GDALReferenceDataset' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALDereferenceDataset' => [qw/opaque/] => 'int');};
@@ -617,6 +621,7 @@ eval{$ffi->attach('GDALGetRasterMaximum' => [qw/opaque int*/] => 'double');};
 eval{$ffi->attach('GDALGetRasterStatistics' => [qw/opaque int int double* double* double* double*/] => 'int');};
 eval{$ffi->attach('GDALComputeRasterStatistics' => [qw/opaque int double* double* double* double* GDALProgressFunc opaque/] => 'int');};
 eval{$ffi->attach('GDALSetRasterStatistics' => [qw/opaque double double double double/] => 'int');};
+eval{$ffi->attach('GDALRasterBandAsMDArray' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('GDALGetRasterUnitType' => [qw/opaque/] => 'string');};
 eval{$ffi->attach('GDALSetRasterUnitType' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('GDALGetRasterOffset' => [qw/opaque int*/] => 'double');};
@@ -651,6 +656,7 @@ eval{$ffi->attach('GDALGeneralCmdLineProcessor' => [qw/int string_pointer int/] 
 eval{$ffi->attach('GDALSwapWords' => [qw/opaque int int int/] => 'void');};
 eval{$ffi->attach('GDALSwapWordsEx' => [qw/opaque int size_t int/] => 'void');};
 eval{$ffi->attach('GDALCopyWords' => ['opaque','unsigned int','int','opaque','unsigned int','int','int'] => 'void');};
+eval{$ffi->attach('GDALCopyWords64' => ['opaque','unsigned int','int','opaque','unsigned int','int','int'] => 'void');};
 eval{$ffi->attach('GDALCopyBits' => [qw/pointer int int pointer int int int int/] => 'void');};
 eval{$ffi->attach('GDALLoadWorldFile' => [qw/string double*/] => 'int');};
 eval{$ffi->attach('GDALReadWorldFile' => [qw/string string double*/] => 'int');};
@@ -719,6 +725,104 @@ eval{$ffi->attach('GDALDatasetGetTiledVirtualMem' => ['opaque','unsigned int','i
 eval{$ffi->attach('GDALRasterBandGetTiledVirtualMem' => ['opaque','unsigned int','int','int','int','int','int','int','unsigned int','size_t','int','opaque'] => 'opaque');};
 eval{$ffi->attach('GDALCreatePansharpenedVRT' => [qw/string opaque int uint64*/] => 'opaque');};
 eval{$ffi->attach('GDALGetJPEG2000Structure' => [qw/string opaque/] => 'opaque');};
+eval{$ffi->attach('GDALCreateMultiDimensional' => [qw/opaque string opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALExtendedDataTypeCreate' => ['unsigned int'] => 'opaque');};
+eval{$ffi->attach('GDALExtendedDataTypeCreateString' => [qw/size_t/] => 'opaque');};
+eval{$ffi->attach('GDALExtendedDataTypeCreateCompound' => [qw/string size_t size_t opaque/] => 'opaque');};
+eval{$ffi->attach('GDALExtendedDataTypeRelease' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALExtendedDataTypeGetName' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALExtendedDataTypeGetClass' => [qw/opaque/] => 'int');};
+eval{$ffi->attach('GDALExtendedDataTypeGetNumericDataType' => [qw/opaque/] => 'unsigned int');};
+eval{$ffi->attach('GDALExtendedDataTypeGetSize' => [qw/opaque/] => 'size_t');};
+eval{$ffi->attach('GDALExtendedDataTypeGetMaxStringLength' => [qw/opaque/] => 'size_t');};
+eval{$ffi->attach('GDALExtendedDataTypeGetComponents' => [qw/opaque size_t/] => 'uint64*');};
+eval{$ffi->attach('GDALExtendedDataTypeFreeComponents' => [qw/uint64* size_t/] => 'void');};
+eval{$ffi->attach('GDALExtendedDataTypeCanConvertTo' => [qw/opaque opaque/] => 'int');};
+eval{$ffi->attach('GDALExtendedDataTypeEquals' => [qw/opaque opaque/] => 'int');};
+eval{$ffi->attach('GDALEDTComponentCreate' => [qw/string size_t opaque/] => 'opaque');};
+eval{$ffi->attach('GDALEDTComponentRelease' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALEDTComponentGetName' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALEDTComponentGetOffset' => [qw/opaque/] => 'size_t');};
+eval{$ffi->attach('GDALEDTComponentGetType' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('GDALDatasetGetRootGroup' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('GDALGroupRelease' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALGroupGetName' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALGroupGetFullName' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALGroupGetMDArrayNames' => [qw/opaque opaque/] => 'string_pointer');};
+eval{$ffi->attach('GDALGroupOpenMDArray' => [qw/opaque string opaque/] => 'opaque');};
+eval{$ffi->attach('GDALGroupGetGroupNames' => [qw/opaque opaque/] => 'string_pointer');};
+eval{$ffi->attach('GDALGroupOpenGroup' => [qw/opaque string opaque/] => 'opaque');};
+eval{$ffi->attach('GDALGroupGetDimensions' => [qw/opaque size_t opaque/] => 'uint64*');};
+eval{$ffi->attach('GDALGroupGetAttribute' => [qw/opaque string/] => 'opaque');};
+eval{$ffi->attach('GDALGroupGetAttributes' => [qw/opaque size_t opaque/] => 'uint64*');};
+eval{$ffi->attach('GDALGroupGetStructuralInfo' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('GDALGroupCreateGroup' => [qw/opaque string opaque/] => 'opaque');};
+eval{$ffi->attach('GDALGroupCreateDimension' => [qw/opaque string string string uint64 opaque/] => 'opaque');};
+eval{$ffi->attach('GDALGroupCreateMDArray' => [qw/opaque string size_t uint64* opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALGroupCreateAttribute' => [qw/opaque string size_t uint64* opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALMDArrayRelease' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALMDArrayGetName' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALMDArrayGetFullName' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALMDArrayGetTotalElementsCount' => [qw/opaque/] => 'uint64');};
+eval{$ffi->attach('GDALMDArrayGetDimensionCount' => [qw/opaque/] => 'size_t');};
+eval{$ffi->attach('GDALMDArrayGetDimensions' => [qw/opaque size_t/] => 'uint64*');};
+eval{$ffi->attach('GDALMDArrayGetDataType' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('GDALMDArrayRead' => [qw/opaque uint64* size_t int64 int* opaque opaque opaque size_t/] => 'int');};
+eval{$ffi->attach('GDALMDArrayWrite' => [qw/opaque uint64* size_t int64 int* opaque opaque opaque size_t/] => 'int');};
+eval{$ffi->attach('GDALMDArrayGetAttribute' => [qw/opaque string/] => 'opaque');};
+eval{$ffi->attach('GDALMDArrayGetAttributes' => [qw/opaque size_t opaque/] => 'uint64*');};
+eval{$ffi->attach('GDALMDArrayCreateAttribute' => [qw/opaque string size_t uint64* opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALMDArrayGetRawNoDataValue' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('GDALMDArrayGetNoDataValueAsDouble' => [qw/opaque int*/] => 'double');};
+eval{$ffi->attach('GDALMDArraySetRawNoDataValue' => [qw/opaque opaque/] => 'int');};
+eval{$ffi->attach('GDALMDArraySetNoDataValueAsDouble' => [qw/opaque double/] => 'int');};
+eval{$ffi->attach('GDALMDArraySetScale' => [qw/opaque double/] => 'int');};
+eval{$ffi->attach('GDALMDArrayGetScale' => [qw/opaque int*/] => 'double');};
+eval{$ffi->attach('GDALMDArraySetOffset' => [qw/opaque double/] => 'int');};
+eval{$ffi->attach('GDALMDArrayGetOffset' => [qw/opaque int*/] => 'double');};
+eval{$ffi->attach('GDALMDArrayGetBlockSize' => [qw/opaque size_t/] => 'uint64');};
+eval{$ffi->attach('GDALMDArraySetUnit' => [qw/opaque string/] => 'int');};
+eval{$ffi->attach('GDALMDArrayGetUnit' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALMDArraySetSpatialRef' => [qw/opaque opaque/] => 'int');};
+eval{$ffi->attach('GDALMDArrayGetSpatialRef' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('GDALMDArrayGetProcessingChunkSize' => [qw/opaque size_t size_t/] => 'size_t');};
+eval{$ffi->attach('GDALMDArrayGetStructuralInfo' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('GDALMDArrayGetView' => [qw/opaque string/] => 'opaque');};
+eval{$ffi->attach('GDALMDArrayTranspose' => [qw/opaque size_t int*/] => 'opaque');};
+eval{$ffi->attach('GDALMDArrayGetUnscaled' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('GDALMDArrayGetMask' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('GDALMDArrayAsClassicDataset' => [qw/opaque size_t size_t/] => 'opaque');};
+eval{$ffi->attach('GDALAttributeRelease' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALReleaseAttributes' => [qw/uint64* size_t/] => 'void');};
+eval{$ffi->attach('GDALAttributeGetName' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALAttributeGetFullName' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALAttributeGetTotalElementsCount' => [qw/opaque/] => 'uint64');};
+eval{$ffi->attach('GDALAttributeGetDimensionCount' => [qw/opaque/] => 'size_t');};
+eval{$ffi->attach('GDALAttributeGetDimensionsSize' => [qw/opaque size_t/] => 'uint64');};
+eval{$ffi->attach('GDALAttributeGetDataType' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('GDALAttributeReadAsRaw' => [qw/opaque size_t/] => 'pointer');};
+eval{$ffi->attach('GDALAttributeFreeRawResult' => [qw/opaque pointer size_t/] => 'void');};
+eval{$ffi->attach('GDALAttributeReadAsString' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALAttributeReadAsInt' => [qw/opaque/] => 'int');};
+eval{$ffi->attach('GDALAttributeReadAsDouble' => [qw/opaque/] => 'double');};
+eval{$ffi->attach('GDALAttributeReadAsStringArray' => [qw/opaque/] => 'string_pointer');};
+eval{$ffi->attach('GDALAttributeReadAsIntArray' => [qw/opaque size_t/] => 'int*');};
+eval{$ffi->attach('GDALAttributeReadAsDoubleArray' => [qw/opaque size_t/] => 'double*');};
+eval{$ffi->attach('GDALAttributeWriteRaw' => [qw/opaque opaque size_t/] => 'int');};
+eval{$ffi->attach('GDALAttributeWriteString' => [qw/opaque string/] => 'int');};
+eval{$ffi->attach('GDALAttributeWriteStringArray' => [qw/opaque opaque/] => 'int');};
+eval{$ffi->attach('GDALAttributeWriteInt' => [qw/opaque int/] => 'int');};
+eval{$ffi->attach('GDALAttributeWriteDouble' => [qw/opaque double/] => 'int');};
+eval{$ffi->attach('GDALAttributeWriteDoubleArray' => [qw/opaque double* size_t/] => 'int');};
+eval{$ffi->attach('GDALDimensionRelease' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALReleaseDimensions' => [qw/uint64* size_t/] => 'void');};
+eval{$ffi->attach('GDALDimensionGetName' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALDimensionGetFullName' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALDimensionGetType' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALDimensionGetDirection' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('GDALDimensionGetSize' => [qw/opaque/] => 'uint64');};
+eval{$ffi->attach('GDALDimensionGetIndexingVariable' => [qw/opaque/] => 'opaque');};
+eval{$ffi->attach('GDALDimensionSetIndexingVariable' => [qw/opaque opaque/] => 'int');};
 # from ogr/ogr_api.h
 eval{$ffi->attach('OGR_G_CreateFromWkb' => [qw/string opaque uint64* int/] => 'int');};
 eval{$ffi->attach('OGR_G_CreateFromWkt' => [qw/string_pointer opaque uint64*/] => 'int');};
@@ -732,6 +836,7 @@ eval{$ffi->attach('OGR_G_ForceToMultiPolygon' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_G_ForceToMultiPoint' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_G_ForceToMultiLineString' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_G_ForceTo' => ['opaque','unsigned int','string_pointer'] => 'opaque');};
+eval{$ffi->attach('OGR_G_RemoveLowerDimensionSubGeoms' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_G_GetDimension' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OGR_G_GetCoordinateDimension' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OGR_G_CoordinateDimension' => [qw/opaque/] => 'int');};
@@ -765,10 +870,14 @@ eval{$ffi->attach('OGR_G_ExportToKML' => [qw/opaque string/] => 'opaque');};
 eval{$ffi->attach('OGR_G_ExportToJson' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_G_ExportToJsonEx' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_G_CreateGeometryFromJson' => [qw/string/] => 'opaque');};
+eval{$ffi->attach('OGR_G_CreateGeometryFromEsriJson' => [qw/string/] => 'opaque');};
 eval{$ffi->attach('OGR_G_AssignSpatialReference' => [qw/opaque opaque/] => 'void');};
 eval{$ffi->attach('OGR_G_GetSpatialReference' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_G_Transform' => [qw/opaque opaque/] => 'int');};
 eval{$ffi->attach('OGR_G_TransformTo' => [qw/opaque opaque/] => 'int');};
+eval{$ffi->attach('OGR_GeomTransformer_Create' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('OGR_GeomTransformer_Transform' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('OGR_GeomTransformer_Destroy' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OGR_G_Simplify' => [qw/opaque double/] => 'opaque');};
 eval{$ffi->attach('OGR_G_SimplifyPreserveTopology' => [qw/opaque double/] => 'opaque');};
 eval{$ffi->attach('OGR_G_DelaunayTriangulation' => [qw/opaque double int/] => 'opaque');};
@@ -799,6 +908,7 @@ eval{$ffi->attach('OGR_G_Value' => [qw/opaque double/] => 'opaque');};
 eval{$ffi->attach('OGR_G_Empty' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OGR_G_IsEmpty' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OGR_G_IsValid' => [qw/opaque/] => 'int');};
+eval{$ffi->attach('OGR_G_MakeValid' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('OGR_G_IsSimple' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OGR_G_IsRing' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OGR_G_Polygonize' => [qw/opaque/] => 'opaque');};
@@ -945,7 +1055,7 @@ eval{$ffi->attach('OGR_F_SetFieldInteger64List' => [qw/opaque int int sint64[]/]
 eval{$ffi->attach('OGR_F_SetFieldDoubleList' => [qw/opaque int int double[]/] => 'void');};
 eval{$ffi->attach('OGR_F_SetFieldStringList' => [qw/opaque int opaque/] => 'void');};
 eval{$ffi->attach('OGR_F_SetFieldRaw' => [qw/opaque int opaque/] => 'void');};
-eval{$ffi->attach('OGR_F_SetFieldBinary' => [qw/opaque int int pointer/] => 'void');};
+eval{$ffi->attach('OGR_F_SetFieldBinary' => [qw/opaque int int opaque/] => 'void');};
 eval{$ffi->attach('OGR_F_SetFieldDateTime' => [qw/opaque int int int int int int int int/] => 'void');};
 eval{$ffi->attach('OGR_F_SetFieldDateTimeEx' => [qw/opaque int int int int int int float int/] => 'void');};
 eval{$ffi->attach('OGR_F_GetGeomFieldCount' => [qw/opaque/] => 'int');};
@@ -1090,6 +1200,9 @@ eval{$ffi->attach('OGR_STBL_GetNextStyle' => [qw/opaque/] => 'string');};
 eval{$ffi->attach('OGR_STBL_GetLastStyleName' => [qw/opaque/] => 'string');};
 # from ogr/ogr_srs_api.h
 eval{$ffi->attach('OSRAxisEnumToName' => ['unsigned int'] => 'string');};
+eval{$ffi->attach('OSRSetPROJSearchPaths' => [qw/string_pointer/] => 'void');};
+eval{$ffi->attach('OSRGetPROJSearchPaths' => [] => 'string_pointer');};
+eval{$ffi->attach('OSRGetPROJVersion' => [qw/int* int* int*/] => 'void');};
 eval{$ffi->attach('OSRNewSpatialReference' => [qw/string/] => 'opaque');};
 eval{$ffi->attach('OSRCloneGeogCS' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('OSRClone' => [qw/opaque/] => 'opaque');};
@@ -1098,9 +1211,6 @@ eval{$ffi->attach('OSRReference' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRDereference' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRRelease' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OSRValidate' => [qw/opaque/] => 'int');};
-eval{$ffi->attach('OSRFixupOrdering' => [qw/opaque/] => 'int');};
-eval{$ffi->attach('OSRFixup' => [qw/opaque/] => 'int');};
-eval{$ffi->attach('OSRStripCTParms' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRImportFromEPSG' => [qw/opaque int/] => 'int');};
 eval{$ffi->attach('OSRImportFromEPSGA' => [qw/opaque int/] => 'int');};
 eval{$ffi->attach('OSRImportFromWkt' => [qw/opaque string_pointer/] => 'int');};
@@ -1116,7 +1226,9 @@ eval{$ffi->attach('OSRImportFromMICoordSys' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('OSRImportFromERM' => [qw/opaque string string string/] => 'int');};
 eval{$ffi->attach('OSRImportFromUrl' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('OSRExportToWkt' => [qw/opaque string_pointer/] => 'int');};
+eval{$ffi->attach('OSRExportToWktEx' => [qw/opaque string_pointer string_pointer/] => 'int');};
 eval{$ffi->attach('OSRExportToPrettyWkt' => [qw/opaque string_pointer int/] => 'int');};
+eval{$ffi->attach('OSRExportToPROJJSON' => [qw/opaque string_pointer string_pointer/] => 'int');};
 eval{$ffi->attach('OSRExportToProj4' => [qw/opaque string_pointer/] => 'int');};
 eval{$ffi->attach('OSRExportToPCI' => [qw/opaque string_pointer string_pointer double*/] => 'int');};
 eval{$ffi->attach('OSRExportToUSGS' => [qw/opaque long* long* double* long*/] => 'int');};
@@ -1127,6 +1239,7 @@ eval{$ffi->attach('OSRExportToERM' => [qw/opaque string string string/] => 'int'
 eval{$ffi->attach('OSRMorphToESRI' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRMorphFromESRI' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRConvertToOtherProjection' => [qw/opaque string string_pointer/] => 'opaque');};
+eval{$ffi->attach('OSRGetName' => [qw/opaque/] => 'string');};
 eval{$ffi->attach('OSRSetAttrValue' => [qw/opaque string string/] => 'int');};
 eval{$ffi->attach('OSRGetAttrValue' => [qw/opaque string int/] => 'string');};
 eval{$ffi->attach('OSRSetAngularUnits' => [qw/opaque string double/] => 'int');};
@@ -1138,6 +1251,7 @@ eval{$ffi->attach('OSRGetLinearUnits' => [qw/opaque string_pointer/] => 'double'
 eval{$ffi->attach('OSRGetTargetLinearUnits' => [qw/opaque string string_pointer/] => 'double');};
 eval{$ffi->attach('OSRGetPrimeMeridian' => [qw/opaque string_pointer/] => 'double');};
 eval{$ffi->attach('OSRIsGeographic' => [qw/opaque/] => 'int');};
+eval{$ffi->attach('OSRIsDerivedGeographic' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRIsLocal' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRIsProjected' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRIsCompound' => [qw/opaque/] => 'int');};
@@ -1146,6 +1260,7 @@ eval{$ffi->attach('OSRIsVertical' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRIsSameGeogCS' => [qw/opaque opaque/] => 'int');};
 eval{$ffi->attach('OSRIsSameVertCS' => [qw/opaque opaque/] => 'int');};
 eval{$ffi->attach('OSRIsSame' => [qw/opaque opaque/] => 'int');};
+eval{$ffi->attach('OSRIsSameEx' => [qw/opaque opaque string_pointer/] => 'int');};
 eval{$ffi->attach('OSRSetLocalCS' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('OSRSetProjCS' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('OSRSetGeocCS' => [qw/opaque string/] => 'int');};
@@ -1154,7 +1269,9 @@ eval{$ffi->attach('OSRSetFromUserInput' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('OSRCopyGeogCSFrom' => [qw/opaque opaque/] => 'int');};
 eval{$ffi->attach('OSRSetTOWGS84' => [qw/opaque double double double double double double double/] => 'int');};
 eval{$ffi->attach('OSRGetTOWGS84' => [qw/opaque double* int/] => 'int');};
+eval{$ffi->attach('OSRAddGuessedTOWGS84' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRSetCompoundCS' => [qw/opaque string opaque opaque/] => 'int');};
+eval{$ffi->attach('OSRPromoteTo3D' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('OSRSetGeogCS' => [qw/opaque string string string double double string double string double/] => 'int');};
 eval{$ffi->attach('OSRSetVertCS' => [qw/opaque string string int/] => 'int');};
 eval{$ffi->attach('OSRGetSemiMajor' => [qw/opaque int*/] => 'double');};
@@ -1163,6 +1280,7 @@ eval{$ffi->attach('OSRGetInvFlattening' => [qw/opaque int*/] => 'double');};
 eval{$ffi->attach('OSRSetAuthority' => [qw/opaque string string int/] => 'int');};
 eval{$ffi->attach('OSRGetAuthorityCode' => [qw/opaque string/] => 'string');};
 eval{$ffi->attach('OSRGetAuthorityName' => [qw/opaque string/] => 'string');};
+eval{$ffi->attach('OSRGetAreaOfUse' => [qw/opaque double* double* double* double* string/] => 'int');};
 eval{$ffi->attach('OSRSetProjection' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('OSRSetProjParm' => [qw/opaque string double/] => 'int');};
 eval{$ffi->attach('OSRGetProjParm' => [qw/opaque string double int*/] => 'double');};
@@ -1178,7 +1296,12 @@ eval{$ffi->attach('OSRFreeSRSArray' => [qw/uint64*/] => 'void');};
 eval{$ffi->attach('OSREPSGTreatsAsLatLong' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSREPSGTreatsAsNorthingEasting' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRGetAxis' => ['opaque','string','int','unsigned int'] => 'string');};
+eval{$ffi->attach('OSRGetAxesCount' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRSetAxes' => ['opaque','string','string','unsigned int','string','unsigned int'] => 'int');};
+eval{$ffi->attach('OSRGetAxisMappingStrategy' => [qw/opaque/] => 'int');};
+eval{$ffi->attach('OSRSetAxisMappingStrategy' => [qw/opaque int/] => 'void');};
+eval{$ffi->attach('OSRGetDataAxisToSRSAxisMapping' => [qw/opaque int*/] => 'int*');};
+eval{$ffi->attach('OSRSetDataAxisToSRSAxisMapping' => [qw/opaque int int*/] => 'int');};
 eval{$ffi->attach('OSRSetACEA' => [qw/opaque double double double double double double/] => 'int');};
 eval{$ffi->attach('OSRSetAE' => [qw/opaque double double double double/] => 'int');};
 eval{$ffi->attach('OSRSetBonne' => [qw/opaque double double double double/] => 'int');};
@@ -1227,18 +1350,22 @@ eval{$ffi->attach('OSRSetVDG' => [qw/opaque double double double/] => 'int');};
 eval{$ffi->attach('OSRSetWagner' => [qw/opaque int double double double/] => 'int');};
 eval{$ffi->attach('OSRSetQSC' => [qw/opaque double double/] => 'int');};
 eval{$ffi->attach('OSRSetSCH' => [qw/opaque double double double double/] => 'int');};
+eval{$ffi->attach('OSRSetVerticalPerspective' => [qw/opaque double double double double double double/] => 'int');};
 eval{$ffi->attach('OSRCalcInvFlattening' => [qw/double double/] => 'double');};
 eval{$ffi->attach('OSRCalcSemiMinorFromInvFlattening' => [qw/double double/] => 'double');};
 eval{$ffi->attach('OSRCleanup' => [] => 'void');};
+eval{$ffi->attach('OSRGetCRSInfoListFromDatabase' => [qw/string opaque int*/] => 'opaque');};
+eval{$ffi->attach('OSRDestroyCRSInfoList' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OCTNewCoordinateTransformation' => [qw/opaque opaque/] => 'opaque');};
+eval{$ffi->attach('OCTNewCoordinateTransformationOptions' => [] => 'opaque');};
+eval{$ffi->attach('OCTCoordinateTransformationOptionsSetOperation' => [qw/opaque string int/] => 'int');};
+eval{$ffi->attach('OCTCoordinateTransformationOptionsSetAreaOfInterest' => [qw/opaque double double double double/] => 'int');};
+eval{$ffi->attach('OCTDestroyCoordinateTransformationOptions' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('OCTNewCoordinateTransformationEx' => [qw/opaque opaque opaque/] => 'opaque');};
 eval{$ffi->attach('OCTDestroyCoordinateTransformation' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OCTTransform' => [qw/opaque int double* double* double*/] => 'int');};
 eval{$ffi->attach('OCTTransformEx' => [qw/opaque int double* double* double* int*/] => 'int');};
-eval{$ffi->attach('OCTProj4Normalize' => [qw/string/] => 'string');};
-eval{$ffi->attach('OCTCleanupProjMutex' => [] => 'void');};
-eval{$ffi->attach('OPTGetProjectionMethods' => [] => 'string_pointer');};
-eval{$ffi->attach('OPTGetParameterList' => [qw/string string_pointer/] => 'string_pointer');};
-eval{$ffi->attach('OPTGetParameterInfo' => [qw/string string string_pointer string_pointer double*/] => 'int');};
+eval{$ffi->attach('OCTTransform4D' => [qw/opaque int double* double* double* double* int*/] => 'int');};
 # from apps/gdal_utils.h
 eval{$ffi->attach('GDALInfoOptionsNew' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALInfoOptionsFree' => [qw/opaque/] => 'void');};
@@ -1277,6 +1404,13 @@ eval{$ffi->attach('GDALBuildVRTOptionsNew' => [qw/opaque opaque/] => 'opaque');}
 eval{$ffi->attach('GDALBuildVRTOptionsFree' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALBuildVRTOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
 eval{$ffi->attach('GDALBuildVRT' => [qw/string int opaque[] opaque opaque int*/] => 'opaque');};
+eval{$ffi->attach('GDALMultiDimInfoOptionsNew' => [qw/string_pointer opaque/] => 'opaque');};
+eval{$ffi->attach('GDALMultiDimInfoOptionsFree' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALMultiDimInfo' => [qw/opaque opaque/] => 'string');};
+eval{$ffi->attach('GDALMultiDimTranslateOptionsNew' => [qw/string_pointer opaque/] => 'opaque');};
+eval{$ffi->attach('GDALMultiDimTranslateOptionsFree' => [qw/opaque/] => 'void');};
+eval{$ffi->attach('GDALMultiDimTranslateOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
+eval{$ffi->attach('GDALMultiDimTranslate' => [qw/string opaque int uint64* opaque int*/] => 'opaque');};
 # end of generated code
 
     # we do not use Alien::gdal->data_dir since it issues warnings due to GDAL bug
@@ -1341,6 +1475,34 @@ sub GetDrivers {
         push @drivers, GetDriver($i);
     }
     return @drivers;
+}
+
+sub IdentifyDriver {
+    my ($filename, $args) = @_;
+    my $flags = 0;
+    my $a = $args->{Flags} // [];
+    for my $f (@$a) {
+        print "$f\n";
+        $flags |= $open_flags{$f};
+    }
+    print "$flags\n";
+    my $drivers = 0;
+    for my $o (@{$args->{AllowedDrivers}}) {
+        $drivers = Geo::GDAL::FFI::CSLAddString($drivers, $o);
+    }
+    my $list = 0;
+    for my $o (@{$args->{FileList}}) {
+        $list = Geo::GDAL::FFI::CSLAddString($list, $o);
+    }
+    my $d;
+    if ($flags or $drivers) {
+        $d = GDALIdentifyDriverEx($filename, $flags, $drivers, $list);
+    } else {
+        $d = GDALIdentifyDriver($filename, $list);
+    }
+    Geo::GDAL::FFI::CSLDestroy($drivers);
+    Geo::GDAL::FFI::CSLDestroy($list);
+    return bless \$d, 'Geo::GDAL::FFI::Driver';
 }
 
 sub Open {

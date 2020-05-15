@@ -68,6 +68,7 @@ my %use_CSL = (
     GDALCreateCopy => 1,
     GDALGetMetadataDomainList => 1,
     GDALIdentifyDriver => 1,
+    GDALIdentifyDriverEx => 1,
     GDALValidateCreationOptions => 1,
     GDALGetMetadata => 1,
     GDALSetMetadata => 1,
@@ -370,12 +371,20 @@ sub parse_type {
         $arg = 'int';
     } elsif ($arg =~ /^size_t/) {
         $arg = 'size_t';
+    } elsif ($arg =~ /^const size_t/) {
+        $arg = 'size_t';
     } elsif ($arg =~ /GByte\s*\*/) {
         $arg = 'pointer';
     } elsif ($arg =~ /^GUInt32\s*\*/) {
         $arg = 'uint32*';
     } elsif ($arg =~ /^GUInt32/) {
         $arg = 'uint32';
+    } elsif ($arg =~ /^const GInt64\s*\*/) {
+        $arg = 'int64';
+    } elsif ($arg =~ /^GUInt64/) {
+        $arg = 'uint64';
+    } elsif ($arg =~ /^const GUInt64\s*\*/) {
+        $arg = 'uint64*';
     } elsif ($arg =~ /^GUIntBig\s*\*/) {
         $arg = 'uint64*';
     } elsif ($arg =~ /^GUIntBig/) {
@@ -393,6 +402,22 @@ sub parse_type {
     } elsif ($arg =~ /^void/) {
         $arg = 'void';
     } elsif ($arg =~ /^CSLConstList/) {
+        $arg = 'opaque';
+    } elsif ($arg =~ /^GPtrDiff_t/) {
+        $arg = 'int';
+    } elsif ($arg =~ /^const GPtrDiff_t\s*\*/) {
+        $arg = 'int*';
+    } elsif ($arg =~ /^GDALExtendedDataTypeClass/) {
+        $arg = 'int';
+    } elsif ($arg =~ /^OSRAxisMappingStrategy/) {
+        $arg = 'int';
+    } elsif ($arg =~ /^OSRCRSInfo/) {
+        $arg = 'opaque';
+    } elsif ($arg =~ /^(const )?OSRCRSListParameters/) {
+        $arg = 'opaque';
+    } elsif ($arg =~ /^(const )?GDALMultiDimInfoOptions/) {
+        $arg = 'opaque';
+    } elsif ($arg =~ /^(const )?GDALMultiDimTranslateOptions/) {
         $arg = 'opaque';
     } else {
         die "can't parse arg '$arg'";
@@ -421,7 +446,12 @@ sub pre_process {
             next;
         }
         if ($s =~ /^#ifdef (\w+)/ or $s =~ /^#if defined\((\w+)\)/) {
-            if ($1 eq 'DEBUG' or $1 eq 'undef' or $1 eq 'GDAL_COMPILATION') {
+            if (
+                $1 eq 'DEBUG'
+                or $1 eq 'undef'
+                or $1 eq 'GDAL_COMPILATION'
+                or $1 eq 'USE_DEPRECATED_SRS_WKT_WGS84'
+                ) {
                 $skip = 1;
                 next;
             }

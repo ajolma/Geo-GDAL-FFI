@@ -5,7 +5,7 @@ use warnings;
 use Carp;
 use base 'Geo::GDAL::FFI::Object';
 
-our $VERSION = 0.0700;
+our $VERSION = 0.0800;
 
 sub DESTROY {
     my $self = shift;
