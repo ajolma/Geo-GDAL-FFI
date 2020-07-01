@@ -4,7 +4,8 @@ use v5.10;
 use strict;
 use warnings;
 use Carp;
-use PDL;
+use PDL::Types ();
+use Config ();  #  needed to silence some FFI::Platypus warnings
 use FFI::Platypus;
 use FFI::Platypus::Buffer;
 require Exporter;

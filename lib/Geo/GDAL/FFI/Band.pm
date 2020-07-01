@@ -217,6 +217,7 @@ sub SetColorTable {
 }
 
 sub GetPiddle {
+    require PDL::Lite;  #  minimal load
     my ($self, $xoff, $yoff, $xsize, $ysize, $xdim, $ydim, $alg) = @_;
     $xoff //= 0;
     $yoff //= 0;
