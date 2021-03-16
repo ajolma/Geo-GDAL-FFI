@@ -25,7 +25,7 @@ use Geo::GDAL::FFI::GeomFieldDefn;
 use Geo::GDAL::FFI::Feature;
 use Geo::GDAL::FFI::Geometry;
 
-our $VERSION = 0.0800;
+our $VERSION = 0.0900;
 our $DEBUG = 0;
 
 our @ISA = qw(Exporter);
@@ -585,6 +585,7 @@ eval{$ffi->attach('GDALDatasetResetReading' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALDatasetGetNextFeature' => [qw/opaque uint64* double* GDALProgressFunc opaque/] => 'opaque');};
 eval{$ffi->attach('GDALDatasetTestCapability' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('GDALDatasetExecuteSQL' => [qw/opaque string opaque string/] => 'opaque');};
+eval{$ffi->attach('GDALDatasetAbortSQL' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALDatasetReleaseResultSet' => [qw/opaque opaque/] => 'void');};
 eval{$ffi->attach('GDALDatasetGetStyleTable' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('GDALDatasetSetStyleTableDirectly' => [qw/opaque opaque/] => 'void');};
@@ -592,6 +593,7 @@ eval{$ffi->attach('GDALDatasetSetStyleTable' => [qw/opaque opaque/] => 'void');}
 eval{$ffi->attach('GDALDatasetStartTransaction' => [qw/opaque int/] => 'int');};
 eval{$ffi->attach('GDALDatasetCommitTransaction' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('GDALDatasetRollbackTransaction' => [qw/opaque/] => 'int');};
+eval{$ffi->attach('GDALDatasetClearStatistics' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALGetRasterDataType' => [qw/opaque/] => 'unsigned int');};
 eval{$ffi->attach('GDALGetBlockSize' => [qw/opaque int* int*/] => 'void');};
 eval{$ffi->attach('GDALGetActualBlockSize' => [qw/opaque int int int* int*/] => 'int');};
@@ -751,8 +753,11 @@ eval{$ffi->attach('GDALGroupGetName' => [qw/opaque/] => 'string');};
 eval{$ffi->attach('GDALGroupGetFullName' => [qw/opaque/] => 'string');};
 eval{$ffi->attach('GDALGroupGetMDArrayNames' => [qw/opaque opaque/] => 'string_pointer');};
 eval{$ffi->attach('GDALGroupOpenMDArray' => [qw/opaque string opaque/] => 'opaque');};
+eval{$ffi->attach('GDALGroupOpenMDArrayFromFullname' => [qw/opaque string opaque/] => 'opaque');};
+eval{$ffi->attach('GDALGroupResolveMDArray' => [qw/opaque string string opaque/] => 'opaque');};
 eval{$ffi->attach('GDALGroupGetGroupNames' => [qw/opaque opaque/] => 'string_pointer');};
 eval{$ffi->attach('GDALGroupOpenGroup' => [qw/opaque string opaque/] => 'opaque');};
+eval{$ffi->attach('GDALGroupOpenGroupFromFullname' => [qw/opaque string opaque/] => 'opaque');};
 eval{$ffi->attach('GDALGroupGetDimensions' => [qw/opaque size_t opaque/] => 'uint64*');};
 eval{$ffi->attach('GDALGroupGetAttribute' => [qw/opaque string/] => 'opaque');};
 eval{$ffi->attach('GDALGroupGetAttributes' => [qw/opaque size_t opaque/] => 'uint64*');};
@@ -770,6 +775,7 @@ eval{$ffi->attach('GDALMDArrayGetDimensions' => [qw/opaque size_t/] => 'uint64*'
 eval{$ffi->attach('GDALMDArrayGetDataType' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('GDALMDArrayRead' => [qw/opaque uint64* size_t int64 int* opaque opaque opaque size_t/] => 'int');};
 eval{$ffi->attach('GDALMDArrayWrite' => [qw/opaque uint64* size_t int64 int* opaque opaque opaque size_t/] => 'int');};
+eval{$ffi->attach('GDALMDArrayAdviseRead' => [qw/opaque uint64* size_t/] => 'int');};
 eval{$ffi->attach('GDALMDArrayGetAttribute' => [qw/opaque string/] => 'opaque');};
 eval{$ffi->attach('GDALMDArrayGetAttributes' => [qw/opaque size_t opaque/] => 'uint64*');};
 eval{$ffi->attach('GDALMDArrayCreateAttribute' => [qw/opaque string size_t uint64* opaque opaque/] => 'opaque');};
@@ -793,6 +799,8 @@ eval{$ffi->attach('GDALMDArrayTranspose' => [qw/opaque size_t int*/] => 'opaque'
 eval{$ffi->attach('GDALMDArrayGetUnscaled' => [qw/opaque/] => 'opaque');};
 eval{$ffi->attach('GDALMDArrayGetMask' => [qw/opaque opaque/] => 'opaque');};
 eval{$ffi->attach('GDALMDArrayAsClassicDataset' => [qw/opaque size_t size_t/] => 'opaque');};
+eval{$ffi->attach('GDALMDArrayGetStatistics' => [qw/opaque opaque int int double* double* double* double* uint64 GDALProgressFunc opaque/] => 'int');};
+eval{$ffi->attach('GDALMDArrayComputeStatistics' => [qw/opaque opaque int double* double* double* double* uint64 GDALProgressFunc opaque/] => 'int');};
 eval{$ffi->attach('GDALAttributeRelease' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('GDALReleaseAttributes' => [qw/uint64* size_t/] => 'void');};
 eval{$ffi->attach('GDALAttributeGetName' => [qw/opaque/] => 'string');};
@@ -956,6 +964,8 @@ eval{$ffi->attach('OGR_Fld_Create' => ['string','unsigned int'] => 'opaque');};
 eval{$ffi->attach('OGR_Fld_Destroy' => [qw/opaque/] => 'void');};
 eval{$ffi->attach('OGR_Fld_SetName' => [qw/opaque string/] => 'void');};
 eval{$ffi->attach('OGR_Fld_GetNameRef' => [qw/opaque/] => 'string');};
+eval{$ffi->attach('OGR_Fld_SetAlternativeName' => [qw/opaque string/] => 'void');};
+eval{$ffi->attach('OGR_Fld_GetAlternativeNameRef' => [qw/opaque/] => 'string');};
 eval{$ffi->attach('OGR_Fld_GetType' => [qw/opaque/] => 'unsigned int');};
 eval{$ffi->attach('OGR_Fld_SetType' => ['opaque','unsigned int'] => 'void');};
 eval{$ffi->attach('OGR_Fld_GetSubType' => [qw/opaque/] => 'unsigned int');};
@@ -971,6 +981,8 @@ eval{$ffi->attach('OGR_Fld_IsIgnored' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OGR_Fld_SetIgnored' => [qw/opaque int/] => 'void');};
 eval{$ffi->attach('OGR_Fld_IsNullable' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OGR_Fld_SetNullable' => [qw/opaque int/] => 'void');};
+eval{$ffi->attach('OGR_Fld_IsUnique' => [qw/opaque/] => 'int');};
+eval{$ffi->attach('OGR_Fld_SetUnique' => [qw/opaque int/] => 'void');};
 eval{$ffi->attach('OGR_Fld_GetDefault' => [qw/opaque/] => 'string');};
 eval{$ffi->attach('OGR_Fld_SetDefault' => [qw/opaque string/] => 'void');};
 eval{$ffi->attach('OGR_Fld_IsDefaultDriverSpecific' => [qw/opaque/] => 'int');};
@@ -1273,6 +1285,7 @@ eval{$ffi->attach('OSRGetTOWGS84' => [qw/opaque double* int/] => 'int');};
 eval{$ffi->attach('OSRAddGuessedTOWGS84' => [qw/opaque/] => 'int');};
 eval{$ffi->attach('OSRSetCompoundCS' => [qw/opaque string opaque opaque/] => 'int');};
 eval{$ffi->attach('OSRPromoteTo3D' => [qw/opaque string/] => 'int');};
+eval{$ffi->attach('OSRDemoteTo2D' => [qw/opaque string/] => 'int');};
 eval{$ffi->attach('OSRSetGeogCS' => [qw/opaque string string string double double string double string double/] => 'int');};
 eval{$ffi->attach('OSRSetVertCS' => [qw/opaque string string int/] => 'int');};
 eval{$ffi->attach('OSRGetSemiMajor' => [qw/opaque int*/] => 'double');};
@@ -1413,6 +1426,7 @@ eval{$ffi->attach('GDALMultiDimTranslateOptionsFree' => [qw/opaque/] => 'void');
 eval{$ffi->attach('GDALMultiDimTranslateOptionsSetProgress' => [qw/opaque GDALProgressFunc opaque/] => 'void');};
 eval{$ffi->attach('GDALMultiDimTranslate' => [qw/string opaque int uint64* opaque int*/] => 'opaque');};
 # end of generated code
+
 
     # we do not use Alien::gdal->data_dir since it issues warnings due to GDAL bug
     my $pc = PkgConfig->find('gdal');
