@@ -1,0 +1,92 @@
+name: linux_sys_build
+
+on:
+  push:
+    branches:
+      - '*'
+    tags-ignore:
+      - '*'
+  pull_request:
+
+env:
+  PERL_MOD_DIR: /home/runner/perl5/lib/perl5
+
+jobs:
+  perl:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: '5.32'
+
+      - name: system libs
+        run: |
+          sudo apt-get --yes install cmake libgdal-dev
+
+      - name: Locale check
+        run: |
+          locale -a
+          echo Current locale:
+          locale
+
+      - name: perl -V
+        run: perl -V
+
+      - name: Prepare for cache
+        run: |
+          perl -V > perlversion.txt
+          echo '20220320' >> perlversion.txt
+          ls -l perlversion.txt
+
+      - name: Cache CPAN modules
+        uses: actions/cache@v1
+        with:
+          path: ~/perl5
+          key: ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
+
+      - name: Install Dynamic Dependencies
+        run: |
+          which -a cpanm
+          which -a perl
+          cpanm --notest local::lib
+          echo $(perl -Mlocal::lib=${HOME}/perl5)
+          eval "$(perl -Mlocal::lib=${HOME}/perl5)"
+          cpanm --notest Alien::Build
+          cpanm --installdeps --notest Alien::sqlite
+          cpanm -v Alien::sqlite
+          cpanm --installdeps --notest Alien::libtiff
+          cpanm -v Alien::libtiff
+          cpanm --installdeps --notest Alien::geos::af
+          cpanm -v Alien::geos::af
+          cpanm --installdeps --notest Alien::proj
+          cpanm -v Alien::proj
+          cpanm --installdeps --notest Alien::gdal
+          cpanm -v Alien::gdal
+          #  some feedback to check the system
+          echo GDAL LDD
+          ldd `perl -MAlien::gdal -E'print q{}, Alien::gdal->dist_dir, q{/lib/libgdal.so}'`
+
+          
+      - name: Install Geo::GDAL::FFI deps
+        run: |
+          echo $(perl -Mlocal::lib=${HOME}/perl5)
+          eval "$(perl -Mlocal::lib=${HOME}/perl5)"
+          cpanm --installdeps Geo::GDAL::FFI
+  
+      - name: Build
+        run: |
+          echo $(perl -Mlocal::lib=${HOME}/perl5)
+          eval "$(perl -Mlocal::lib=${HOME}/perl5)"
+          #  ideally we would not need this
+          export LD_LIBRARY_PATH=`perl -MAlien::geos::af -e'print Alien::geos::af->dist_dir . "/lib"'`
+          echo GDAL LDD again
+          ldd `perl -MAlien::gdal -E'print q{}, Alien::gdal->dist_dir, q{/lib/libgdal.so}'`
+          perl Makefile.PL
+          cpanm --installdeps --notest .
+          make test
