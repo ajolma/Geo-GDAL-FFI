@@ -1,4 +1,4 @@
-name: linux_default_locale
+name: linux_share_build
 
 on:
   push:
