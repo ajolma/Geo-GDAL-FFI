@@ -337,7 +337,7 @@ sub parse_type {
         } else {
             $arg = 'int*';
         }
-    } elsif ($arg =~ /^int/) {
+    } elsif ($arg =~ /^(const )?int/) {
         $arg = 'int';
     } elsif ($arg =~ /^unsigned int\s*\*/) {
         $arg = 'unsigned int*';
@@ -357,7 +357,7 @@ sub parse_type {
         } else {
             $arg = 'double*';
         }
-    } elsif ($arg =~ /^double/) {
+    } elsif ($arg =~ /^(const )?double/) {
         $arg = 'double';
     } elsif ($arg =~ /float\s*\*/) {
         $arg = 'float*';
@@ -419,6 +419,24 @@ sub parse_type {
         $arg = 'opaque';
     } elsif ($arg =~ /^(const )?GDALMultiDimTranslateOptions/) {
         $arg = 'opaque';
+    } elsif ($arg =~ /^bool/) {
+        $arg = 'bool';
+    } elsif ($arg =~ /^GDALRPCInfoV1/) {
+        $arg = 'opaque';
+    } elsif ($arg =~ /^GDALRPCInfoV2/) {
+        $arg = 'opaque';
+    } elsif ($arg =~ /^GDALExtendedDataTypeSubType/) {
+        $arg = 'int';
+    } elsif ($arg =~ /^GDALRIOResampleAlg/) {
+        $arg = 'int';
+    } elsif ($arg =~ /^OGRFieldDomainType/) {
+        $arg = 'int';
+    } elsif ($arg =~ /^OGRFieldDomainSplitPolicy/) {
+        $arg = 'int';
+    } elsif ($arg =~ /^OGRFieldDomainMergePolicy/) {
+        $arg = 'int';
+    } elsif ($arg =~ /^(const )?OGRCodedValue/) {
+        $arg = 'int';
     } else {
         die "can't parse arg '$arg'";
     }

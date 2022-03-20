@@ -8,6 +8,7 @@ use Test::More;
 use Data::Dumper;
 use JSON;
 
+my $version = Geo::GDAL::FFI::GetVersionInfo() / 100;
 my $have_geos = Geo::GDAL::FFI::HaveGEOS;
 
 {
@@ -65,9 +66,15 @@ SKIP: {
     is_deeply ($envelope, [-1,1,-1,1], 'correct geometry envelope');
 
     my $envelope3d = $geom->GetEnvelope3D;
-    is_deeply ($envelope3d, [-1,1,-1,1,0,1], 'correct 3D geometry envelope');
-    
-    
+    is_deeply ($envelope3d, [-1,1,-1,1,0,1], 'correct 3D geometry envelope');    
+}
+
+SKIP: {
+    skip "Needs version >= 3.0", 1 unless $version >= 30000;
+    my $wkt = 'POLYGON ((0 -1,-1 0,0 1,1 0,0 -1))';
+    my $geom = Geo::GDAL::FFI::Geometry->new(WKT => $wkt);
+    my $test = $geom->MakeValid(METHOD => 'LINEWORK');
+    ok($wkt eq $test->AsText);
 }
 
 done_testing();

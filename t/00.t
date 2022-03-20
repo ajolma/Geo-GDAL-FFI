@@ -100,6 +100,9 @@ if(1){
         my $path = FindFile($target_file);
         ok(defined $path, "GDAL support files found.");
 
+        my $version = Geo::GDAL::FFI::GetVersionInfo('SEMANTIC');
+        say STDERR "FYI: Your GDAL is of version $version";
+
         say STDERR "FYI: GDAL_DATA = $gdal_data_dir";
         if (!$path) {
             # what's wrong with GDAL_DATA??

@@ -414,6 +414,23 @@ sub GetEnvelope3D {
     return $envelope;
 }
 
+sub MakeValid {
+    my ($self, %options) = @_;
+    my $o = 0;
+    for my $key (keys %options) {
+        $o = Geo::GDAL::FFI::CSLAddString($o, "$key=$options{$key}");
+    }
+    my $p;
+    if ($o) {
+        $p = Geo::GDAL::FFI::OGR_G_MakeValidEx($$self, $o);
+        Geo::GDAL::FFI::CSLDestroy($o);
+    } else {
+        $p = Geo::GDAL::FFI::OGR_G_MakeValid($$self);
+    }
+    confess Geo::GDAL::FFI::error_msg() unless $p;
+    return bless \$p, 'Geo::GDAL::FFI::Geometry';
+}
+
 
 1;
 
@@ -552,14 +569,14 @@ Returns the geometry as WKT. $variant is optional (default is 'ISO').
 
 Alias to ExportToWKT.
 
-=head2 ExportToGML($options)
+=head2 ExportToGML(%options)
 
  my $gml = $geom->ExportToGML(%options);
 
 Returns the geometry as GML string. %options may contain options as
 described in GDAL documentation.
 
-=head2 ExportToJSON($options)
+=head2 ExportToJSON(%options)
 
  my $json = $geom->ExportToJSON(%options);
 
@@ -626,6 +643,14 @@ Returns a four element array reference containing
 Returns a six element array reference containing
 [Xmin, Xmax, Ymin, Ymax, Zmin, Zmax].
 
+=head2 MakeValid(%options)
+
+ my $valid_geom = $geom->MakeValid(%options);
+
+Attempts to make an invalid geometry valid and returns that. %options
+may contain options as described in GDAL documentation.
+
+Requires GDAL version >= 3.0
 
 =head1 LICENSE
 
