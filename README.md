@@ -1,4 +1,8 @@
-[![Build Status](https://travis-ci.org/ajolma/Geo-GDAL-FFI.svg?branch=master)](https://travis-ci.org/ajolma/Geo-GDAL-FFI)
+![Linux share workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/linux_share_build.yml/badge.svg)
+![Linus sys workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/linux_sys_build.yml/badge.svg)
+![MacOS share workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/macos_share_builds.yml/badge.svg)
+![MacOS workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/macos.yml/badge.svg)
+![Windows workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/windows.yml/badge.svg)
 
 Geo-GDAL-FFI
 =======================
