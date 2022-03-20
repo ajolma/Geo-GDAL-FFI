@@ -61,11 +61,16 @@ jobs:
           cpanm --notest Alien::Build::MM
           cpanm --notest Sort::Versions
           cpanm --notest Alien::Build::Plugin::PkgConfig::PPWrapper
+          cpanm --notest --installdeps Alien::sqlite
+          cpanm -v Alien::sqlite
           cpanm --notest --installdeps Alien::geos::af
           cpanm -v Alien::geos::af
-          cpanm --notest Alien::libtiff
-          cpanm --notest Alien::proj
-          cpanm --notest Alien::gdal          
+          cpanm --notest --installdeps Alien::libtiff
+          cpanm -v Alien::libtiff
+          cpanm --notest --installdeps Alien::proj
+          cpanm -v Alien::proj
+          cpanm --notest --installdeps Alien::gdal
+          cpanm -v Alien::gdal
       
       - name: Install Geo::GDAL::FFI deps
         run: |
