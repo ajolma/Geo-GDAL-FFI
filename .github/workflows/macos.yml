@@ -56,6 +56,7 @@ jobs:
 
       - name: Install Dynamic Dependencies
         run: |
+          cpanm --notest PDL
           cpanm --notest Alien::Build
           cpanm --notest Alien::Build::MM
           cpanm --notest Sort::Versions

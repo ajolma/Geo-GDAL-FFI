@@ -84,6 +84,7 @@ jobs:
       
       - name: Install Geo::GDAL::FFI deps
         run: |
+          cpanm --notest PDL
           cpanm --installdeps Geo::GDAL::FFI
   
       - name: Build
