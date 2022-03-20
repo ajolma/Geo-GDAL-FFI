@@ -1,0 +1,84 @@
+name: macos
+
+on:
+  push:
+    branches:
+      - '*'
+    tags-ignore:
+      - '*'
+  pull_request:
+
+env:
+  PERL5LIB: /Users/runner/perl5/lib/perl5
+  PERL_LOCAL_LIB_ROOT: /Users/runner/perl5
+  PERL_MB_OPT: --install_base /Users/runner/perl5
+  PERL_MM_OPT: INSTALL_BASE=/Users/runner/perl5
+
+jobs:
+  perl:
+
+    runs-on: macOS-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Perl
+        run: |
+          brew install perl
+          echo "{/Users/runner/perl5/bin}" >> $GITHUB_PATH
+          mkdir -p ~/bin
+          cd ~/bin
+          curl -L https://cpanmin.us/ -o cpanm
+          chmod +x cpanm
+          echo "{~/bin}" >> $GITHUB_PATH
+          which perl
+          which cpanm
+
+      - name: Install GDAL and its deps
+        run: brew install gdal
+        
+      - name: perl -V
+        run: perl -V
+
+      - name: Prepare for cache
+        run: |
+          perl -V > perlversion.txt
+          echo '20220320a' >> perlversion.txt
+          ls -l perlversion.txt
+
+      - name: Cache CPAN modules
+        uses: actions/cache@v1
+        with:
+          path: ~/perl5
+          key: ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
+
+      - name: Install Dynamic Dependencies
+        run: |
+          cpanm --notest PDL
+          cpanm --notest Alien::Build
+          cpanm --notest Alien::Build::MM
+          cpanm --notest Sort::Versions
+          cpanm --notest Alien::Build::Plugin::PkgConfig::PPWrapper
+          cpanm --notest --installdeps Alien::sqlite
+          cpanm -v Alien::sqlite
+          cpanm --notest --installdeps Alien::geos::af
+          cpanm -v Alien::geos::af
+          cpanm --notest --installdeps Alien::libtiff
+          cpanm -v Alien::libtiff
+          cpanm --notest --installdeps Alien::proj
+          cpanm -v Alien::proj
+          cpanm --notest --installdeps Alien::gdal
+          cpanm -v Alien::gdal
+      
+      - name: Install Geo::GDAL::FFI deps
+        run: |
+          cpanm --installdeps Geo::GDAL::FFI
+  
+      - name: Build
+        run: |
+          perl Makefile.PL
+          cpanm --installdeps --notest .
+          make test
+          
