@@ -431,6 +431,13 @@ sub MakeValid {
     return bless \$p, 'Geo::GDAL::FFI::Geometry';
 }
 
+sub Normalize {
+    my ($self) = @_;
+    my $g = Geo::GDAL::FFI::OGR_G_Normalize($$self);
+    confess Geo::GDAL::FFI::error_msg() unless $g;
+    return bless \$g, 'Geo::GDAL::FFI::Geometry';
+}
+
 
 1;
 
@@ -651,6 +658,14 @@ Attempts to make an invalid geometry valid and returns that. %options
 may contain options as described in GDAL documentation.
 
 Requires GDAL version >= 3.0
+
+=head2 Normalize()
+
+ my $normalized_geom = $geom->Normalize();
+
+Attempts to bring geometry into normalized/canonical form.
+
+Requires GDAL version >= 3.3
 
 =head1 LICENSE
 

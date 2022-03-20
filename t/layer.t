@@ -50,12 +50,20 @@ eval {
      while (my $f = $result->GetNextFeature) {
          is($f->GetField('layer'),  1, "Field 1");
          is($f->GetField('method'), 2, "Field 2");
-         #  geos returns different vertex orderings from 3.9
-         #  Until Normalize is added to bindings just test if we get either
-         my $expected_geos_ge_39 = Geo::GDAL::FFI::Geometry->new (WKT => 'POLYGON ((3 2,3 1,2 1,2 2,3 2))');
-         my $expected_geos_le_38 = Geo::GDAL::FFI::Geometry->new (WKT => 'POLYGON ((2 2,3 2,3 1,2 1,2 2))');
-         my $got = $f->GetGeomField->AsText;
-         ok ($got eq $expected_geos_le_38 or $got eq $expected_geos_ge_39, "GeomField as expected");
+         my $got;
+         my $version = Geo::GDAL::FFI::GetVersionInfo() / 100;
+         if ($version >= 30300) {
+             $got = $f->GetGeomField->Normalize->AsText;
+             ok ($got eq 'POLYGON ((2 1,2 2,3 2,3 1,2 1))', "GeomField as expected");
+         } else {
+             $got = $f->GetGeomField->AsText;
+             ok (
+                 # geos 3.9 and pre-3.9 return different vertex orderings
+                 $got eq 'POLYGON ((3 2,3 1,2 1,2 2,3 2))' || # 3.9
+                 $got eq 'POLYGON ((2 2,3 2,3 1,2 1,2 2))', # pre-3.9
+                 "GeomField as expected"
+             );
+         }
          $count++;
      }
      is($count, 1, "Intersection result.");
