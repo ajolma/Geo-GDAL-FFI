@@ -1,7 +1,7 @@
-![Linux share workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/linux_share_build.yml/badge.svg)
-![Linus sys workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/linux_sys_build.yml/badge.svg)
-![MacOS share workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/macos_share_builds.yml/badge.svg)
-![MacOS workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/macos.yml/badge.svg)
+![Linux share workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/linux_share_build.yml/badge.svg)<br/>
+![Linus sys workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/linux_sys_build.yml/badge.svg)<br/>
+![MacOS share workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/macos_share_builds.yml/badge.svg)<br/>
+![MacOS workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/macos.yml/badge.svg)<br/>
 ![Windows workflow](https://github.com/ajolma/Geo-GDAL-FFI/actions/workflows/windows.yml/badge.svg)
 
 Geo-GDAL-FFI
