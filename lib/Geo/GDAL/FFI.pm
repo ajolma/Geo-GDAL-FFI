@@ -10,6 +10,7 @@ use FFI::Platypus;
 use FFI::Platypus::Buffer;
 require Exporter;
 require B;
+use Sort::Versions;
 
 use Geo::GDAL::FFI::VSI;
 use Geo::GDAL::FFI::VSI::File;
@@ -1491,30 +1492,31 @@ eval{$ffi->attach('GDALMultiDimTranslateOptionsSetProgress' => [qw/opaque GDALPr
 eval{$ffi->attach('GDALMultiDimTranslate' => [qw/string opaque int uint64* opaque int*/] => 'opaque');};
 # end of generated code
 
-
-    # we do not use Alien::gdal->data_dir since it issues warnings due to GDAL bug
-    my $pc = PkgConfig->find('gdal');
-    if ($pc->errmsg) {
-        my $dir = Alien::gdal->dist_dir;
-        my %options = (search_path_override => ["$dir/lib/pkgconfig", "$dir/lib64/pkgconfig"]);
-        $pc = PkgConfig->find('gdal', %options);
-    }
-    if ($pc->errmsg) {
-        warn $pc->errmsg;
-    } else {
-        my $dir = $pc->get_var('datadir');
-        # this gdal.pc bug was fixed in GDAL 2.3.1
-        # we just hope the one configuring GDAL did not change it to something that ends '/data'
-        $dir =~ s/\/data$//;
-        if (opendir(my $dh, $dir)) {
-            CPLSetConfigOption(GDAL_DATA => $dir);
+    if (versioncmp(Alien::gdal->version, '2.3.1') <= 0) {
+        # we do not use Alien::gdal->data_dir since it issues warnings due to GDAL bug
+        my $pc = PkgConfig->find('gdal');
+        if ($pc->errmsg) {
+            my $dir = Alien::gdal->dist_dir;
+            my %options = (search_path_override => ["$dir/lib/pkgconfig", "$dir/lib64/pkgconfig"]);
+            $pc = PkgConfig->find('gdal', %options);
+        }
+        if ($pc->errmsg) {
+            warn $pc->errmsg;
         } else {
-            my $dist_data_dir = Alien::gdal->dist_dir . '/share/gdal';
-            if (-d $dist_data_dir) {
-                CPLSetConfigOption(GDAL_DATA => $dist_data_dir);
-            }
-            else {
-                warn "GDAL data directory ($dir) doesn't exist. Maybe Alien::gdal is not installed?";
+            my $dir = $pc->get_var('datadir');
+            # this gdal.pc bug was fixed in GDAL 2.3.1
+            # we just hope the one configuring GDAL did not change it to something that ends '/data'
+            $dir =~ s/\/data$//;
+            if (opendir(my $dh, $dir)) {
+                CPLSetConfigOption(GDAL_DATA => $dir);
+            } else {
+                my $dist_data_dir = Alien::gdal->dist_dir . '/share/gdal';
+                if (-d $dist_data_dir) {
+                    CPLSetConfigOption(GDAL_DATA => $dist_data_dir);
+                }
+                else {
+                    warn "GDAL data directory ($dir) doesn't exist. Maybe Alien::gdal is not installed?";
+                }
             }
         }
     }
