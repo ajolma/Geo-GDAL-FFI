@@ -63,6 +63,8 @@ our @errors;
 our %immutable;
 my  %parent_ref_hash;
 
+#say STDERR "XXX " . $ENV{LD_LIBRARY_PATH};
+#my $instance = __PACKAGE__->new;
 my $instance;
 
 sub SetErrorHandling {
@@ -1494,7 +1496,7 @@ eval{$ffi->attach('GDALMultiDimTranslate' => [qw/string opaque int uint64* opaqu
     my $pc = PkgConfig->find('gdal');
     if ($pc->errmsg) {
         my $dir = Alien::gdal->dist_dir;
-        my %options = (search_path_override => [$dir . '/lib/pkgconfig']);
+        my %options = (search_path_override => ["$dir/lib/pkgconfig", "$dir/lib64/pkgconfig"]);
         $pc = PkgConfig->find('gdal', %options);
     }
     if ($pc->errmsg) {
