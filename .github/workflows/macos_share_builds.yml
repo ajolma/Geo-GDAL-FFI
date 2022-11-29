@@ -71,12 +71,12 @@ jobs:
       - name: Build
         run: |
           #  bandaids
-          export DYLD_LIBRARY_PATH=`perl -MAlien::geos::af -e'print Alien::geos::af->dist_dir . "/lib"'`
-          export LD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}
-          echo Set DYLD_LIBRARY_PATH and LD_LIBRARY_PATH to ${DYLD_LIBRARY_PATH}
+          #export DYLD_LIBRARY_PATH=`perl -MAlien::geos::af -e'print Alien::geos::af->dist_dir . "/lib"'`
+          #export LD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}
+          #echo Set DYLD_LIBRARY_PATH and LD_LIBRARY_PATH to ${DYLD_LIBRARY_PATH}
           #  what does libgdal want?
-          export dylibname=`perl -MAlien::gdal -E'my @arr = grep {"libgdal"} Alien::gdal->dynamic_libs; print $arr[0]'`
-          otool -L $dylibname | grep -v System
+          #export dylibname=`perl -MAlien::gdal -E'my @arr = grep {"libgdal"} Alien::gdal->dynamic_libs; print $arr[0]'`
+          #otool -L $dylibname | grep -v System
           perl Makefile.PL
           cpanm --installdeps --notest .
           make test
