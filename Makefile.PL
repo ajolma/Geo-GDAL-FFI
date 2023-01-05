@@ -18,7 +18,8 @@ WriteMakefile(
         'FFI::Platypus' => 0,
         'FFI::Platypus::Declare' => 0,
         'Alien::gdal' => 0,
-        'PDL' => 0
+        'PDL' => 0,
+        'Sort::Versions' => 0,
     },
     TEST_REQUIRES => {
         'Test::More' => 0,

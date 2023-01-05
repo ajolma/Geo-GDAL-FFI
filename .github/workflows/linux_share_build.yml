@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       
       - uses: shogo82148/actions-setup-perl@v1
         with:
@@ -43,7 +43,7 @@ jobs:
           ls -l perlversion.txt
 
       - name: Cache CPAN modules
-        uses: actions/cache@v1
+        uses: actions/cache@v3
         with:
           path: ~/perl5
           key: ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
@@ -70,8 +70,8 @@ jobs:
           cpanm --installdeps --notest Alien::gdal
           cpanm -v Alien::gdal
           #  some feedback to check the system
-          echo GDAL LDD
-          ldd `perl -MAlien::gdal -E'print q{}, Alien::gdal->dist_dir, q{/lib/libgdal.so}'`
+          #echo GDAL LDD
+          #ldd `perl -MAlien::gdal -E'print q{}, Alien::gdal->dist_dir, q{/lib/libgdal.so}'`
 
           
       - name: Install Geo::GDAL::FFI deps
@@ -86,8 +86,8 @@ jobs:
           eval "$(perl -Mlocal::lib=${HOME}/perl5)"
           #  ideally we would not need this
           export LD_LIBRARY_PATH=`perl -MAlien::geos::af -e'print Alien::geos::af->dist_dir . "/lib"'`
-          echo GDAL LDD again
-          ldd `perl -MAlien::gdal -E'print q{}, Alien::gdal->dist_dir, q{/lib/libgdal.so}'`
+          #echo GDAL LDD again
+          #ldd `perl -MAlien::gdal -E'print q{}, Alien::gdal->dist_dir, q{/lib/libgdal.so}'`
           perl Makefile.PL
           cpanm --installdeps --notest .
           make test
