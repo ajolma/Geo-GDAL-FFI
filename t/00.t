@@ -56,7 +56,7 @@ if(1){
 
 if(1){
     my $gdal = Geo::GDAL::FFI->get_instance();
-    $gdal->{favourite_animal} = 'llama'; 
+    $gdal->{favourite_animal} = 'llama';
     my $gdal2 = Geo::GDAL::FFI->get_instance();
     ok($gdal->{favourite_animal} eq $gdal2->{favourite_animal}, "Instance is a singleton 1/2.");
     $gdal2 = Geo::GDAL::FFI->new();
@@ -96,7 +96,7 @@ if(1){
         skip "GDAL (Alien::gdal) is not properly installed; GDAL support files are not available.", 3 unless $gdal_data_dir;
 
         my $target_file= 'stateplane.csv';
-        
+
         my $path = FindFile($target_file);
         ok(defined $path, "GDAL support files found.");
 
@@ -141,22 +141,27 @@ if(1){
 
 # test metadata
 if(1){
-    my $dr = GetDriver('NITF');
-    my $ds = $dr->Create('/vsimem/test.nitf', 10);
+    my $dr;
+    eval {$dr = GetDriver('NITF');};
+  SKIP: {
+      skip "metadata tests. NITF driver not found." unless defined $dr;
 
-    my @d = $ds->GetMetadataDomainList;
-    ok(@d > 0, "GetMetadataDomainList"); # DERIVED_SUBDATASETS NITF_METADATA CGM
+      my $ds = $dr->Create('/vsimem/test.nitf', 10);
 
-    my %d = $ds->GetMetadata;
-    is_deeply([sort keys %d], [sort @d], "GetMetadata");
+      my @d = $ds->GetMetadataDomainList;
+      ok(@d > 0, "GetMetadataDomainList"); # DERIVED_SUBDATASETS NITF_METADATA CGM
 
-    %d = $ds->GetMetadata('NITF_METADATA');
-    @d = keys %d; # NITFFileHeader NITFImageSubheader
-    ok(@d == 2, "GetMetadata(\$domain)");
+      my %d = $ds->GetMetadata;
+      is_deeply([sort keys %d], [sort @d], "GetMetadata");
 
-    $ds->SetMetadata({x => {a => 'b'}});
-    %d = $ds->GetMetadata('x');
-    is_deeply(\%d, {a => 'b'}, "SetMetadata");
+      %d = $ds->GetMetadata('NITF_METADATA');
+      @d = keys %d; # NITFFileHeader NITFImageSubheader
+      ok(@d == 2, "GetMetadata(\$domain)");
+
+      $ds->SetMetadata({x => {a => 'b'}});
+      %d = $ds->GetMetadata('x');
+      is_deeply(\%d, {a => 'b'}, "SetMetadata");
+    }
 }
 
 # test progress function
