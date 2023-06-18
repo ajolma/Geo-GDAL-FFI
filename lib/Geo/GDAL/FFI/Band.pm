@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use Carp;
 use FFI::Platypus::Buffer;
+use base 'Geo::GDAL::FFI::Object';
 
 our $VERSION = 0.0900;
 

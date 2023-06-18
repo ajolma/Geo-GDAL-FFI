@@ -258,7 +258,19 @@ if(1){
     # Cannot modify tag "PhotometricInterpretation" while writing at (a line afterwards this).
     # should investigate why
     #$b->SetColorTable([[1,2,3,4],[5,6,7,8]]);
+
+    if(0){ # band metadata test
+        $b->SetMetadata({'d' => {'a' => 'b'}});
+        my $md = $b->GetMetadata();
+        for my $d (keys %$md) {
+            say 'domain ',$d;
+            for (keys %{$md->{$d}}) {
+                say $_, '=>', $md->{$d}{$_};
+            }
+        }
+    }
 }
+
 if(1){
     my $dr = GetDriver('MEM');
     my $ds = $dr->Create('', 10);

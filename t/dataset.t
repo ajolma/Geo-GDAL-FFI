@@ -35,6 +35,16 @@ dies_ok (
     sub {$ds->GetLayer (-1)},
     'GetLayer exception for negative index',
 );
+if(0) { # dataset metadata test
+    $ds->SetMetadata({'d' => {'a' => 'b'}});
+    my $md = $ds->GetMetadata();
+    for my $d (keys %$md) {
+        say 'domain ',$d;
+        for (keys %{$md->{$d}}) {
+            say $_, '=>', $md->{$d}{$_};
+        }
+    }
+}
 
 
 done_testing();
