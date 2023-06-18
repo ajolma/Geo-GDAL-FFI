@@ -318,7 +318,7 @@ sub parse_h {
             } else {
                 $args = "'".join("','", @args)."'";
             }
-            say "eval{\$ffi->attach('$name' => [$args] => '$ret');};";
+            say "\$ffi->attach('$name' => [$args] => '$ret');";
         } else {
             die "can't parse $s as function";
         }
@@ -445,7 +445,7 @@ sub parse_type {
     } elsif ($arg =~ /^GUInt32/) {
         $arg = 'uint32';
     } elsif ($arg =~ /^const GInt64\s*\*/) {
-        $arg = 'int64';
+        $arg = 'sint64';
     } elsif ($arg =~ /^GUInt64/ || $arg =~ /^uint64_t/) {
         $arg = 'uint64';
     } elsif ($arg =~ /^const GUInt64\s*\*/) {
