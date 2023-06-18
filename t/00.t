@@ -496,7 +496,7 @@ if(1){
       @s = (0x90000001, 21, 7, 5);
       $f->SetField($n, @s);
       @x = $f->GetField($n);
-      is_deeply(\@x, \@s, "Set/get Integer64List field: @x");
+      is_deeply(\@x, \@s, "Set/get Integer64List field: @s => @x");
     }
 
     @s = (3, 21.2, 7.4, 5.5);

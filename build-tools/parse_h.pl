@@ -39,6 +39,8 @@ my %constants = (
     OGRSTUnitId => 1,
     OGRAxisOrientation => 1,
     GDALGridAlgorithm => 1,
+    GDALRelationshipCardinality => 1,
+    GDALRelationshipType => 1,
     );
 
 my %callbacks = (
@@ -47,6 +49,7 @@ my %callbacks = (
     GDALDerivedPixelFunc => 1,
     GDALTransformerFunc => 1,
     GDALContourWriter => 1,
+    GDALQueryLoggerFunc => 1,
     );
 
 my %char_p_p_ok = (
@@ -60,6 +63,24 @@ my %char_p_p_ok = (
     OSRExportToPCI => 1,
     OSRExportToXML => 1,
     OSRExportToMICoordSys => 1,
+    GDALDatasetReadCompressedData => 1,
+    GDALDatasetAddFieldDomain => 1,
+    GDALDatasetDeleteFieldDomain => 1,
+    GDALDatasetUpdateFieldDomain => 1,
+    GDALDatasetAddRelationship => 1,
+    GDALDatasetDeleteRelationship => 1,
+    GDALDatasetUpdateRelationship => 1,
+    GDALLoadTabFile => 1,
+    GDALReadTabFile => 1,
+    GDALLoadOziMapFile => 1,
+    GDALReadOziMapFile => 1,
+    OSRImportFromWkt => 1,
+    'OSRExportToWktEx.ppszResult' => 1,
+    'OSRExportToPROJJSON.ppszReturn' => 1,
+    OSRGetAngularUnits => 1,
+    OSRGetLinearUnits => 1,
+    OSRGetTargetLinearUnits => 1,
+    OSRGetPrimeMeridian => 1,
     );
 
 my %use_CSL = (
@@ -78,11 +99,17 @@ my %use_CSL = (
     GDALDatasetCopyLayer => 1,
     OGR_DS_CreateLayer => 1,
     OGR_DS_CopyLayer => 1,
+    OGR_Dr_CreateDataSource => 1,
+    OGR_Dr_CopyDataSource => 1,
     GDALGetRasterCategoryNames => 1,
     OGR_F_GetFieldAsStringList => 1,
     OGR_F_SetFieldStringList => 1,
+    OGR_F_FillUnsetWithDefault => 1,
     OGR_G_ExportToGMLEx => 1,
     OGR_G_ExportToJsonEx => 1,
+    OGR_G_ForceTo => 1,
+    OGR_G_GetLinearGeometry => 1,
+    OGR_G_GetCurveGeometry => 1,
     GDALInfoOptionsNew => 1,
     GDALTranslateOptionsNew => 1,
     GDALWarpAppOptionsNew => 1,
@@ -100,6 +127,33 @@ my %use_CSL = (
     OGR_L_Update => 1,
     OGR_L_Clip => 1,
     OGR_L_Erase => 1,
+    OGR_L_GetArrowStream => 1,
+    GDALDatasetGetCompressionFormats => 1,
+    GDALRasterBandCopyWholeRaster => 1,
+    GDALDatasetGetFieldDomainNames => 1,
+    GDALDatasetGetRelationshipNames => 1,
+    GDALRelationshipGetLeftTableFields => 1,
+    GDALRelationshipGetRightTableFields => 1,
+    GDALRelationshipGetLeftMappingTableFields => 1,
+    GDALRelationshipGetRightMappingTableFields => 1,
+    GDALGroupGetMDArrayNames => 1,
+    GDALGroupGetGroupNames => 1,
+    GDALGroupGetVectorLayerNames => 1,
+    GDALAttributeReadAsStringArray => 1,
+    OSRSetPROJSearchPaths => 1,
+    OSRGetPROJSearchPaths => 1,
+    OSRSetPROJAuxDbPaths => 1,
+    OSRGetPROJAuxDbPaths => 1,
+    OSRImportFromESRI => 1,
+    OSRImportFromOzi => 1,
+    'OSRExportToWktEx.papszOptions' => 1,
+    'OSRExportToPROJJSON.papszOptions' => 1,
+    OSRConvertToOtherProjection => 1,
+    OSRIsSameEx => 1,
+    OSRFindMatches => 1,
+    GDALMultiDimInfoOptionsNew => 1,
+    GDALMultiDimTranslateOptionsNew => 1,
+    GDALVectorInfoOptionsNew => 1,
     );
 
 # these return strings which must be freed
@@ -179,6 +233,10 @@ my %opaque_pointers = (
     GDALRasterizeOptionsForBinary => 1,
     GDALBuildVRTOptions => 1,
     GDALBuildVRTOptionsForBinary => 1,
+    OGRGeometryTypeCounter => 1,
+    ArrowArrayStream => 1,
+    GDALVectorInfoOptions => 1,
+    GDALVectorInfoOptionsForBinary => 1,
     );
 
 my %defines;
@@ -187,6 +245,7 @@ my %structs;
 
 say "# generated with parse_h.pl";
 for my $f (@h_files) {
+    say STDERR "parsing $f";
     say "# from $f";
     parse_h($gdal_src_root . '/' . $f);
 }
@@ -241,10 +300,12 @@ sub parse_h {
             my $ret = $s;
             $ret =~ s/$name.*//;
             $ret = parse_type($name, $ret, 'ret');
+            #print "parse type returns: $ret\n";
             my @args = split /\s*,\s*/, $args;
             my $qw = 1;
             for my $arg (@args) {
                 $arg = parse_type($name, $arg, 'arg');
+                #print "parse type returns: $ret\n";
                 $qw = 0 if $arg =~ /\s/;
             }
             #say "ret: $ret";
@@ -270,6 +331,9 @@ sub parse_type {
     my ($name, $arg, $mode) = @_;
     $arg =~ s/^\s+//;
     $arg =~ s/\s+$//;
+    my $var = '';
+    $var = $1 if $arg =~ /(\w+)$/;
+    #print "parse type: name=$name arg=$arg var=$var mode$mode\n";
     for my $c (keys %constants) {
         if ($arg =~ /^$c/ or $arg =~ /^const $c/) {
             $arg = 'unsigned int';
@@ -314,10 +378,11 @@ sub parse_type {
         }
         $arg = 'opaque';
     } elsif ($arg =~ /^char\s*\*\*/ or $arg =~ /^const char\s*\*\s*const\s*\*/) {
-        if ($use_CSL{$name}) {
+        if ($use_CSL{$name} or $use_CSL{$name.'.'.$var}) {
             $arg = 'opaque';
         } else {
-            say STDERR "char ** in $name" unless $char_p_p_ok{$name};
+            my $ok = $char_p_p_ok{$name} || $char_p_p_ok{$name.'.'.$var};
+            say STDERR "WARNING: char ** in $name ($mode, $var) defaulting to string_pointer" unless $ok;
             $arg = 'string_pointer';
         }
     } elsif ($arg =~ /char\s*\*/) {
@@ -381,7 +446,7 @@ sub parse_type {
         $arg = 'uint32';
     } elsif ($arg =~ /^const GInt64\s*\*/) {
         $arg = 'int64';
-    } elsif ($arg =~ /^GUInt64/) {
+    } elsif ($arg =~ /^GUInt64/ || $arg =~ /^uint64_t/) {
         $arg = 'uint64';
     } elsif ($arg =~ /^const GUInt64\s*\*/) {
         $arg = 'uint64*';
@@ -440,6 +505,7 @@ sub parse_type {
     } else {
         die "can't parse arg '$arg'";
     }
+    #print "return $arg\n";
     return $arg;
 }
 
