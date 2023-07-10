@@ -101,7 +101,7 @@ if(1){
         ok(defined $path, "GDAL support files found.");
 
         my $version = Geo::GDAL::FFI::GetVersionInfo('SEMANTIC');
-        say STDERR "FYI: Your GDAL is of version $version";
+        say STDERR "FYI: Your GDAL is version $version";
 
         say STDERR "FYI: GDAL_DATA = $gdal_data_dir";
         if (!$path) {
@@ -189,6 +189,7 @@ if(1){
 
 # test dataset
 if(1){
+    my $ffi = Geo::GDAL::FFI->new;
     my $dr = GetDriver('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff', 10);
     my $ogc_wkt =
@@ -196,7 +197,7 @@ if(1){
         'AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,'.
         'AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,'.
         'AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]';
-    if (Alien::gdal->version ge '3') {
+    if ($ffi->{gdal}->version ge '3') {
         $ogc_wkt =
             'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS84",6378137,298.257223563,'.
             'AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,'.

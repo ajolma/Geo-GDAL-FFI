@@ -1,0 +1,55 @@
+name: linux_bin_build
+
+on:
+  push:
+    branches:
+      - '*'
+    tags-ignore:
+      - '*'
+  pull_request:
+
+env:
+  PERL_MOD_DIR: /home/runner/perl5/lib/perl5
+
+jobs:
+  perl:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: '5.32'
+
+      - name: Locale check
+        run: |
+          locale -a
+          echo Current locale:
+          locale
+
+      - name: perl -V
+        run: perl -V
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get install -y zlib1g-dev
+          sudo apt-get install -y libnet-ssleay-perl
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository ppa:ubuntugis/ppa
+          sudo apt-get install -y gdal-bin
+          cpanm --notest local::lib
+          cpanm --notest PkgConfig
+          cpanm --notest Alien::Base::Wrapper
+          cpanm --notest FFI::Platypus
+          cpanm --notest FFI::Platypus::Declare
+          cpanm --notest Sort::Versions
+          cpanm --notest Test::Exception
+          cpanm --notest JSON
+          cpanm --notest PDL
+  
+      - name: Build
+        run: |
+          perl Makefile.PL
+          make test

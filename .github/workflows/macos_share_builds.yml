@@ -43,14 +43,6 @@ jobs:
           echo '20221130' >> perlversion.txt
           ls -l perlversion.txt
 
-      - name: Cache CPAN modules
-        uses: actions/cache@v3
-        with:
-          path: ~/perl5
-          key: ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
-
       - name: Install Dynamic Dependencies
         run: |
           cpanm --notest PDL

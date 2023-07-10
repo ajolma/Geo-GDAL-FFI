@@ -431,12 +431,14 @@ sub isint {
 
 sub new {
     my $class = shift;
+    my $gdal = shift;
 
     return $instance if $instance;
 
     my $ffi = FFI::Platypus->new;
     $ffi->load_custom_type('::StringPointer' => 'string_pointer');
-    $ffi->lib(Alien::gdal->dynamic_libs);
+    my @libs = $gdal->dynamic_libs;
+    $ffi->lib(@libs);
 
     $ffi->type('(pointer,size_t,size_t,opaque)->size_t' => 'VSIWriteFunction');
     $ffi->type('(int,int,string)->void' => 'CPLErrorHandler');
@@ -450,7 +452,7 @@ sub new {
 
     # from port/*.h
     $ffi->attach(VSIMalloc => [qw/uint/] => 'opaque');
-    croak "Can't attach to GDAL methods. Does Alien::gdal provide GDAL dynamic libs?" unless $class->can('VSIMalloc');
+    croak "Can't attach to GDAL methods. Problem with GDAL dynamic libs: '@libs'?" unless $class->can('VSIMalloc');
     $ffi->attach(VSIFree => ['opaque'] => 'void');
     $ffi->attach(CPLError => [qw/int int string/] => 'void');
     $ffi->attach(VSIFOpenL => [qw/string string/] => 'opaque');
@@ -1562,7 +1564,7 @@ $ffi->attach('GDALVectorInfoOptionsFree' => [qw/opaque/] => 'void');
 $ffi->attach('GDALVectorInfo' => [qw/opaque opaque/] => 'string');
 # end of generated code
 
-    if (versioncmp(Alien::gdal->version, '2.3.1') <= 0) {
+    if ($gdal eq 'Alien::gdal' and versioncmp($gdal->version, '2.3.1') <= 0) {
         # we do not use Alien::gdal->data_dir since it issues warnings due to GDAL bug
         my $pc = PkgConfig->find('gdal');
         if ($pc->errmsg) {
@@ -1589,10 +1591,13 @@ $ffi->attach('GDALVectorInfo' => [qw/opaque opaque/] => 'string');
                 }
             }
         }
+    } else {
+        CPLSetConfigOption(GDAL_DATA => $gdal->data_dir);
     }
 
     $instance = {};
     $instance->{ffi} = $ffi;
+    $instance->{gdal} = $gdal;
     SetErrorHandling();
     GDALAllRegister();
     return bless $instance, $class;
@@ -1801,8 +1806,17 @@ sub FinderClean {
 BEGIN {
     require PkgConfig;
     PkgConfig->import;
-    require Alien::gdal;
-    $instance = Geo::GDAL::FFI->new();
+    my $gdal;
+    eval {
+        require Geo::GDAL::gdal;
+        $gdal = Geo::GDAL::gdal->new();
+    };
+    if ($@) {
+        require Alien::gdal;
+        no strict 'subs';
+        $gdal = Alien::gdal;
+    }
+    $instance = Geo::GDAL::FFI->new($gdal);
 }
 
 1;
