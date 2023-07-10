@@ -1,5 +1,8 @@
 Revision history for Perl extension Geo::GDAL::FFI
 
+0.11
+    -
+
 0.10 July 10, 2023
      - Add dependency to FFI::Platypus::Declare
      - Update from GDAL 3.4 and add MakeValid method to Geometry

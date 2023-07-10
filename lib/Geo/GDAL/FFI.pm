@@ -26,7 +26,7 @@ use Geo::GDAL::FFI::GeomFieldDefn;
 use Geo::GDAL::FFI::Feature;
 use Geo::GDAL::FFI::Geometry;
 
-our $VERSION = 0.1000;
+our $VERSION = 0.1100;
 our $DEBUG = 0;
 
 our @ISA = qw(Exporter);
@@ -1831,7 +1831,7 @@ Geo::GDAL::FFI - A foreign function interface to GDAL
 
 =head1 VERSION
 
-Version 0.06
+Version 0.11
 
 =head1 SYNOPSIS
 
