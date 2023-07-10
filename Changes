@@ -1,11 +1,14 @@
 Revision history for Perl extension Geo::GDAL::FFI
 
-0.09 July 10, 2023
+0.10 July 10, 2023
      - Add dependency to FFI::Platypus::Declare
      - Update from GDAL 3.4 and add MakeValid method to Geometry
      - Add Normalize method to Geometry
      - Update to gdal 3.7
      - Make Band inherit from Object
+
+0.09 Mar 16, 2021
+     - ?
 
 0.08 May 15, 2020
      - Update GDAL API to 3.1.0
