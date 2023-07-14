@@ -116,7 +116,7 @@ if(1){
             }
         }
 
-        PopFinderLocation; #FinderClean;
+        PopFinderLocation(); #FinderClean;
         my $path2 = FindFile($target_file);
         ok(not(defined $path2), "GDAL support files not found after popping finder.");
 
@@ -129,7 +129,7 @@ if(1){
 
 # test VersionInfo
 if(1){
-    my $info = GetVersionInfo;
+    my $info = GetVersionInfo();
     ok($info, "Got info: '$info'.");
 }
 
