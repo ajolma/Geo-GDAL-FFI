@@ -66,7 +66,6 @@ use Config;
     PREREQ_PM => {
         PkgConfig => 0.23026,
         FFI::Platypus => 0,
-        FFI::Platypus::Declare => 0,
         PDL => 0,
         Sort::Versions => 0,
         Alien::gdal => 0,
