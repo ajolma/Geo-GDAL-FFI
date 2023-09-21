@@ -181,7 +181,7 @@ sub GetGeometry {
 sub AddGeometry {
     my ($self, $g) = @_;
     confess "Can't modify an immutable object." if $Geo::GDAL::FFI::immutable{$$self};
-    my $e = Geo::GDAL::FFI::OGR_G_OGR_G_AddGeometry($$self, $$g);
+    my $e = Geo::GDAL::FFI::OGR_G_AddGeometry($$self, $$g);
     return unless $e;
     confess(Geo::GDAL::FFI::error_msg());
 }
