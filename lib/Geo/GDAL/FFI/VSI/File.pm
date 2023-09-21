@@ -5,7 +5,6 @@ use warnings;
 use Encode qw(decode encode);
 use Carp;
 use FFI::Platypus::Buffer;
-use FFI::Platypus::Declare;
 
 our $VERSION = 0.1100;
 
@@ -45,7 +44,8 @@ sub Read {
 sub Write {
     my ($self, $buf) = @_;
     my $len = do {use bytes; length($buf)};
-    my $address = cast 'string' => 'opaque', $buf;
+    my $ffi = FFI::Platypus->new();
+    my $address = $ffi->cast 'string' => 'opaque', $buf;
     return Geo::GDAL::FFI::VSIFWriteL($address, 1, $len, $self->{handle});
 }
 

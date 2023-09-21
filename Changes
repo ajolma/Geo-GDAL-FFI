@@ -1,7 +1,7 @@
 Revision history for Perl extension Geo::GDAL::FFI
 
-0.11
-    -
+0.11 unreleased
+    - Removed use of to FFI::Platypus::Declare, now discouraged.
 
 0.10 July 10, 2023
      - Add dependency to FFI::Platypus::Declare
