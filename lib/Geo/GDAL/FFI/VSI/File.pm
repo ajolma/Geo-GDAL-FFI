@@ -45,7 +45,7 @@ sub Write {
     my ($self, $buf) = @_;
     my $len = do {use bytes; length($buf)};
     my $ffi = FFI::Platypus->new();
-    my $address = $ffi->cast 'string' => 'opaque', $buf;
+    my $address = $ffi->cast('string' => 'opaque', $buf);
     return Geo::GDAL::FFI::VSIFWriteL($address, 1, $len, $self->{handle});
 }
 
