@@ -1817,7 +1817,6 @@ BEGIN {
         no strict 'subs';
         $gdal = Alien::gdal;
     }
-    $instance = Geo::GDAL::FFI->new($gdal);
 }
 
 1;
