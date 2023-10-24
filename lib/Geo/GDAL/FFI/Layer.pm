@@ -86,6 +86,11 @@ sub GetFeature {
     return bless \$f, 'Geo::GDAL::FFI::Feature';
 }
 
+sub GetFeatureCount {
+    my ($self, $force) = @_;
+    Geo::GDAL::FFI::OGR_L_GetFeatureCount($$self, !!$force);
+}
+
 sub SetFeature {
     my ($self, $f) = @_;
     Geo::GDAL::FFI::OGR_L_SetFeature($$self, $$f);
