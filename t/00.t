@@ -296,7 +296,7 @@ if(1){
     my $d = $l->GetDefn();
     my $f = Geo::GDAL::FFI::Feature->new($d);
     $l->CreateFeature($f);
-    undef $ds;
+    Geo::GDAL::FFI::GDALClose($$ds);
     $ds = Open('test.shp');
     $l = $ds->GetLayer;
     $d = $l->GetDefn();
