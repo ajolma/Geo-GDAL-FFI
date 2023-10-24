@@ -34,6 +34,13 @@ $f->SetGeomField([WKT => 'POLYGON ((2 1, 2 2, 4 2, 4 1, 2 1))']);
 
 $method->CreateFeature($f);
 
+{
+    my $feature_count = $layer->GetFeatureCount;
+    is $feature_count, 1, 'Got correct feature count';
+    $feature_count = $layer->GetFeatureCount (1);
+    is $feature_count, 1, 'Got correct feature count with force arg=true';
+}
+
 my $progress;
 
 my $result;
@@ -136,7 +143,7 @@ is_deeply $layer->GetExtent(1), $exp_extent, 'Got correct layer extent when forc
     {
         #local $TODO = 'sql DISTINCT not yet working, despite following GDAL doc example';
         is_deeply (\@items, ['one','ten'], 'got correct distinct items');
-    }    
+    }
 
     my $result = eval {
         $ds->ExecuteSQL (qq{CREATE SPATIAL INDEX ON "$layer_name"});
