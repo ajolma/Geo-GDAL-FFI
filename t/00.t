@@ -296,7 +296,7 @@ if(1){
     my $d = $l->GetDefn();
     my $f = Geo::GDAL::FFI::Feature->new($d);
     $l->CreateFeature($f);
-    Geo::GDAL::FFI::GDALClose($$ds);
+    undef $l; #  otherwise $ds is not flushed due to parent ref
     $ds = Open('test.shp');
     $l = $ds->GetLayer;
     $d = $l->GetDefn();
