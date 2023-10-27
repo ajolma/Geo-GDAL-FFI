@@ -180,6 +180,13 @@ A set of (vector) features having a same schema (the same Defn
 object). Obtain a layer object by the CreateLayer or GetLayer method
 of a vector dataset object.
 
+Note that the system stores a reference to the parent dataset for
+each layer object to ensure layer objects remain viable.
+If you are relying on a dataset object's destruction to
+flush its dataset cache and then close it then you need to ensure
+all associated child layers are also destroyed.  Failure to do so could
+lead to corrupt data when reading in newly written files.
+
 =head1 METHODS
 
 =head2 GetDefn
