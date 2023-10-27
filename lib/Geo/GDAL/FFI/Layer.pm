@@ -211,6 +211,10 @@ Returns the FeatureDefn object for this layer.
 =head2 DeleteFeature
 
  $layer->DeleteFeature($fid);
+
+=head2 GetFeatureCount
+
+ my $count = $layer->GetFeatureCount();
  
 =head2 GetExtent
  $layer->GetExtent();
