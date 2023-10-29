@@ -1822,6 +1822,12 @@ BEGIN {
     $instance = Geo::GDAL::FFI->new($gdal);
 }
 
+{
+    #  avoid some used only once warnings
+    local $FFI::Platypus::keep;
+    local $FFI::Platypus::TypeParser::ffi_type;
+}
+
 #
 # The next two subs are required for thread-safety, because GDAL error handling must be set per thread.
 # So, it is disabled just before starting a new thread and renabled after in the thread.
