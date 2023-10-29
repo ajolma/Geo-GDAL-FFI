@@ -1820,6 +1820,12 @@ BEGIN {
     $instance = Geo::GDAL::FFI->new($gdal);
 }
 
+{
+    #  avoid some used only once warnings
+    local $FFI::Platypus::keep;
+    local $FFI::Platypus::TypeParser::ffi_type;
+}
+
 1;
 
 =pod
