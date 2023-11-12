@@ -94,7 +94,7 @@ string. $len is optional and by default 1.
 =head2 Write($buf)
 
 Write the Perl string $buf into the file. Returns the number of
-succesfully written bytes.
+successfully written bytes.
 
 =head1 LICENSE
 
