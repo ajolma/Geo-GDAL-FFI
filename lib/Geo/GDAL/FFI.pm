@@ -1725,7 +1725,8 @@ sub SetWriter {
     $self->{close} = $c;
     $self->{writer} = $self->{ffi}->closure(sub {
         my ($buf, $size, $count, $stream) = @_;
-        $w->(buffer_to_scalar($buf, $size*$count));
+        my $retval = $w->(buffer_to_scalar($buf, $size*$count)) // 1;
+        return $retval;
     });
     VSIStdoutSetRedirection($self->{writer}, 0);
 }
