@@ -66,7 +66,7 @@ my  %parent_ref_hash;
 
 #say STDERR "XXX " . $ENV{LD_LIBRARY_PATH};
 #my $instance = __PACKAGE__->new;
-my $instance;
+my $instance = init();
 
 sub SetErrorHandling {
     return unless $instance;
@@ -1804,7 +1804,7 @@ sub FinderClean {
     CPLFinderClean();
 }
 
-BEGIN {
+sub init {
     require PkgConfig;
     PkgConfig->import;
     my $gdal;
@@ -1817,6 +1817,7 @@ BEGIN {
         no strict 'subs';
         $gdal = Alien::gdal;
     }
+    Geo::GDAL::FFI->new($gdal);
 }
 
 1;
