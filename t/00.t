@@ -210,6 +210,11 @@ if(1){
     is($p, $ogc_wkt, "Set/get projection string");
     my $transform = [10,2,0,20,0,3];
     $ds->SetGeoTransform($transform);
+    my $inv = [0,0,0,0,0,0];
+    ok(Geo::GDAL::FFI::GDALInvGeoTransform($transform, $inv) && "@$inv" eq "-5 0.5 0 -6.66666666666667 0 0.333333333333333", "Invert geotransform");
+    my ($x, $y);
+    Geo::GDAL::FFI::GDALApplyGeoTransform($transform,5,5,\$x,\$y);
+    ok($x == 20 && $y == 35, "Applied geotransform to pixel coords");
     my $t = $ds->GetGeoTransform;
     is_deeply($t, $transform, "Set/get geotransform");
 
