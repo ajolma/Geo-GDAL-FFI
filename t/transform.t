@@ -38,8 +38,9 @@ if(1) {
     @y = ($ul[1], $lr[1], $ur[1], $ll[1]);
     $z = undef;
     my $t = undef;
-    ok(Geo::GDAL::FFI::OCTTransform4D($ct, 4, \@x, \@y, \@$z, \@$t), "Coordinate transformation 4D worked");
-    ok(qq/@x @y/ eq $result, "Resulting coordinates");
+    @ps = (0,0,0,0);
+    ok(Geo::GDAL::FFI::OCTTransform4D($ct, 4, \@x, \@y, \@$z, \@$t, \@ps), "Coordinate transformation 4D worked");
+    ok(qq/@x @y/ eq $result && qq/@ps/ eq qq/1 1 1 1/, "Resulting coordinates");
 
     @x = ($ul[0], $lr[0], $ur[0], $ll[0]);
     @y = ($ul[1], $lr[1], $ur[1], $ll[1]);
