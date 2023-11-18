@@ -52,13 +52,11 @@ if(1){
     $gdal->CloseWriter;
 
     my $ret = $output->output;
-    my $exp = <<'EODATA'
-{"type": "FeatureCollection","features": [{ "type": "Feature", "id": 0, "properties": { "value": 12 }, "geometry": { "type": "Point", "coordinates": [ 1.0, 1.0 ] } },{ "type": "Feature", "id": 1, "properties": { "value": 12 }, "geometry": { "type": "Point", "coordinates": [ 1.0, 2.0 ] } }]}
-EODATA
-  ;
-    $exp =~ s/\n$//;
+    $ret = decode_json $ret;
 
-    is($ret, $exp,
+    my $exp = decode_json (get_expected_json_data());
+
+    is_deeply ($ret, $exp,
     "Redirect vsistdout to write/close methods of a class.");
 
 }
@@ -72,3 +70,38 @@ if(1){
 }
 
 done_testing();
+
+
+sub get_expected_json_data {
+    my $json = <<'EOJSON'
+{
+    "type": "FeatureCollection",
+    "features": [{
+            "type": "Feature",
+            "id": 0,
+            "properties": {
+                "value": 12
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [1.0, 1.0]
+            }
+        }, {
+            "type": "Feature",
+            "id": 1,
+            "properties": {
+                "value": 12
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [1.0, 2.0]
+            }
+        }
+    ]
+}
+EOJSON
+   ; 
+    return $json;
+}
+
+
