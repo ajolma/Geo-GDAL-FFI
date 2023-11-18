@@ -19,9 +19,10 @@ use JSON;
     sub write {
         my $line = shift;
         push @output, $line;
+        return 1;
     }
     sub close {
-        push @output, "end";
+        return 1;
     }
     sub output {
         my $output = join '', @output;
@@ -33,14 +34,17 @@ use JSON;
 # test vsistdout redirection
 if(1){
     # create a small layer and copy it to vsistdout with redirection
-    my $layer = GetDriver('Memory')->Create->CreateLayer({GeometryType => 'None'});
+    my $ds = GetDriver('Memory')->Create;
+    my $layer = $ds->CreateLayer({GeometryType => 'None'});
     $layer->CreateField(value => 'Integer');
     $layer->CreateGeomField(geom => 'Point');
-    my $feature = Geo::GDAL::FFI::Feature->new($layer->GetDefn);
-    $feature->SetField(value => 12);
-    $feature->SetGeomField(geom => [WKT => 'POINT(1 1)']);
-    $layer->CreateFeature($feature);
-
+    for my $i (1..2) {
+        my $feature = Geo::GDAL::FFI::Feature->new($layer->GetDefn);
+        $feature->SetField(value => 12);
+        $feature->SetGeomField(geom => [WKT => "POINT(1 $i)"]);
+        $layer->CreateFeature($feature);
+    }
+    $ds->FlushCache;
     my $output = Output->new;
     my $gdal = Geo::GDAL::FFI->get_instance;
     $gdal->SetWriter($output);
@@ -48,15 +52,17 @@ if(1){
     $gdal->CloseWriter;
 
     my $ret = $output->output;
-    ok($ret eq
-       '{"type": "FeatureCollection",'.
-       '"features": '.
-       '[{ "type": "Feature", "id": 0, "properties": '.
-       '{ "value": 12 }, "geometry": { "type": "Point", '.
-       '"coordinates": [ 1.0, 1.0 ] } }]}end', 
+    my $exp = <<'EODATA'
+{"type": "FeatureCollection","features": [{ "type": "Feature", "id": 0, "properties": { "value": 12 }, "geometry": { "type": "Point", "coordinates": [ 1.0, 1.0 ] } },{ "type": "Feature", "id": 1, "properties": { "value": 12 }, "geometry": { "type": "Point", "coordinates": [ 1.0, 2.0 ] } }]}
+EODATA
+  ;
+    $exp =~ s/\n$//;
+
+    is($ret, $exp,
     "Redirect vsistdout to write/close methods of a class.");
 
 }
+
 
 # test Translate
 if(1){
