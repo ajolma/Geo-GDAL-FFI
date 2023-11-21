@@ -85,12 +85,14 @@ sub SetErrorHandling {
                 push @errors, $msg;
             }
         });
+    $instance->{CPLErrorHandler}->sticky;
     CPLPushErrorHandler($instance->{CPLErrorHandler});
 }
 
 sub UnsetErrorHandling {
     return unless $instance;
     return unless exists $instance->{CPLErrorHandler};
+    $instance->{CPLErrorHandler}->unstick;
     CPLPopErrorHandler($instance->{CPLErrorHandler});
     delete $instance->{CPLErrorHandler};
 }
@@ -466,6 +468,7 @@ sub new {
     $ffi->attach(VSIUnlink => [qw/string/] => 'int');
     $ffi->attach(VSIRename => [qw/string string/] => 'int');
     $ffi->attach(VSIStdoutSetRedirection => ['VSIWriteFunction', 'opaque'] => 'void');
+    $ffi->attach(CPLSetErrorHandler => ['CPLErrorHandler'] => 'opaque');
     $ffi->attach(CPLPushErrorHandler => ['CPLErrorHandler'] => 'void');
     $ffi->attach(CPLPopErrorHandler => ['CPLErrorHandler'] => 'void');
     $ffi->attach(CSLDestroy => ['opaque'] => 'void');
@@ -1597,7 +1600,7 @@ $ffi->attach('GDALVectorInfo' => [qw/opaque opaque/] => 'string');
     $instance = {};
     $instance->{ffi} = $ffi;
     $instance->{gdal} = $gdal;
-    SetErrorHandling();
+    #SetErrorHandling();
     GDALAllRegister();
     return bless $instance, $class;
 }
