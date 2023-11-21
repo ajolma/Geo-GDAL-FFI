@@ -1,13 +1,20 @@
 use v5.18;
-use threads;
-use threads::shared;
 use warnings;
 use strict;
+use Config;
 use Test::More;
 
-BEGIN { use_ok('Geo::GDAL::FFI', qw/:all/); }
+BEGIN {
+    use_ok('Geo::GDAL::FFI', qw/:all/);
+}
 
-use Thread::Queue;
+SKIP: {
+
+skip "skip multi-thread test", 4 unless $Config{useithreads};
+
+use_ok('threads');
+use_ok('threads::shared');
+use_ok('Thread::Queue');
 
 my $q = Thread::Queue->new();
 my @in_thrds = ();
@@ -57,5 +64,8 @@ for my $w (@out_thrds) {
 }
 
 ok(1, "threading seems ok");
+
+}
+
 
 done_testing();
