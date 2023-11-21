@@ -1,4 +1,5 @@
 use v5.18;
+<<<<<<< HEAD
 use warnings;
 use strict;
 use Config;
@@ -15,6 +16,17 @@ skip "skip multi-thread test", 4 unless $Config{useithreads};
 use_ok('threads');
 use_ok('threads::shared');
 use_ok('Thread::Queue');
+=======
+use threads;
+use threads::shared;
+use warnings;
+use strict;
+use Test::More;
+
+BEGIN { use_ok('Geo::GDAL::FFI', qw/:all/); }
+
+use Thread::Queue;
+>>>>>>> d130384 (Changed string_pointer into standard string* and changed new() to be thread-safe.)
 
 my $q = Thread::Queue->new();
 my @in_thrds = ();
