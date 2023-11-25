@@ -65,7 +65,6 @@ EOF
     }
 }
 use ExtUtils::MakeMaker;
->>>>>>> 2bc66d6 (use strict and warnings in Makefile.PL)
 use Config;
 my %args = (
     AUTHOR => ['Ari Jolma <ari.jolma at gmail.com>'],
