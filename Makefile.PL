@@ -76,11 +76,11 @@ my %args = (
         'Alien::gdal' => 0,
     },
     PREREQ_PM => {
-        PkgConfig => 0.23026,
-        FFI::Platypus => 0.61,
-        PDL => 0,
-        Sort::Versions => 0,
-        Alien::gdal => 0,
+        'PkgConfig' => 0.23026,
+        'FFI::Platypus' => 0.61,
+        'PDL' => 0,
+        'Sort::Versions' => 0,
+        'Alien::gdal' => 0,
     },
     TEST_REQUIRES => {
         'Test::More'          => 0,
