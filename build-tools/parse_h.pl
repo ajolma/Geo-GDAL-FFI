@@ -382,8 +382,8 @@ sub parse_type {
             $arg = 'opaque';
         } else {
             my $ok = $char_p_p_ok{$name} || $char_p_p_ok{$name.'.'.$var};
-            say STDERR "WARNING: char ** in $name ($mode, $var) defaulting to string_pointer" unless $ok;
-            $arg = 'string_pointer';
+            say STDERR "$name returns a string*" unless $ok;
+            $arg = 'string*';
         }
     } elsif ($arg =~ /char\s*\*/) {
         if ($mode eq 'ret' && $use_ret_opaque{$name}) {
