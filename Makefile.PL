@@ -1,12 +1,6 @@
 use strict;
 use warnings;
 
-<<<<<<< HEAD
-
-use ExtUtils::MakeMaker 6.52;
-
-
-=======
 my $have_alien;
 BEGIN {
     my $gdal = 'Alien::gdal';
