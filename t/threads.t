@@ -24,8 +24,6 @@ my $nt = 10;
 for my $i (1..$nt) {
     my $t = threads->create(
         sub {
-            my $gdal = Geo::GDAL::FFI->get_instance;
-            $gdal->SetErrorHandling;
             while (my $h = $q->dequeue()) {
                 say "thread out$i: popped $h->{value}";
             }
@@ -37,8 +35,6 @@ for my $i (1..$nt) {
 for my $i (1..$nt) {
     my $t = threads->create(
         sub {
-            my $gdal = Geo::GDAL::FFI->get_instance;
-            $gdal->SetErrorHandling;
             my $v = rand(100);
             say "thread in$i: pushed $v";
             $q->enqueue({ value => $v });
@@ -46,9 +42,6 @@ for my $i (1..$nt) {
     );
     push @in_thrds, $t;
 }
-
-my $gdal = Geo::GDAL::FFI->get_instance;
-$gdal->SetErrorHandling;
 
 # try different timing too... :-/
 sleep(3);
@@ -66,6 +59,5 @@ for my $w (@out_thrds) {
 ok(1, "threading seems ok");
 
 }
-
 
 done_testing();

@@ -1600,7 +1600,7 @@ $ffi->attach('GDALVectorInfo' => [qw/opaque opaque/] => 'string');
     $instance = {};
     $instance->{ffi} = $ffi;
     $instance->{gdal} = $gdal;
-    #SetErrorHandling();
+    SetErrorHandling();
     GDALAllRegister();
     return bless $instance, $class;
 }
@@ -1826,6 +1826,21 @@ BEGIN {
     #  avoid some used only once warnings
     local $FFI::Platypus::keep;
     local $FFI::Platypus::TypeParser::ffi_type;
+}
+
+#
+# The next two subs are required for theread-safety, because GDAL error handling must be set per thread.
+# So, it is disabled just before starting a new thread and renabled after in the thread.
+# See perlmod and issue #53 for more information.
+#
+
+sub CLONE {
+    SetErrorHandling();
+}
+
+sub CLONE_SKIP {
+    UnsetErrorHandling();
+    return 0;
 }
 
 1;
