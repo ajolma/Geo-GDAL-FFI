@@ -1,7 +1,11 @@
 Revision history for Perl extension Geo::GDAL::FFI
 
-0.11 unreleased
+0.12 unreleased
+
+0.11 December 19, 2023
     - Removed use of to FFI::Platypus::Declare, now discouraged.
+    - Add Layer::GetFeatureCount method
+    - Bugfixes
 
 0.10 July 10, 2023
      - Add dependency to FFI::Platypus::Declare
