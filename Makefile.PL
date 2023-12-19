@@ -83,10 +83,12 @@ my %args = (
         'Alien::gdal' => 0,
     },
     TEST_REQUIRES => {
-        'Test::More' => 0,
-        'Test::Exception' => 0,
-        'JSON' => 0,
-        'Data::Dumper' => 0
+        'Test::More'          => 0,
+        'Test::Exception'     => 0,
+        'JSON'                => 0,
+        'Data::Dumper'        => 0,
+        'Path::Tiny'          => 0,
+        'Test::TempDir::Tiny' => 0,
     },
     META_MERGE => {
         "meta-spec" => { version => 2 },
