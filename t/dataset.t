@@ -6,8 +6,12 @@ use Geo::GDAL::FFI qw/GetDriver HaveGEOS/;
 use Test::More;
 use Test::Exception;
 use Data::Dumper;
+use Test::TempDir::Tiny;
+use Path::Tiny qw/path/;
 
-my $ds = GetDriver('GPKG')->Create('test.gpkg');
+my $dir = tempdir();
+my $gpkg_file = path ($dir, 'test.gpkg');
+my $ds = GetDriver('GPKG')->Create($gpkg_file);
 my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
 foreach my $i (1..3) {
     my $l = $ds->CreateLayer({
