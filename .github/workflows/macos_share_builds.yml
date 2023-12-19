@@ -45,6 +45,8 @@ jobs:
 
       - name: Install Dynamic Dependencies
         run: |
+          cpanm --notest Path::Tiny
+          cpanm --notest Test::TempDir::Tiny
           cpanm --notest PDL
           cpanm --notest Alien::Build
           cpanm --notest Alien::Build::MM

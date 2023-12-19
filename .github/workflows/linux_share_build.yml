@@ -49,6 +49,8 @@ jobs:
           cpanm --notest local::lib
           echo $(perl -Mlocal::lib=${HOME}/perl5)
           eval "$(perl -Mlocal::lib=${HOME}/perl5)"
+          cpanm --notest Path::Tiny
+          cpanm --notest Test::TempDir::Tiny
           cpanm --notest PDL
           cpanm --notest Alien::Build
           cpanm --installdeps --notest Alien::sqlite
