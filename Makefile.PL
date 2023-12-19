@@ -1,3 +1,7 @@
+use strict;
+use warnings;
+
+my $have_alien;
 BEGIN {
     my $gdal = 'Alien::gdal';
     my @argv = ();
@@ -27,10 +31,12 @@ BEGIN {
         my $lib = $a[0];
         my $data = "$gdal/share/gdal";
         print "I'm creating Geo::GDAL::gdal as a wrapper to $lib, which I believe is GDAL $version.\n";
-        $fh = new IO::File;
+        my $fh = IO::File->new;
         $fh->open("lib/Geo/GDAL/gdal.pm","w");
         print $fh <<EOF;
 package Geo::GDAL::gdal;
+use strict;
+use warnings;
 sub new {
     return shift;
 }
@@ -48,20 +54,26 @@ EOF
     } else {
         eval "use Alien::Base::Wrapper qw(Alien::gdal !export)";
         $have_alien = 1;
-        $fh = new IO::File;
+        my $fh = IO::File->new;
         $fh->open("lib/Geo/GDAL/gdal.pm","w");
+        print $fh <<EOF;
+package Geo::GDAL::gdal;
+use strict;
+use warnings;
+1;
+EOF
     }
 }
 use ExtUtils::MakeMaker;
 use Config;
-%args = (
+my %args = (
     AUTHOR => ['Ari Jolma <ari.jolma at gmail.com>'],
     NAME => 'Geo::GDAL::FFI',
     ABSTRACT_FROM => "lib/Geo/GDAL/FFI.pm",
     VERSION_FROM => "lib/Geo/GDAL/FFI.pm",
     LICENSE => "artistic_2",
     CONFIGURE_REQUIRES => {
-        Alien::gdal => 0,
+        'Alien::gdal' => 0,
     },
     PREREQ_PM => {
         PkgConfig => 0.23026,
@@ -91,7 +103,7 @@ use Config;
     },
 );
 if ($have_alien) {
-    %agrs = (%args, Alien::Base::Wrapper->mm_args);
+    %args = (%args, Alien::Base::Wrapper->mm_args);
 }
 
 WriteMakefile(%args);
