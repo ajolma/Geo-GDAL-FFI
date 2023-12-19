@@ -8,9 +8,14 @@ use Test::More;
 use Data::Dumper;
 use JSON;
 use FFI::Platypus::Buffer;
+use Path::Tiny qw/path/;
+use Test::TempDir::Tiny;
+
+my $dir = tempdir();
+my $testfile = path($dir, 'test.shp');
 
 {
-    my $ds = GetDriver('ESRI Shapefile')->Create('test.shp');
+    my $ds = GetDriver('ESRI Shapefile')->Create($testfile);
     my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
     my $l = $ds->CreateLayer({Name => 'test', SpatialReference => $sr, GeometryType => 'Point'});
     my $d = $l->GetDefn();
@@ -21,7 +26,7 @@ use FFI::Platypus::Buffer;
 my $ds;
 
 eval {
-    $ds = Open('test.shp', {
+    $ds = Open($testfile, {
         Flags => [qw/READONLY VERBOSE_ERROR/], 
         AllowedDrivers => [('GML')]
     });
@@ -31,13 +36,11 @@ $e[0] =~ s/ at .*//;
 ok($@, "Right driver not in AllowedDrivers: ".$e[0]);
 
 eval {
-    $ds = Open('test.shp', {
+    $ds = Open($testfile, {
         Flags => [qw/READONLY VERBOSE_ERROR/], 
         AllowedDrivers => [('GML', 'ESRI Shapefile')]
     });
 };
 ok(!@$, "Require right driver in AllowedDrivers");
-
-unlink qw/test.dbf test.prj test.shp test.shx/;
 
 done_testing();

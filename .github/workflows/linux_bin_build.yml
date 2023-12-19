@@ -48,6 +48,8 @@ jobs:
           cpanm --notest Test::Exception
           cpanm --notest JSON
           cpanm --notest PDL
+          cpanm --notest Path::Tiny
+          cpanm --notest Test::TempDir::Tiny
   
       - name: Build
         run: |
