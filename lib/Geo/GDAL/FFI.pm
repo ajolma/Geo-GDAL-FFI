@@ -1600,7 +1600,7 @@ $ffi->attach('GDALVectorInfo' => [qw/opaque opaque/] => 'string');
     $instance = {};
     $instance->{ffi} = $ffi;
     $instance->{gdal} = $gdal;
-    #SetErrorHandling();
+    SetErrorHandling();
     GDALAllRegister();
     return bless $instance, $class;
 }
