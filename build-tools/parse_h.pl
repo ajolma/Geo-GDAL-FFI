@@ -187,6 +187,12 @@ my %use_array = (
     OGR_F_SetFieldIntegerList => 1,
     OGR_F_SetFieldInteger64List => 1,
     OGR_F_SetFieldDoubleList => 1,
+    GDALInvGeoTransform => 1,
+    OCTTransform => 1,
+    OCTTransformEx => 1,
+    OCTTransform4D => 1,
+    OCTTransform4DWithErrorCodes => 1,
+    OCTTransformBounds => 1,
     );
 
 my %use_opaque_array = (
@@ -299,13 +305,14 @@ sub parse_h {
             my $args = $2;
             my $ret = $s;
             $ret =~ s/$name.*//;
-            $ret = parse_type($name, $ret, 'ret');
+            $ret = parse_type($name, $ret, 'ret', 0);
             #print "parse type returns: $ret\n";
             my @args = split /\s*,\s*/, $args;
             my $qw = 1;
+            my $idx = 0;
             for my $arg (@args) {
-                $arg = parse_type($name, $arg, 'arg');
-                #print "parse type returns: $ret\n";
+                $arg = parse_type($name, $arg, 'arg', $idx++);
+                #print "parse type returns: $arg\n";
                 $qw = 0 if $arg =~ /\s/;
             }
             #say "ret: $ret";
@@ -328,12 +335,12 @@ sub parse_h {
 }
 
 sub parse_type {
-    my ($name, $arg, $mode) = @_;
+    my ($name, $arg, $mode, $argno) = @_;
     $arg =~ s/^\s+//;
     $arg =~ s/\s+$//;
     my $var = '';
     $var = $1 if $arg =~ /(\w+)$/;
-    #print "parse type: name=$name arg=$arg var=$var mode$mode\n";
+    #print "parse type: argno=$argno name=$name arg=$arg var=$var mode$mode\n";
     for my $c (keys %constants) {
         if ($arg =~ /^$c/ or $arg =~ /^const $c/) {
             $arg = 'unsigned int';
@@ -413,7 +420,9 @@ sub parse_type {
     } elsif ($arg =~ /^long/) {
         $arg = 'long';
     } elsif ($arg =~ /double\s*\*/) {
-        if ($name eq 'GDALGetGeoTransform' or $name eq 'GDALSetGeoTransform') {
+        if ($name eq 'GDALGetGeoTransform' or $name eq 'GDALSetGeoTransform' or $name eq 'GDALComposeGeoTransforms') {
+            $arg = 'double[6]';
+        } elsif ($name eq 'GDALApplyGeoTransform' and $argno == 0) {
             $arg = 'double[6]';
         } elsif ($use_array{$name}) {
             $arg = 'double[]';
