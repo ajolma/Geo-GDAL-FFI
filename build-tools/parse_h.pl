@@ -8,7 +8,8 @@ my @h_files = (
     'gcore/gdal.h',
     'ogr/ogr_api.h',
     'ogr/ogr_srs_api.h',
-    'apps/gdal_utils.h'    
+    'apps/gdal_utils.h',
+    'alg/gdal_alg.h'
     );
 
 my %pre = (
@@ -41,6 +42,8 @@ my %constants = (
     GDALGridAlgorithm => 1,
     GDALRelationshipCardinality => 1,
     GDALRelationshipType => 1,
+    GDALViewshedMode => 1,
+    GDALViewshedOutputType => 1,
     );
 
 my %callbacks = (
@@ -243,6 +246,12 @@ my %opaque_pointers = (
     ArrowArrayStream => 1,
     GDALVectorInfoOptions => 1,
     GDALVectorInfoOptionsForBinary => 1,
+    ArrowSchema => 1,
+    ArrowArray => 1,
+    GDALFootprintOptions => 1,
+    GDALFootprintOptionsForBinary => 1,
+    GDALRPCInfoV2 => 1,
+    GDALViewshedMode => 1,
     );
 
 my %defines;
