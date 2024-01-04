@@ -226,7 +226,6 @@ my %use_array6 = (
     GDALCreateGenImgProjTransformer3 => 1,
     GDALCreateGenImgProjTransformer4 => 1,
     GDALSetGenImgProjTransformerDstGeoTransform => 1,
-    GDALSetGenImgProjTransformerDstGeoTransform => 1,
     );
 
 my %use_opaque_array = (
