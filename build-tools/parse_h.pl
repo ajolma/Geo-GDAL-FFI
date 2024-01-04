@@ -196,12 +196,44 @@ my %use_array = (
     OCTTransform4D => 1,
     OCTTransform4DWithErrorCodes => 1,
     OCTTransformBounds => 1,
+    GDALUseTransformer => 1,
+    GDALGenImgProjTransform => 1,
+    GDALReprojectionTransform => 1,
+    GDALGCPTransform => 1,
+    GDALTPSTransform => 1,
+    GDALRPCTransform => 1,
+    GDALGeoLocTransform => 1,
+    GDALApproxTransform => 1,
+    OGRContourWriter => 1,
+    GDALContourGenerate => 1,
+    GDALRasterizeGeometries => 1,
+    GDALRasterizeGeometriesInt64 => 1,
+    GDALRasterizeLayers => 1,
+    GDALRasterizeLayersBuf => 1,
+    GDALGridCreate => 1,
+    GDALGridContextCreate => 1,
+    GDALTriangulationCreateDelaunay => 1,
+    GDALTriangulationComputeBarycentricCoefficients => 1,
+    );
+
+my %use_array6 = (
+    GDALGetGeoTransform => 1,
+    GDALSetGeoTransform => 1,
+    GDALComposeGeoTransforms => 1,
+    GDALInvGeoTransform => 1,
+    GDALSetTransformerDstGeoTransform => 1,
+    GDALGetTransformerDstGeoTransform => 1,
+    GDALCreateGenImgProjTransformer3 => 1,
+    GDALCreateGenImgProjTransformer4 => 1,
+    GDALSetGenImgProjTransformerDstGeoTransform => 1,
+    GDALSetGenImgProjTransformerDstGeoTransform => 1,
     );
 
 my %use_opaque_array = (
     GDALWarp => 1,
     GDALVectorTranslate => 1,
     GDALBuildVRT => 1,
+    GDALRasterizeLayersBuf => 1,
     );
 
 my %use_ret_pointer = (
@@ -429,10 +461,16 @@ sub parse_type {
     } elsif ($arg =~ /^long/) {
         $arg = 'long';
     } elsif ($arg =~ /double\s*\*/) {
-        if ($name eq 'GDALGetGeoTransform' or $name eq 'GDALSetGeoTransform' or $name eq 'GDALComposeGeoTransforms') {
+        if ($use_array6{$name}) {
             $arg = 'double[6]';
         } elsif ($name eq 'GDALApplyGeoTransform' and $argno == 0) {
             $arg = 'double[6]';
+        } elsif ($name eq 'GDALSuggestedWarpOutput' and $argno == 3) {
+            $arg = 'double[6]';
+        } elsif ($name eq 'GDALSuggestedWarpOutput2' and $argno == 3) {
+            $arg = 'double[6]';
+        } elsif ($name eq 'GDALSuggestedWarpOutput2' and $argno == 6) {
+            $arg = 'double[4]';
         } elsif ($use_array{$name}) {
             $arg = 'double[]';
         } elsif ($mode eq 'ret' && $use_ret_pointer{$name}) {
