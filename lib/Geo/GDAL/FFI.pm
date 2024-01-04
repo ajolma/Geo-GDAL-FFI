@@ -2068,6 +2068,16 @@ confessed if a method fails. This is the default.
 Unset the Perl function to catch GDAL errors. If no other error
 handler is set, GDAL prints the errors into stderr.
 
+=head1 NOTES ABOUT THREAD-SAFETY
+
+This module is mostly thread-safe, but for the error handling management.
+To ensure thread-safety GDAL error handling is automatically disabled
+before creating a new thread and re-enabled after that in the just
+created thread. The main thread needs to renable it via C<SetErrorHandling>,
+after all thread creations and before eventually using any GDAL function: this
+must be done explicitly in the main thread, because there is no way
+to do that automatically as for other threads.
+
 =head1 METHODS
 
 =head2 get_instance
