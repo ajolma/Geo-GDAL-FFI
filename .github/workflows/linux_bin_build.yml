@@ -11,6 +11,7 @@ on:
 env:
   PERL_MOD_DIR: /home/runner/perl5/lib/perl5
 
+
 jobs:
   perl:
 
@@ -32,6 +33,22 @@ jobs:
       - name: perl -V
         run: perl -V
 
+      - name: Prepare for CPAN cache
+        run: |
+          perl -V > perlversion.txt
+          # echo '20220320a' >> perlversion.txt
+          echo 'bin build' >> perlversion.txt
+          # dir perlversion.txt
+
+      - name: Cache CPAN modules
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/perl5/
+          key: ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
+
+
       - name: Install Dependencies
         run: |
           sudo apt-get install -y zlib1g-dev
@@ -40,7 +57,9 @@ jobs:
           sudo add-apt-repository ppa:ubuntugis/ppa
           sudo apt-get install -y gdal-bin
           cpanm --notest local::lib
+          eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
           cpanm --notest PkgConfig
+          cpanm --notest Alien::Build
           cpanm --notest Alien::Base::Wrapper
           cpanm --notest FFI::Platypus
           cpanm --notest FFI::Platypus::Declare
@@ -53,6 +72,7 @@ jobs:
   
       - name: Build
         run: |
+          eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
           perl Makefile.PL
           cpanm --notest --installdeps .
           make test
