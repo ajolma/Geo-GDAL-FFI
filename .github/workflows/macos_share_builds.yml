@@ -43,8 +43,19 @@ jobs:
           echo '20221130' >> perlversion.txt
           ls -l perlversion.txt
 
+      - name: Cache CPAN modules
+        uses: actions/cache@v4
+        with:
+          path: /home/runner/perl5/
+          key: ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
+
+
       - name: Install Dynamic Dependencies
         run: |
+          cpanm --notest local::lib
+          eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
           cpanm --notest Path::Tiny
           cpanm --notest Test::TempDir::Tiny
           cpanm --notest PDL
@@ -60,10 +71,12 @@ jobs:
       
       - name: Install Geo::GDAL::FFI deps
         run: |
+          eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
           cpanm --installdeps Geo::GDAL::FFI
   
       - name: Build
         run: |
+          eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
           #  bandaids
           #export DYLD_LIBRARY_PATH=`perl -MAlien::geos::af -e'print Alien::geos::af->dist_dir . "/lib"'`
           #export LD_LIBRARY_PATH=${DYLD_LIBRARY_PATH}
