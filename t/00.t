@@ -7,6 +7,8 @@ use Encode qw(decode encode);
 use Test::More;
 use Data::Dumper;
 use JSON;
+use Test::TempDir::Tiny;
+use Path::Tiny qw/path/;
 
 BEGIN { use_ok('Geo::GDAL::FFI', qw/:all/); }
 
@@ -286,8 +288,10 @@ if(1){
 
 # test creating a shapefile
 if(1){
+    my $dir = tempdir();
+    my $testfile = path($dir, 'test.shp');
     my $dr = GetDriver('ESRI Shapefile');
-    my $ds = $dr->Create('test.shp');
+    my $ds = $dr->Create($testfile);
     my @sr = ();
     if (FindFile('gcs.csv')) {  #  should be version checked? GDAL 3 does not use gcs.csv
         @sr = (SpatialReference => Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067));
@@ -297,11 +301,10 @@ if(1){
     my $f = Geo::GDAL::FFI::Feature->new($d);
     $l->CreateFeature($f);
     undef $l; #  otherwise $ds is not flushed due to parent ref
-    $ds = Open('test.shp');
+    $ds = Open($testfile);
     $l = $ds->GetLayer;
     $d = $l->GetDefn();
     ok($d->GetGeomType eq 'Point', "Create point shapefile and open it.");
-    unlink qw/test.dbf test.prj test.shp test.shx/;
 }
 
 # test field definitions

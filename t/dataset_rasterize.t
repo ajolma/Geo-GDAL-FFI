@@ -5,6 +5,8 @@ use warnings;
 use Geo::GDAL::FFI;
 
 use Test::More;
+use Test::TempDir::Tiny;
+use Path::Tiny qw/path/;
 
 local $| = 1;
 
@@ -165,8 +167,10 @@ sub test_Rasterize {
 
 
 sub get_test_raster {
-    my $name = 'test_ras' . (time() + rand()) . '.tiff';
-    my $tiff = Geo::GDAL::FFI::GetDriver('GTiff')->Create('test.tiff', 3, 2);
+    my $dir = tempdir();
+    # my $name = 'test_ras' . time() + rand() . '.tiff';
+    my $tiff_file = path ($dir, 'test.tiff');
+    my $tiff = Geo::GDAL::FFI::GetDriver('GTiff')->Create($tiff_file, 3, 2);
     my $ogc_wkt = 
            'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS84",6378137,298.257223563,'.
            'AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,'.
