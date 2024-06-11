@@ -21,7 +21,7 @@ jobs:
       
       - uses: shogo82148/actions-setup-perl@v1
         with:
-          perl-version: '5.32'
+          perl-version: '5.38'
 
       - name: system libs
         run: |
