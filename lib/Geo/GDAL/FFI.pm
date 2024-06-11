@@ -1829,7 +1829,7 @@ BEGIN {
 }
 
 #
-# The next two subs are required for theread-safety, because GDAL error handling must be set per thread.
+# The next two subs are required for thread-safety, because GDAL error handling must be set per thread.
 # So, it is disabled just before starting a new thread and renabled after in the thread.
 # See perlmod and issue #53 for more information.
 #
@@ -2070,12 +2070,12 @@ handler is set, GDAL prints the errors into stderr.
 
 =head1 NOTES ABOUT THREAD-SAFETY
 
-This module is mostly thread-safe, but for the error handling management.
+This module is thread-safe provided the error handling is taken care of.
 To ensure thread-safety GDAL error handling is automatically disabled
 before creating a new thread and re-enabled after that in the just
 created thread. The main thread needs to renable it via C<SetErrorHandling>,
-after all thread creations and before eventually using any GDAL function: this
-must be done explicitly in the main thread, because there is no way
+after all thread creations and before eventually using any GDAL function. This
+must be done explicitly in the main thread because there is no way
 to do that automatically as for other threads.
 
 =head1 METHODS
