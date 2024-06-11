@@ -1,4 +1,7 @@
 use 5.010;
+use strict;
+use warnings;
+
 use Geo::GDAL::FFI;
 
 use Test::More;
@@ -162,7 +165,7 @@ sub test_Rasterize {
 
 
 sub get_test_raster {
-    my $name = 'test_ras' . time() + rand() . '.tiff';
+    my $name = 'test_ras' . (time() + rand()) . '.tiff';
     my $tiff = Geo::GDAL::FFI::GetDriver('GTiff')->Create('test.tiff', 3, 2);
     my $ogc_wkt = 
            'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS84",6378137,298.257223563,'.
