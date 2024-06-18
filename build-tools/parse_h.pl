@@ -8,7 +8,8 @@ my @h_files = (
     'gcore/gdal.h',
     'ogr/ogr_api.h',
     'ogr/ogr_srs_api.h',
-    'apps/gdal_utils.h'    
+    'apps/gdal_utils.h',
+    #'alg/gdal_alg.h'
     );
 
 my %pre = (
@@ -41,6 +42,9 @@ my %constants = (
     GDALGridAlgorithm => 1,
     GDALRelationshipCardinality => 1,
     GDALRelationshipType => 1,
+    GDALViewshedMode => 1,
+    GDALViewshedOutputType => 1,
+    OGRwkbVariant => 1,
     );
 
 my %callbacks = (
@@ -50,6 +54,9 @@ my %callbacks = (
     GDALTransformerFunc => 1,
     GDALContourWriter => 1,
     GDALQueryLoggerFunc => 1,
+    GDALVRTProcessedDatasetFuncInit => 1,
+    GDALVRTProcessedDatasetFuncFree => 1,
+    GDALVRTProcessedDatasetFuncProcess => 1,
     );
 
 my %char_p_p_ok = (
@@ -187,12 +194,49 @@ my %use_array = (
     OGR_F_SetFieldIntegerList => 1,
     OGR_F_SetFieldInteger64List => 1,
     OGR_F_SetFieldDoubleList => 1,
+    GDALInvGeoTransform => 1,
+    OCTTransform => 1,
+    OCTTransformEx => 1,
+    OCTTransform4D => 1,
+    OCTTransform4DWithErrorCodes => 1,
+    OCTTransformBounds => 1,
+    GDALUseTransformer => 1,
+    GDALGenImgProjTransform => 1,
+    GDALReprojectionTransform => 1,
+    GDALGCPTransform => 1,
+    GDALTPSTransform => 1,
+    GDALRPCTransform => 1,
+    GDALGeoLocTransform => 1,
+    GDALApproxTransform => 1,
+    OGRContourWriter => 1,
+    GDALContourGenerate => 1,
+    GDALRasterizeGeometries => 1,
+    GDALRasterizeGeometriesInt64 => 1,
+    GDALRasterizeLayers => 1,
+    GDALRasterizeLayersBuf => 1,
+    GDALGridCreate => 1,
+    GDALGridContextCreate => 1,
+    GDALTriangulationCreateDelaunay => 1,
+    GDALTriangulationComputeBarycentricCoefficients => 1,
+    );
+
+my %use_array6 = (
+    GDALGetGeoTransform => 1,
+    GDALSetGeoTransform => 1,
+    GDALComposeGeoTransforms => 1,
+    GDALInvGeoTransform => 1,
+    GDALSetTransformerDstGeoTransform => 1,
+    GDALGetTransformerDstGeoTransform => 1,
+    GDALCreateGenImgProjTransformer3 => 1,
+    GDALCreateGenImgProjTransformer4 => 1,
+    GDALSetGenImgProjTransformerDstGeoTransform => 1,
     );
 
 my %use_opaque_array = (
     GDALWarp => 1,
     GDALVectorTranslate => 1,
     GDALBuildVRT => 1,
+    GDALRasterizeLayersBuf => 1,
     );
 
 my %use_ret_pointer = (
@@ -237,6 +281,15 @@ my %opaque_pointers = (
     ArrowArrayStream => 1,
     GDALVectorInfoOptions => 1,
     GDALVectorInfoOptionsForBinary => 1,
+    ArrowSchema => 1,
+    ArrowArray => 1,
+    GDALFootprintOptions => 1,
+    GDALFootprintOptionsForBinary => 1,
+    GDALRPCInfoV2 => 1,
+    GDALViewshedMode => 1,
+    OGRwkbExportOptions =>1,
+    GDALTileIndexOptions => 1,
+    GDALTileIndexOptionsForBinary => 1,
     );
 
 my %defines;
@@ -299,13 +352,14 @@ sub parse_h {
             my $args = $2;
             my $ret = $s;
             $ret =~ s/$name.*//;
-            $ret = parse_type($name, $ret, 'ret');
+            $ret = parse_type($name, $ret, 'ret', 0);
             #print "parse type returns: $ret\n";
             my @args = split /\s*,\s*/, $args;
             my $qw = 1;
+            my $idx = 0;
             for my $arg (@args) {
-                $arg = parse_type($name, $arg, 'arg');
-                #print "parse type returns: $ret\n";
+                $arg = parse_type($name, $arg, 'arg', $idx++);
+                #print "parse type returns: $arg\n";
                 $qw = 0 if $arg =~ /\s/;
             }
             #say "ret: $ret";
@@ -328,12 +382,12 @@ sub parse_h {
 }
 
 sub parse_type {
-    my ($name, $arg, $mode) = @_;
+    my ($name, $arg, $mode, $argno) = @_;
     $arg =~ s/^\s+//;
     $arg =~ s/\s+$//;
     my $var = '';
     $var = $1 if $arg =~ /(\w+)$/;
-    #print "parse type: name=$name arg=$arg var=$var mode$mode\n";
+    #print "parse type: argno=$argno name=$name arg=$arg var=$var mode$mode\n";
     for my $c (keys %constants) {
         if ($arg =~ /^$c/ or $arg =~ /^const $c/) {
             $arg = 'unsigned int';
@@ -413,8 +467,16 @@ sub parse_type {
     } elsif ($arg =~ /^long/) {
         $arg = 'long';
     } elsif ($arg =~ /double\s*\*/) {
-        if ($name eq 'GDALGetGeoTransform' or $name eq 'GDALSetGeoTransform') {
+        if ($use_array6{$name}) {
             $arg = 'double[6]';
+        } elsif ($name eq 'GDALApplyGeoTransform' and $argno == 0) {
+            $arg = 'double[6]';
+        } elsif ($name eq 'GDALSuggestedWarpOutput' and $argno == 3) {
+            $arg = 'double[6]';
+        } elsif ($name eq 'GDALSuggestedWarpOutput2' and $argno == 3) {
+            $arg = 'double[6]';
+        } elsif ($name eq 'GDALSuggestedWarpOutput2' and $argno == 6) {
+            $arg = 'double[4]';
         } elsif ($use_array{$name}) {
             $arg = 'double[]';
         } elsif ($mode eq 'ret' && $use_ret_pointer{$name}) {
