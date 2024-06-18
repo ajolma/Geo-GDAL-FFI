@@ -448,6 +448,9 @@ sub new {
     $ffi->type('(pointer,int,int,pointer,pointer,pointer,pointer)->int' => 'GDALTransformerFunc');
     $ffi->type('(double,int,pointer,pointer,pointer)->int' => 'GDALContourWriter');
     $ffi->type('(string,string,sint64,sint64,pointer)->void' => 'GDALQueryLoggerFunc');
+    $ffi->type('(string,pointer,pointer,int,int,pointer,pointer,pointer,pointer,pointer,pointer)->int' => 'GDALVRTProcessedDatasetFuncInit');
+    $ffi->type('(string,pointer,pointer)->void' => 'GDALVRTProcessedDatasetFuncFree');
+    $ffi->type('(string,pointer,pointer,int,int,int,pointer,size_t,int,int,pointer,pointer,size_t,int,int,pointer,double,double,double,double,pointer,string,int)->int' => 'GDALVRTProcessedDatasetFuncProcess');
 
     $ffi->ignore_not_found(1);
 
