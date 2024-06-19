@@ -1,5 +1,7 @@
 Revision history for Perl extension Geo::GDAL::FFI
 
+0.13 in prep
+
 0.12 June 19, 2024
     - improved header parsing, updated to GDAL 3.9 (GH#79, @fpl++)
     - Package is now thread-safe (GH#69, @fpl++)

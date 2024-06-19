@@ -26,7 +26,7 @@ use Geo::GDAL::FFI::GeomFieldDefn;
 use Geo::GDAL::FFI::Feature;
 use Geo::GDAL::FFI::Geometry;
 
-our $VERSION = 0.1200;
+our $VERSION = 0.1300;
 our $DEBUG = 0;
 
 our @ISA = qw(Exporter);
