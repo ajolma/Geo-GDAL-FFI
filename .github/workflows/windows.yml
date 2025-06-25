@@ -9,11 +9,6 @@ on:
   pull_request:
 
 env:
-  PERL5LIB: c:\cx\lib\perl5
-  PERL_LOCAL_LIB_ROOT: c:/cx
-  PERL_MB_OPT: --install_base C:/cx
-  PERL_MM_OPT: INSTALL_BASE=C:/cx
-  #ALIEN_BUILD_PRELOAD: Fetch::Cache
   AUTOMATED_TESTING: 1
 
 jobs:
@@ -23,73 +18,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Perl
-        run: |
-          choco install strawberryperl
-          echo "C:\strawberry\c\bin;C:\strawberry\perl\site\bin;C:\strawberry\perl\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-  
-      - name: perl -V
-        run: perl -V
-        
-      - name: Prepare for CPAN cache
-        run: |
-          perl -V > perlversion.txt
-          echo '20220320a' >> perlversion.txt
-          dir perlversion.txt
-
-      - name: Cache CPAN modules
-        uses: actions/cache@v4
+      - uses: shogo82148/actions-setup-perl@v1
         with:
-          path: c:\cx
-          key: ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
+          perl-version: "5.38"
+          distribution: strawberry
+          install-modules-with: cpanm
+          install-modules-args: --with-develop --with-configure --verbose
 
-      - name: Cache Alien downloads
-        uses: actions/cache@v4
-        with:
-          path: C:\Users\runneradmin\.alienbuild
-          key: ${{ runner.os }}-build-${{ hashFiles('aliencache.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ hashFiles('aliencache.txt') }}
-  
-
-      - name: Install dependencies Alien::MSYS
-        run: |
-          cpanm --notest Alien::MSYS
-
-      - name: Install dependencies Alien::sqlite
-        run: |
-          cpanm --notest --installdeps Alien::sqlite
-          cpanm -v Alien::sqlite
-      
-      - name: Install dependencies Alien::libtiff
-        run: |
-          cpanm -v --notest Alien::libtiff
-
-      - name: Install dependencies Alien::proj
-        run: |
-          cpanm --notest --installdeps Alien::proj
-          cpanm -v Alien::proj
-
-      - name: Install dependencies Alien::geos::af
-        run: |
-          cpanm --notest --installdeps Alien::geos::af          
-          cpanm -v Alien::geos::af
-
-      - name: Install dependencies for Alien::gdal
-        run: |
-          cpanm --notest --installdeps Alien::gdal
-          cpanm -v Alien::gdal
-      
-      - name: Install Geo::GDAL::FFI deps
-        run: |
-          cpanm --notest PDL
-          cpanm --installdeps Geo::GDAL::FFI
-  
       - name: Build
         run: |
           perl Makefile.PL
           cpanm --installdeps --notest .
-          make test
+          gmake test
 
