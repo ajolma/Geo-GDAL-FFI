@@ -195,17 +195,19 @@ if(1){
     my $dr = GetDriver('GTiff');
     my $ds = $dr->Create('/vsimem/test.tiff', 10);
     my $ogc_wkt =
-        'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS84",6378137,298.257223563,'.
-        'AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,'.
-        'AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,'.
-        'AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]';
-    if ($ffi->{gdal}->version ge '3') {
-        $ogc_wkt =
             'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS84",6378137,298.257223563,'.
             'AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,'.
             'AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,'.
             'AUTHORITY["EPSG","9122"]],AXIS["Latitude",NORTH],AXIS["Longitude",EAST],'.
             'AUTHORITY["EPSG","4326"]]';
+    #  Handle Alien::gdal version issues due to PkgConfig, where version is a '${CONFIG_VERSION}' literal
+    #  We should not be seeing version 2 in the wild now anyway.
+    if ($ffi->{gdal}->version =~ /^2/) {
+        $ogc_wkt =
+            'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS84",6378137,298.257223563,'.
+            'AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,'.
+            'AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,'.
+            'AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]';
     }
     $ds->SetProjectionString($ogc_wkt);
     my $p = $ds->GetProjectionString;
