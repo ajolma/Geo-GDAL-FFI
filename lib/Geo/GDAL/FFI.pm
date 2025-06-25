@@ -1856,10 +1856,6 @@ sub CLONE_SKIP {
 
 Geo::GDAL::FFI - A foreign function interface to GDAL
 
-=head1 VERSION
-
-Version 0.11
-
 =head1 SYNOPSIS
 
 This is an example of creating a vector dataset.
@@ -2076,7 +2072,7 @@ handler is set, GDAL prints the errors into stderr.
 This module is thread-safe provided the error handling is taken care of.
 To ensure thread-safety GDAL error handling is automatically disabled
 before creating a new thread and re-enabled after that in the just
-created thread. The main thread needs to renable it via C<SetErrorHandling>,
+created thread. The main thread needs to re-enable it via C<SetErrorHandling>,
 after all thread creations and before eventually using any GDAL function. This
 must be done explicitly in the main thread because there is no way
 to do that automatically as for other threads.
