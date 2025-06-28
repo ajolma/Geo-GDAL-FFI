@@ -130,7 +130,8 @@ sub _make_overlay_methods {
                     my $schema = {
                         GeometryType => 'Unknown'
                     };
-                    $result = Geo::GDAL::FFI::GetDriver('Memory')->Create->CreateLayer($schema);
+                    state $mem_driver = Geo::GDAL::FFI::get_memory_driver();
+                    $result = Geo::GDAL::FFI::GetDriver($mem_driver)->Create->CreateLayer($schema);
                 }
                 my $o = 0;
                 for my $key (keys %{$args->{Options}}) {

@@ -27,6 +27,14 @@ jobs:
       - name: Locale check
         run: |
           locale -a
+          sudo locale-gen de_DE
+          sudo update-locale de_DE
+#          echo Current locale:
+#          locale
+
+      - name: Locale check 2
+        run: |
+          locale -a
           echo Current locale:
           locale
 

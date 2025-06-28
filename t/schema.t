@@ -6,6 +6,8 @@ use Geo::GDAL::FFI qw/GetDriver/;
 use Test::More;
 use Data::Dumper;
 
+my $mem_driver = Geo::GDAL::FFI::get_memory_driver;
+
 my $schema = {
     Name => 'test',
     Fields => [
@@ -36,7 +38,7 @@ my $schema = {
         ]
 };
 
-my $layer = GetDriver('Memory')->Create->CreateLayer($schema);
+my $layer = GetDriver($mem_driver)->Create->CreateLayer($schema);
 
 my $schema2 = {
     Name => 'test',
