@@ -1809,6 +1809,13 @@ sub FinderClean {
     CPLFinderClean();
 }
 
+sub get_memory_driver {
+    use Sort::Versions qw /versioncmp/;
+    state $gdal_version = Geo::GDAL::FFI::GetVersionInfo('SEMANTIC');
+    state $driver_name = versioncmp ($gdal_version, '3.11') >= 0 ? 'MEM' : 'Memory';
+    return $driver_name;
+}
+
 BEGIN {
     require PkgConfig;
     PkgConfig->import;

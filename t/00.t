@@ -12,6 +12,8 @@ use Path::Tiny qw/path/;
 
 BEGIN { use_ok('Geo::GDAL::FFI', qw/:all/); }
 
+my $mem_driver = Geo::GDAL::FFI::get_memory_driver;
+
 if(1){
     Geo::GDAL::FFI::UnsetErrorHandling();
     print STDERR "test a - GDAL error messages without Geo::GDAL::FFI error handling:\n";
@@ -572,7 +574,7 @@ if(1){
 
 # test layer feature manipulation
 if(1){
-    my $dr = GetDriver('Memory');
+    my $dr = GetDriver($mem_driver);
     my $ds = $dr->Create({Name => 'test'});
     my @sr = ();
     if (FindFile('stateplane.csv')) {

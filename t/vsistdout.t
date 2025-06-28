@@ -8,6 +8,9 @@ use Test::More;
 use Data::Dumper;
 use JSON;
 
+my $mem_driver = Geo::GDAL::FFI::get_memory_driver;
+
+
 {
     package Output;
     use strict;
@@ -34,7 +37,7 @@ use JSON;
 # test vsistdout redirection
 if(1){
     # create a small layer and copy it to vsistdout with redirection
-    my $ds = GetDriver('Memory')->Create;
+    my $ds = GetDriver($mem_driver)->Create;
     my $layer = $ds->CreateLayer({GeometryType => 'None'});
     $layer->CreateField(value => 'Integer');
     $layer->CreateGeomField(geom => 'Point');
