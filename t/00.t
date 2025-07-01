@@ -12,6 +12,8 @@ use Path::Tiny qw/path/;
 
 BEGIN { use_ok('Geo::GDAL::FFI', qw/:all/); }
 
+my $mem_driver = Geo::GDAL::FFI::get_memory_driver;
+
 if(1){
     Geo::GDAL::FFI::UnsetErrorHandling();
     print STDERR "test a - GDAL error messages without Geo::GDAL::FFI error handling:\n";
@@ -215,10 +217,12 @@ if(1){
     my $transform = [10,2,0,20,0,3];
     $ds->SetGeoTransform($transform);
     my $inv = [0,0,0,0,0,0];
-    ok(Geo::GDAL::FFI::GDALInvGeoTransform($transform, $inv) && "@$inv" eq "-5 0.5 0 -6.66666666666667 0 0.333333333333333", "Invert geotransform");
+    ok(Geo::GDAL::FFI::GDALInvGeoTransform($transform, $inv), "Invert geotransform returned true");
+    is_deeply ($inv, [-5, 0.5, 0, -6 - 2/3, 0, 1/3], "Invert geotransform result");
     my ($x, $y);
     Geo::GDAL::FFI::GDALApplyGeoTransform($transform,5,5,\$x,\$y);
-    ok($x == 20 && $y == 35, "Applied geotransform to pixel coords");
+    is($x, 20, "Applied geotransform to pixel coords, x");
+    is($y, 35, "Applied geotransform to pixel coords, y");
     my $t = $ds->GetGeoTransform;
     is_deeply($t, $transform, "Set/get geotransform");
 
@@ -232,7 +236,7 @@ if(1){
     #say STDERR $b;
     my @size = $b->GetBlockSize;
     #say STDERR "block size = @size";
-    ok($size[0] == 256 && $size[1] == 32, "Band block size.");
+    is_deeply (\@size, [256, 32], "Band block size");
     my @data = (
         [1, 2, 3],
         [4, 5, 6]
@@ -243,27 +247,30 @@ if(1){
 
     $ds->FlushCache;
     my $block = $b->ReadBlock();
-    for my $ln (@$block) {
+    # for my $ln (@$block) {
         #say STDERR "@$ln";
-    }
-    ok(@{$block->[0]} == 256 && @$block == 32 && $block->[1][2] == 6, "Read block ($block->[1][2])");
+    # }
+    # ok(@{$block->[0]} == 256 && @$block == 32 && $block->[1][2] == 6, "Read block ($block->[1][2])");
+    is (scalar @{$block->[0]}, 256, "Read block size x");
+    is (scalar @$block,  32, "Read block size y");
+    is ($block->[1][2], 6, "Read block (\$block->[1][2])");
     $block->[1][2] = 7;
     $b->WriteBlock($block);
     $block = $b->ReadBlock();
-    ok($block->[1][2] == 7, "Write block ($block->[1][2])");
+    is($block->[1][2], 7, "Write block (\$block->[1][2])");
 
     $b->SetCategoryNames('a', 'b');
     my @names = $b->GetCategoryNames;
     is_deeply(\@names, ['a', 'b'], "Set and get raster category names (got '@names').");
 
     my $v = $b->GetNoDataValue;
-    ok(!defined($v), "Get nodata value.");
+    is($v, undef, "Get nodata value.");
     $b->SetNoDataValue(13);
     $v = $b->GetNoDataValue;
-    ok($v == 13, "Set nodata value.");
+    is($v, 13, "Set nodata value.");
     $b->SetNoDataValue();
     $v = $b->GetNoDataValue;
-    ok(!defined($v), "Delete nodata value.");
+    is($v, undef, "Delete nodata value.");
     # the color table test with GTiff fails with
     # Cannot modify tag "PhotometricInterpretation" while writing at (a line afterwards this).
     # should investigate why
@@ -311,32 +318,32 @@ if(1){
     $ds = Open($testfile);
     $l = $ds->GetLayer;
     $d = $l->GetDefn();
-    ok($d->GetGeomType eq 'Point', "Create point shapefile and open it.");
+    is($d->GetGeomType, 'Point', "Create point shapefile and open it.");
 }
 
 # test field definitions
 if(1){
     my $f = Geo::GDAL::FFI::FieldDefn->new({Name => 'test', Type => 'Integer'});
-    ok($f->GetName eq 'test', "Field definition: get name");
-    ok($f->GetType eq 'Integer', "Field definition: get type");
+    is($f->GetName, 'test', "Field definition: get name");
+    is($f->GetType, 'Integer', "Field definition: get type");
 
     $f->SetName('test2');
-    ok($f->GetName eq 'test2', "Field definition: name");
+    is($f->GetName, 'test2', "Field definition: name");
 
     $f->SetType('Real');
-    ok($f->GetType eq 'Real', "Field definition: type");
+    is($f->GetType, 'Real', "Field definition: type");
 
     $f->SetSubtype('Float32');
-    ok($f->GetSubtype eq 'Float32', "Field definition: subtype");
+    is($f->GetSubtype, 'Float32', "Field definition: subtype");
 
     $f->SetJustify('Left');
-    ok($f->GetJustify eq 'Left', "Field definition: Justify");
+    is($f->GetJustify, 'Left', "Field definition: Justify");
 
     $f->SetWidth(10);
-    ok($f->GetWidth == 10, "Field definition: Width");
+    is($f->GetWidth, 10, "Field definition: Width");
 
     $f->SetPrecision(10);
-    ok($f->GetPrecision == 10, "Field definition: Precision");
+    is($f->GetPrecision, 10, "Field definition: Precision");
 
     $f->SetIgnored;
     ok($f->IsIgnored, "Field definition: Ignored ");
@@ -351,14 +358,14 @@ if(1){
     ok(!$f->IsNullable, "Field definition: Nullable");
 
     $f = Geo::GDAL::FFI::GeomFieldDefn->new({Name => 'test', GeometryType => 'Point'});
-    ok($f->GetName eq 'test', "Geometry field definition: get name");
-    ok($f->GetType eq 'Point', "Geometry field definition: get type");
+    is($f->GetName, 'test', "Geometry field definition: get name");
+    is($f->GetType, 'Point', "Geometry field definition: get type");
 
     $f->SetName('test2');
-    ok($f->GetName eq 'test2', "Geometry field definition: name");
+    is($f->GetName, 'test2', "Geometry field definition: name");
 
     $f->SetType('LineString');
-    ok($f->GetType eq 'LineString', "Geometry field definition: type");
+    is($f->GetType, 'LineString', "Geometry field definition: type");
 
     $f->SetIgnored;
     ok($f->IsIgnored, "Geometry field definition: Ignored");
@@ -376,8 +383,8 @@ if(1){
 # test feature definitions
 if(1){
     my $d = Geo::GDAL::FFI::FeatureDefn->new;
-    ok($d->GetFieldDefns == 0, "GetFieldCount");
-    ok($d->GetGeomFieldDefns == 1, "GetGeomFieldCount ".(scalar $d->GetGeomFieldDefns));
+    is($d->GetFieldDefns, 0, "GetFieldCount");
+    is($d->GetGeomFieldDefns, 1, "GetGeomFieldCount ".(scalar $d->GetGeomFieldDefns));
 
     $d->SetGeometryIgnored(1);
     ok($d->IsGeometryIgnored, "IsGeometryIgnored");
@@ -390,43 +397,44 @@ if(1){
     ok(!$d->IsStyleIgnored, "IsStyleIgnored");
 
     $d->SetGeomType('Polygon');
-    ok($d->GetGeomType eq 'Polygon', "GeomType");
+    is($d->GetGeomType, 'Polygon', "GeomType");
 
     $d->AddFieldDefn(Geo::GDAL::FFI::FieldDefn->new({Name => 'test', Type => 'Integer'}));
-    ok($d->GetFieldDefns == 1, "GetFieldCount");
+    is($d->GetFieldDefns, 1, "GetFieldCount");
     $d->DeleteFieldDefn(0);
-    ok($d->GetFieldDefns == 0, "DeleteFieldDefn");
+    is($d->GetFieldDefns, 0, "DeleteFieldDefn");
 
     $d->AddGeomFieldDefn(Geo::GDAL::FFI::GeomFieldDefn->new({Name => 'test', GeometryType => 'Point'}));
-    ok($d->GetGeomFieldDefns == 2, "GetGeomFieldCount");
+    is($d->GetGeomFieldDefns, 2, "GetGeomFieldCount");
     $d->DeleteGeomFieldDefn(1);
-    ok($d->GetGeomFieldDefns == 1, "DeleteGeomFieldDefn");
+    is($d->GetGeomFieldDefns, 1, "DeleteGeomFieldDefn");
 }
 
 # test creating a geometry object
 if(1){
     my $g = Geo::GDAL::FFI::Geometry->new('Point');
     my $wkt = $g->AsText;
-    ok($wkt eq 'POINT EMPTY', "Got WKT: '$wkt'.");
+    is($wkt, 'POINT EMPTY', "Got WKT: '$wkt'.");
     $g = Geo::GDAL::FFI::Geometry->new(WKT => 'POINT (1 2)');
-    ok($g->AsText eq 'POINT (1 2)', "Import from WKT");
-    ok($g->GetPointCount == 1, "Point count");
+    is($g->AsText, 'POINT (1 2)', "Import from WKT");
+    is($g->GetPointCount, 1, "Point count");
     my @p = $g->GetPoint;
-    ok(@p == 2 && $p[0] == 1 && $p[1] == 2, "Get point");
+    is_deeply (\@p, [1,2], 'Get point');
     $g->SetPoint(2, 3, 4, 5);
     @p = $g->GetPoint;
     ok(@p == 2 && $p[0] == 2 && $p[1] == 3, "Set point: @p");
+    is_deeply(\@p, [2,3], "Set point: @p");
 
     $g = Geo::GDAL::FFI::Geometry->new('PointZM');
-    ok($g->GetType eq 'PointZM', "Geom constructor respects M & Z");
+    is($g->GetType, 'PointZM', "Geom constructor respects M & Z");
     $g = Geo::GDAL::FFI::Geometry->new('Point25D');
-    ok($g->GetType eq 'Point25D', "Geom constructor respects M & Z");
+    is($g->GetType, 'Point25D', "Geom constructor respects M & Z");
     $g = Geo::GDAL::FFI::Geometry->new('PointM');
-    ok($g->GetType eq 'PointM', "Geom constructor respects M & Z");
+    is($g->GetType, 'PointM', "Geom constructor respects M & Z");
     $wkt = $g->AsText;
-    ok($wkt eq 'POINT M EMPTY', "Got WKT: '$wkt'.");
+    is($wkt, 'POINT M EMPTY', "Got WKT: '$wkt'.");
     $g = Geo::GDAL::FFI::Geometry->new(WKT => 'POINTM (1 2 3)');
-    ok($g->AsText eq 'POINT M (1 2 3)', "Import PointM from WKT");
+    is($g->AsText, 'POINT M (1 2 3)', "Import PointM from WKT");
 }
 
 # test features
@@ -436,20 +444,20 @@ if(1){
     #$d->SetGeomType('PointM');
     $d->AddGeomFieldDefn(Geo::GDAL::FFI::GeomFieldDefn->new({Name => 'test2', GeometryType => 'LineString'}));
     my $f = Geo::GDAL::FFI::Feature->new($d);
-    ok($d->GetGeomFieldDefns == 2, "GetGeometryCount");
+    is($d->GetGeomFieldDefns, 2, "GetGeometryCount");
     #GetGeomFieldDefnRef
     my $g = Geo::GDAL::FFI::Geometry->new('PointM');
     $g->SetPoint(1,2,3,4);
     $f->SetGeomField($g);
     my $h = $f->GetGeomField();
-    ok($h->AsText eq 'POINT M (1 2 4)', "GetGeometry");
+    is($h->AsText, 'POINT M (1 2 4)', "GetGeometry");
 
     $g = Geo::GDAL::FFI::Geometry->new('LineString');
     $g->SetPoint(0, 5,6,7,8);
     $g->SetPoint(1, [7,8]);
     $f->SetGeomField(1 => $g);
     $h = $f->GetGeomField(1);
-    ok($h->AsText eq 'LINESTRING (5 6,7 8)', "2nd geom field");
+    is($h->AsText, 'LINESTRING (5 6,7 8)', "2nd geom field");
 }
 
 # test setting field
@@ -464,46 +472,46 @@ if(1){
     my $n = 'Integer';
 
     my $x = $f->IsFieldSet($n) ? 'set' : 'not set';
-    ok($x eq 'not set', "Not set");
+    is($x, 'not set', "Not set");
     $x = $f->IsFieldNull($n) ? 'null' : 'not null';
-    ok($x eq 'not null', "Not null");
+    is($x, 'not null', "Not null");
 
     $f->SetField($n, undef);
 
     $x = $f->IsFieldSet($n) ? 'set' : 'not set';
-    ok($x eq 'set', "Set");
+    is($x, 'set', "Set");
     $x = $f->IsFieldNull($n) ? 'null' : 'not null';
-    ok($x eq 'null', "Null");
+    is($x, 'null', "Null");
 
     $f->SetField($n);
 
     $x = $f->IsFieldSet($n) ? 'set' : 'not set';
-    ok($x eq 'not set', "Not set");
+    is($x, 'not set', "Not set");
     $x = $f->IsFieldNull($n) ? 'null' : 'not null';
-    ok($x eq 'not null', "Not null");
+    is($x, 'not null', "Not null");
 
     # scalar types
     $f->SetField($n, 13);
     $x = $f->GetField($n);
-    ok($x == 13, "Set/get Integer field: $x");
+    is($x, 13, "Set/get Integer field: $x");
 
   SKIP: {
       skip "64 bit integers not supported in this Perl.",1 unless $Config{use64bitint} eq 'define';
       $n = 'Integer64';
       $f->SetField($n, 0x90000001);
       $x = $f->GetField($n);
-      ok($x == 0x90000001, "Set/get Integer64 field: $x");
+      is($x, 0x90000001, "Set/get Integer64 field: $x");
     }
 
     $f->SetField(Real => 1.123);
     $x = $f->GetField('Real');
     $x = sprintf("%.3f", $x);
-    ok($x eq '1.123', "Set/get Real field: $x");
+    is($x, '1.123', "Set/get Real field: $x");
 
     my $s = decode utf8 => 'åäö';
     $f->SetField(String => $s);
     $x = $f->GetField(String => 'utf8');
-    ok($x eq $s, "Set/get String field: $x");
+    is($x, $s, "Set/get String field: $x");
 
     # WideString not tested
 
@@ -566,7 +574,7 @@ if(1){
 
 # test layer feature manipulation
 if(1){
-    my $dr = GetDriver('Memory');
+    my $dr = GetDriver($mem_driver);
     my $ds = $dr->Create({Name => 'test'});
     my @sr = ();
     if (FindFile('stateplane.csv')) {
@@ -581,10 +589,10 @@ if(1){
     $f->SetGeomField($g);
     $l->CreateFeature($f);
     my $fid = $f->GetFID;
-    ok($fid == 0, "FID of first feature");
+    is($fid, 0, "FID of first feature");
     $f = $l->GetFeature($fid);
-    ok($f->GetField('int') == 5, "Field was set");
-    ok($f->GetGeomField->AsText eq 'POINT (3 5)', "Geom Field was set");
+    is($f->GetField('int'), 5, "Field was set");
+    is($f->GetGeomField->AsText, 'POINT (3 5)', "Geom Field was set");
 }
 
 done_testing();

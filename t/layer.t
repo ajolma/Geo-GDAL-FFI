@@ -6,6 +6,9 @@ use Geo::GDAL::FFI qw/GetDriver HaveGEOS/;
 use Test::More;
 use Data::Dumper;
 
+my $mem_driver = Geo::GDAL::FFI::get_memory_driver;
+
+
 my $schema = {
     GeometryType => 'Polygon',
     Fields => [
@@ -16,7 +19,7 @@ my $schema = {
         ]
 };
 
-my $layer = GetDriver('Memory')->Create->CreateLayer($schema);
+my $layer = GetDriver($mem_driver)->Create->CreateLayer($schema);
 
 my $f = Geo::GDAL::FFI::Feature->new($layer->GetDefn);
 $f->SetField(layer => 1);
@@ -26,7 +29,7 @@ $layer->CreateFeature($f);
 
 $schema->{Fields}[0]{Name} = 'method';
 
-my $method = GetDriver('Memory')->Create->CreateLayer($schema);
+my $method = GetDriver($mem_driver)->Create->CreateLayer($schema);
 
 $f = Geo::GDAL::FFI::Feature->new($method->GetDefn);
 $f->SetField(method => 2);
@@ -89,7 +92,7 @@ eval {
     my $name = $layer->GetName;
     is ($name, '', 'Got correct default name for anonymous layer');
     my $test_name = 'test_name';
-    my $named_layer = GetDriver('Memory')->Create->CreateLayer({Name => $test_name});
+    my $named_layer = GetDriver($mem_driver)->Create->CreateLayer({Name => $test_name});
     $name = $named_layer->GetName;
     is ($name, $test_name, 'Got correct name for named layer');
 }
@@ -210,7 +213,7 @@ is_deeply $layer->GetExtent(1), $exp_extent, 'Got correct layer extent when forc
 
 
 {
-    my $ds = GetDriver('Memory')->Create;
+    my $ds = GetDriver($mem_driver)->Create;
     my $layer  = $ds->CreateLayer($schema);
     my $parent = $layer->GetParentDataset;
 
