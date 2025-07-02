@@ -1,5 +1,8 @@
 Revision history for Perl extension Geo::GDAL::FFI
 
+0.13_001 July 02, 2025
+    - Update tests to hopefully avoid failures possibly related to locales
+
 0.13 June 26, 2025
     - Re-arrange the SR tests to allow for an issue with Alien::gdal on Windows.
 
