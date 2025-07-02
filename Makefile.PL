@@ -12,6 +12,7 @@ my %args = (
     ABSTRACT_FROM => "lib/Geo/GDAL/FFI.pm",
     VERSION_FROM => "lib/Geo/GDAL/FFI.pm",
     LICENSE => "artistic_2",
+    MIN_PERL_VERSION => '5.010',
     CONFIGURE_REQUIRES => {
         'Alien::gdal' => 0,
     },
