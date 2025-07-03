@@ -218,7 +218,12 @@ if(1){
     $ds->SetGeoTransform($transform);
     my $inv = [0,0,0,0,0,0];
     ok(Geo::GDAL::FFI::GDALInvGeoTransform($transform, $inv), "Invert geotransform returned true");
-    is_deeply ($inv, [-5, 0.5, 0, -6 - 2/3, 0, 1/3], "Invert geotransform result");
+    #  avoid precision isssues.  6dp should be sufficient.  
+    is_deeply (
+        [map {sprintf "%.6f", $_} @$inv],
+        [map {sprintf "%.6f", $_} (-5, 0.5, 0, -6 - 2/3, 0, 1/3)],
+        "Invert geotransform result",
+    );
     my ($x, $y);
     Geo::GDAL::FFI::GDALApplyGeoTransform($transform,5,5,\$x,\$y);
     is($x, 20, "Applied geotransform to pixel coords, x");
