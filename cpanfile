@@ -1,0 +1,7 @@
+requires 'ExtUtils::MakeMaker' => '0';
+requires 'Test::More'          => '0';
+requires 'Alien::gdal'         => '0';
+requires 'FFI::Platypus'       => "0";
+requires 'PDL'                 => "0";
+requires 'PkgConfig'           => "0";
+requires 'Sort::Versions'      => '0';
