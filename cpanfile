@@ -5,3 +5,5 @@ requires 'FFI::Platypus'       => "0";
 requires 'PDL'                 => "0";
 requires 'PkgConfig'           => "0";
 requires 'Sort::Versions'      => '0';
+requires 'Test::TempDir::Tiny' => "0";
+requires 'Test::Exception'     => "0";
