@@ -19,10 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - uses: shogo82148/actions-setup-perl@v1
-        with:
-          perl-version: '5.38'
-
       - name: cmake for geos
         run: |
           sudo apt-get --yes install cmake
@@ -35,6 +31,12 @@ jobs:
 
       - name: perl -V
         run: perl -V
+
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: '5.38'
+          install-modules-with: cpanm
+          install-modules-args: --with-develop --with-configure --verbose
 
       - name: Prepare for cache
         run: |
