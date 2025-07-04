@@ -240,13 +240,21 @@ sub GetPiddle {
     my $buf = ' ' x ($bufysize * $bufxsize * $bytes_per_cell);
     my ($pointer, $size) = scalar_to_buffer $buf;
     Geo::GDAL::FFI::GDALRasterIO($$self, $Geo::GDAL::FFI::Read, $xoff, $yoff, $xsize, $ysize, $pointer, $bufxsize, $bufysize, $t, 0, 0);
-    my $pdl = PDL->new;
-    $pdl->set_datatype($pdl_t);
-    $pdl->setdims([$xdim, $ydim]);
-    my $data = $pdl->get_dataref();
-    # FIXME: see http://pdl.perl.org/PDLdocs/API.html how to wrap $buf into a piddle
-    $$data = $buf;
-    $pdl->upd_data;
+    my $pdl;
+    if ($PDL::VERSION >= 2.091) {
+        $pdl = PDL->new_around_datasv(0+\$buf);
+        $pdl->set_datatype($pdl_t);
+        $pdl->setdims([$xdim, $ydim]);
+    }
+    else {
+        $pdl = PDL->new;
+        $pdl->set_datatype($pdl_t);
+        $pdl->setdims([ $xdim, $ydim ]);
+        my $data = $pdl->get_dataref();
+        # FIXME: see http://pdl.perl.org/PDLdocs/API.html how to wrap $buf into a piddle
+        $$data = $buf;
+        $pdl->upd_data;
+    }
     # FIXME: we want approximate equality since no data value can be very large floating point value
     my $bad = GetNoDataValue($self);
     return $pdl->setbadif($pdl == $bad) if defined $bad;
