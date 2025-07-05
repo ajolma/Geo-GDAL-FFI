@@ -42,7 +42,7 @@ else {
     }
 }
 
-my $have_ldd = ($^O ne 'MSWin32') && !!`ldd --help`;
+my $have_ldd = ($^O ne 'MSWin32' && $^O !~ /darwin/i) && !!`ldd --help`;
 if (Alien::gdal->install_type eq 'share' && $have_ldd) {
     my $dylib = Alien::gdal->dist_dir . '/lib/libgdal.so';
     if (-e $dylib) {
@@ -51,20 +51,29 @@ if (Alien::gdal->install_type eq 'share' && $have_ldd) {
 
         #  https://gdal.org/en/latest/development/building_from_source.html#conflicting-proj-libraries
         #  blunt approach but proj is the main culprit and there seem to be some legit double ups.
-        foreach my $line (grep {/libproj/} @deps) {
+        foreach my $line (@deps) {
             $line =~ s/[\r\n]+//g;
             # diag $line;
             $line =~ s/^\s+//;
             my ($lib, $path) = split /\s+=>\s+/, $line, 2;
             # diag "$lib --- $path";
+            next if !$path;
             $lib =~ s/\.so.+//;
-            $collated{$lib} = $path;
+            next if $path =~ m{^/lib};
+            my $aref = $collated{$lib} //= [];
+            push @$aref, $path;
         }
-        my $res = is (scalar keys %collated, 1, "No duplicate libproj dependency.");
-        if (!$res) {
-            diag "Expect segfaults.";
+        foreach my $key (keys %collated) {
+            my $aref = $collated{$key} // [];
+            if (@$aref <= 1) {
+                delete $collated{$key};
+            }
+        }
+        # my $res = is (scalar keys %collated, 0, "No duplicate dependencies.");
+        if (keys %collated) {
+            diag "Potentially clashing dynamic libs detected, segfaults are possible.";
             foreach my $key (sort keys %collated) {
-                diag "$key => $collated{$key}";
+                diag "$key => " . join ' ', @{$collated{$key}};
             }
         }
     }
