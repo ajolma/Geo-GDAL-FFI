@@ -1,5 +1,9 @@
 Revision history for Perl extension Geo::GDAL::FFI
 
+0.13_003 July 05, 2025
+    - Use a faster method to convert a raster to a PDL ndarray.
+    - More test diagnostics to explore cpantesters issues
+
 0.13_002 July 04, 2025
     - More test updates, and some diagnostics
 
