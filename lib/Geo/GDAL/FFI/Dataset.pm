@@ -554,6 +554,7 @@ SpatialReference are ignored.
 =back
 
 =head2 GetLayerCount
+
  my $count = $dataset->GetLayerCount();
 
 
@@ -564,6 +565,31 @@ SpatialReference are ignored.
 If $name is strictly an integer, then returns the (name-1)th layer in
 the dataset, otherwise returns the layer whose name is $name. Without
 arguments returns the first layer.
+
+If there is any risk of ambiguity, e.g. the fourth layer is called "2",
+then L</GetLayerByName> or L</GetLayerByIndex> can be used.
+
+=head2 GetLayerByName
+
+ my $layer = $dataset->GetLayerByName($name);
+
+Returns the layer whose name is C<$name>. Without arguments returns the first layer.
+
+=head2 GetLayerByIndex
+
+ my $layer = $dataset->GetLayerByIndex($i);
+
+Returns the ith layer in the dataset. Without arguments returns the first layer.
+Throws an exception on non-numeric input and integerises any non-integer numbers.
+
+=head2 GetLayerNames
+
+ my @array = $dataset->GetLayerNames();
+ my $aref  = $dataset->GetLayerNames();
+
+Returns an array of the layer names, in index order.
+Returns an array ref in scalar context.
+
 
 =head2 CopyLayer
 
