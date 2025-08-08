@@ -27,6 +27,13 @@ foreach my $i (1..3) {
 
 is ($ds->GetLayerCount, 3, 'Got expected number of layers');
 
+{
+    my $ds2 = Geo::GDAL::FFI::Open($gpkg_file);
+    for my $i (0 .. $ds2->GetLayerCount - 1) {
+        ok($ds2->GetLayer($i), "Got layer $i");
+    }
+}
+
 dies_ok (
     sub {$ds->GetLayer ('not_exists')},
     'GetLayer exception for non-existent layer name',

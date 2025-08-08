@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Carp;
 use base 'Geo::GDAL::FFI::Object';
-use Scalar::Util qw /blessed/;
+use Scalar::Util qw /blessed looks_like_number/;
 
 our $VERSION = '0.13_003';
 
@@ -95,6 +95,33 @@ sub GetBands {
 sub GetLayerCount {
     my ($self) = @_;
     return Geo::GDAL::FFI::GDALDatasetGetLayerCount($$self);
+}
+
+sub GetLayerByName {
+    my ($self, $name) = @_;
+    confess "Name arg is undefined" if !defined $name;
+    my $layer = Geo::GDAL::FFI::GDALDatasetGetLayerByName($$self, $name);
+    if (!$layer) {
+        my $msg = Geo::GDAL::FFI::error_msg()
+            // "Could not access layer $name in data set.";
+        confess $msg if $msg;
+    }
+    Geo::GDAL::FFI::_register_parent_ref ($layer, $self);
+    return bless \$layer, 'Geo::GDAL::FFI::Layer';
+}
+
+sub GetLayerByIndex {
+    my ($self, $index) = @_;
+    $index //= 0;
+    croak "Index $index is not numeric" if !looks_like_number $index;
+    my $layer = Geo::GDAL::FFI::GDALDatasetGetLayer($$self, int $index);
+    if (!$layer) {
+        my $msg = Geo::GDAL::FFI::error_msg()
+            // "Could not access layer $index in data set.";
+        confess $msg if $msg;
+    }
+    Geo::GDAL::FFI::_register_parent_ref ($layer, $self);
+    return bless \$layer, 'Geo::GDAL::FFI::Layer';
 }
 
 
