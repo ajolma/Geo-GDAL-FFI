@@ -13,19 +13,48 @@ my $dir = tempdir();
 my $gpkg_file = path ($dir, 'test.gpkg');
 my $ds = GetDriver('GPKG')->Create($gpkg_file);
 my $sr = Geo::GDAL::FFI::SpatialReference->new(EPSG => 3067);
+my @layernames;
 foreach my $i (1..3) {
+    my $name = "test$i";
+    push @layernames, $name;
     my $l = $ds->CreateLayer({
-        Name => "test$i",
+        Name => $name,
         SpatialReference => $sr,
         GeometryType => 'Point',
     });
     my $d = $l->GetDefn();
     my $f = Geo::GDAL::FFI::Feature->new($d);
     $l->CreateFeature($f);
+
 }
 
 
 is ($ds->GetLayerCount, 3, 'Got expected number of layers');
+
+
+{
+    my $ds2 = Geo::GDAL::FFI::Open($gpkg_file);
+    for my $i (0 .. $ds2->GetLayerCount - 1) {
+        my $layer = $ds2->GetLayer($i);
+        ok($layer, "Got layer $i");
+        is ($layer->GetName, $layernames[$i], 'Layer has expected name');
+    }
+
+    for my $i (0 .. $ds2->GetLayerCount - 1) {
+        my $layer = $ds2->GetLayerByIndex($i);
+        ok($ds2, "Got layer by index $i");
+        is ($layer->GetName, $layernames[$i], 'Layer has expected name');
+    }
+
+    for my $i (0 .. $ds2->GetLayerCount - 1) {
+        my $name = $layernames[$i];
+        my $layer = $ds2->GetLayerByName($name);
+        ok($ds2, "Got layer by name $name, index $i");
+        is ($layer->GetName, $name, 'Layer has expected name');
+    }
+
+    is_deeply scalar $ds2->GetLayerNames, \@layernames, "GetLayerNames array matches";
+}
 
 dies_ok (
     sub {$ds->GetLayer ('not_exists')},

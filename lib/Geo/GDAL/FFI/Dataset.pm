@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Carp;
 use base 'Geo::GDAL::FFI::Object';
-use Scalar::Util qw /blessed/;
+use Scalar::Util qw /blessed looks_like_number/;
 
 our $VERSION = '0.13_003';
 
@@ -95,6 +95,43 @@ sub GetBands {
 sub GetLayerCount {
     my ($self) = @_;
     return Geo::GDAL::FFI::GDALDatasetGetLayerCount($$self);
+}
+
+sub GetLayerNames {
+    my ($self) = @_;
+
+    my @layernames;
+    for my $i (0 .. $self->GetLayerCount - 1) {
+        push @layernames, $self->GetLayerByIndex($i)->GetName;
+    }
+    return wantarray ? @layernames : \@layernames;
+}
+
+sub GetLayerByName {
+    my ($self, $name) = @_;
+    confess "Name arg is undefined" if !defined $name;
+    my $layer = Geo::GDAL::FFI::GDALDatasetGetLayerByName($$self, $name);
+    if (!$layer) {
+        my $msg = Geo::GDAL::FFI::error_msg()
+            // "Could not access layer $name in data set.";
+        confess $msg if $msg;
+    }
+    Geo::GDAL::FFI::_register_parent_ref ($layer, $self);
+    return bless \$layer, 'Geo::GDAL::FFI::Layer';
+}
+
+sub GetLayerByIndex {
+    my ($self, $index) = @_;
+    $index //= 0;
+    croak "Index $index is not numeric" if !looks_like_number $index;
+    my $layer = Geo::GDAL::FFI::GDALDatasetGetLayer($$self, int $index);
+    if (!$layer) {
+        my $msg = Geo::GDAL::FFI::error_msg()
+            // "Could not access layer $index in data set.";
+        confess $msg if $msg;
+    }
+    Geo::GDAL::FFI::_register_parent_ref ($layer, $self);
+    return bless \$layer, 'Geo::GDAL::FFI::Layer';
 }
 
 
@@ -517,6 +554,7 @@ SpatialReference are ignored.
 =back
 
 =head2 GetLayerCount
+
  my $count = $dataset->GetLayerCount();
 
 
@@ -527,6 +565,31 @@ SpatialReference are ignored.
 If $name is strictly an integer, then returns the (name-1)th layer in
 the dataset, otherwise returns the layer whose name is $name. Without
 arguments returns the first layer.
+
+If there is any risk of ambiguity, e.g. the fourth layer is called "2",
+then L</GetLayerByName> or L</GetLayerByIndex> can be used.
+
+=head2 GetLayerByName
+
+ my $layer = $dataset->GetLayerByName($name);
+
+Returns the layer whose name is C<$name>. Without arguments returns the first layer.
+
+=head2 GetLayerByIndex
+
+ my $layer = $dataset->GetLayerByIndex($i);
+
+Returns the ith layer in the dataset. Without arguments returns the first layer.
+Throws an exception on non-numeric input and integerises any non-integer numbers.
+
+=head2 GetLayerNames
+
+ my @array = $dataset->GetLayerNames();
+ my $aref  = $dataset->GetLayerNames();
+
+Returns an array of the layer names, in index order.
+Returns an array ref in scalar context.
+
 
 =head2 CopyLayer
 

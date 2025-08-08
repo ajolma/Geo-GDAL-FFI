@@ -42,7 +42,9 @@ else {
     }
 }
 
-my $have_ldd = ($^O ne 'MSWin32' && $^O !~ /darwin/i) && !!`ldd --help`;
+#  Crude and incomplete way of limiting to linux
+#  bsd ldd has different args
+my $have_ldd = ($^O ne 'MSWin32' && $^O !~ /darwin/i && $^O !~ /bsd|dragonfly/) && !!`ldd --help`;
 if (Alien::gdal->install_type eq 'share' && $have_ldd) {
     my $dylib = Alien::gdal->dist_dir . '/lib/libgdal.so';
     if (-e $dylib) {
