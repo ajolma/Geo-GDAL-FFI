@@ -97,6 +97,16 @@ sub GetLayerCount {
     return Geo::GDAL::FFI::GDALDatasetGetLayerCount($$self);
 }
 
+sub GetLayerNames {
+    my ($self) = @_;
+
+    my @layernames;
+    for my $i (0 .. $self->GetLayerCount - 1) {
+        push @layernames, $self->GetLayerByIndex($i)->GetName;
+    }
+    return wantarray ? @layernames : \@layernames;
+}
+
 sub GetLayerByName {
     my ($self, $name) = @_;
     confess "Name arg is undefined" if !defined $name;

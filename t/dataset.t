@@ -52,6 +52,8 @@ is ($ds->GetLayerCount, 3, 'Got expected number of layers');
         ok($ds2, "Got layer by name $name, index $i");
         is ($layer->GetName, $name, 'Layer has expected name');
     }
+
+    is_deeply scalar $ds2->GetLayerNames, \@layernames, "GetLayerNames array matches";
 }
 
 dies_ok (
