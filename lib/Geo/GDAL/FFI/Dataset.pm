@@ -6,7 +6,7 @@ use Carp;
 use base 'Geo::GDAL::FFI::Object';
 use Scalar::Util qw /blessed looks_like_number/;
 
-our $VERSION = '0.13_003';
+our $VERSION = '0.13_004';
 
 sub DESTROY {
     my $self = shift;

@@ -1,5 +1,8 @@
 Revision history for Perl extension Geo::GDAL::FFI
 
+0.13_004 August 08, 2025
+    - Add Dataset methods GetLayerNameArray, GetLayerByIndex and GetLayerByName
+
 0.13_003 July 05, 2025
     - Use a faster method to convert a raster to a PDL ndarray.
     - More test diagnostics to explore cpantesters issues
