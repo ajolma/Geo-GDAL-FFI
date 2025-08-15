@@ -6,7 +6,7 @@ use Encode qw(decode encode);
 use Carp;
 use FFI::Platypus::Buffer;
 
-our $VERSION = '0.13_004';
+our $VERSION = '0.14';
 
 sub Open {
     my ($class, $path, $access) = @_;

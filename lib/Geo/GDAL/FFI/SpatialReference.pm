@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use Carp;
 
-our $VERSION = '0.13_004';
+our $VERSION = '0.14';
 
 sub new {
     my ($class, $arg, @arg) = @_;
