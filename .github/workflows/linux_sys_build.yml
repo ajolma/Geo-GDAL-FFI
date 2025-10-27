@@ -25,6 +25,7 @@ jobs:
 
       - name: system libs
         run: |
+          sudo apt-get update
           sudo apt-get --yes install cmake libgdal-dev
 
       - name: Locale check
