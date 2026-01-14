@@ -311,9 +311,11 @@ sub ConcaveHull {
     my ($self, $ratio, $allow_holes) = @_;
     #  A ratio of 0 causes issues similar to
     #  https://github.com/libgeos/geos/issues/1212
+    $ratio //= 0.001;
+    $ratio = 0 if $ratio < 0;
     return bless \Geo::GDAL::FFI::OGR_G_ConcaveHull(
         $$self,
-        $ratio // 0.001,
+        $ratio,
         $allow_holes
     ),
     'Geo::GDAL::FFI::Geometry';
