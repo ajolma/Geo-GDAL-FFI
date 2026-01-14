@@ -307,6 +307,18 @@ sub ConvexHull {
     return bless \Geo::GDAL::FFI::OGR_G_ConvexHull($$self), 'Geo::GDAL::FFI::Geometry';
 }
 
+sub ConcaveHull {
+    my ($self, $ratio, $allow_holes) = @_;
+    #  A ratio of 0 causes issues similar to
+    #  https://github.com/libgeos/geos/issues/1212
+    return bless \Geo::GDAL::FFI::OGR_G_ConcaveHull(
+        $$self,
+        $ratio // 0.001,
+        $allow_holes
+    ),
+    'Geo::GDAL::FFI::Geometry';
+}
+
 sub Buffer {
     my ($self, $dist, $quad_segs) = @_;
     return bless \Geo::GDAL::FFI::OGR_G_Buffer($$self, $dist, $quad_segs), 'Geo::GDAL::FFI::Geometry';
@@ -609,6 +621,13 @@ described in GDAL documentation.
 =head2 Boundary
 
 =head2 ConvexHull
+
+=head2 ConcaveHull($ratio, $allow_holes)
+
+Generates a concave hull of the input geometry.
+
+If C<$ratio> is undefined then it defaults to 0.001 as a value of 0 can
+result in unusual segments.
 
 =head2 Buffer
 

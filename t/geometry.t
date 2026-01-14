@@ -78,13 +78,24 @@ SKIP: {
      ok($wkt eq $test->AsText);
 }
 
- SKIP: {
-     skip "No GEOS support in GDAL.", 5 unless $have_geos;
-     skip "Needs version >= 3.3", 1 unless $version >= 30300;
-     my $wkt = 'POLYGON ((0 -1,-1 0,0 1,1 0,0 -1))';
-     my $geom = Geo::GDAL::FFI::Geometry->new(WKT => $wkt);
-     my $test = $geom->Normalize();
-     ok($test->AsText eq 'POLYGON ((-1 0,0 1,1 0,0 -1,-1 0))');
+SKIP: {
+    skip "No GEOS support in GDAL.", 5 unless $have_geos;
+    skip "Needs version >= 3.3", 1 unless $version >= 30300;
+    my $wkt = 'POLYGON ((0 -1,-1 0,0 1,1 0,0 -1))';
+    my $geom = Geo::GDAL::FFI::Geometry->new(WKT => $wkt);
+    my $test = $geom->Normalize();
+    ok($test->AsText eq 'POLYGON ((-1 0,0 1,1 0,0 -1,-1 0))');
 }
+
+SKIP: {
+    skip "No GEOS support in GDAL.", 5 unless $have_geos;
+    skip "Needs version >= 3.6", 1 unless $version >= 30600;
+    my $wkt = 'MULTIPOINT ((0 -1),(-1 0),(0 1),(1 0),(0 -1))';
+    my $geom = Geo::GDAL::FFI::Geometry->new(WKT => $wkt);
+    my $test = $geom->ConcaveHull(0.5)->Normalize;
+    is($test->AsText, 'POLYGON ((-1 0,0 1,1 0,0 -1,-1 0))', 'ConcaveHull');
+}
+
+
 
 done_testing();
