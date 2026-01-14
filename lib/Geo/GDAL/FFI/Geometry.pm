@@ -340,6 +340,13 @@ sub Union {
     return bless \$self, 'Geo::GDAL::FFI::Geometry';
 }
 
+sub UnaryUnion {
+    my ($self) = @_;
+    $self = Geo::GDAL::FFI::OGR_G_UnaryUnion($$self);
+    confess Geo::GDAL::FFI::error_msg() unless $self;
+    return bless \$self, 'Geo::GDAL::FFI::Geometry';
+}
+
 sub Difference {
     my ($self, $geom) = @_;
     confess "Undefined geometry." unless $geom;
@@ -634,6 +641,8 @@ result in unusual segments.
 =head2 Intersection
 
 =head2 Union
+
+=head2 UnaryUnion
 
 =head2 Difference
 

@@ -96,6 +96,11 @@ SKIP: {
     is($test->AsText, 'POLYGON ((-1 0,0 1,1 0,0 -1,-1 0))', 'ConcaveHull');
 }
 
-
+{
+    my $wkt = 'MULTIPOLYGON (((0 0, 0 1, 1 1, 1 0, 0 0)),((1 0, 1 1, 2 1, 2 0, 1 0)))';
+    my $geom = Geo::GDAL::FFI::Geometry->new(WKT => $wkt);
+    my $test = $geom->UnaryUnion()->Normalize;
+    is($test->AsText, 'POLYGON ((0 0,0 1,1 1,2 1,2 0,1 0,0 0))', 'UnaryUnion');
+}
 
 done_testing();
