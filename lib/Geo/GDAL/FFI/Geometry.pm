@@ -319,6 +319,13 @@ sub ConcaveHull {
     'Geo::GDAL::FFI::Geometry';
 }
 
+sub Segmentize {
+    my ($self, $max_len) = @_;
+    my $result = Geo::GDAL::FFI::OGR_G_Segmentize($$self, $max_len);
+    confess Geo::GDAL::FFI::error_msg() unless $result;
+    return $self;
+}
+
 sub Buffer {
     my ($self, $dist, $quad_segs) = @_;
     return bless \Geo::GDAL::FFI::OGR_G_Buffer($$self, $dist, $quad_segs), 'Geo::GDAL::FFI::Geometry';
@@ -667,6 +674,12 @@ result in unusual segments.
 =head2 IsSimple
 
 =head2 IsRing
+
+=head2 Segmentize
+
+$geom->Segmentize($max_length)
+
+Requires GEOS 3.10.
 
 =head2 GetEnvelope
 

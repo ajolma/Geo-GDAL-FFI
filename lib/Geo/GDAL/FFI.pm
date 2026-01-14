@@ -973,7 +973,7 @@ $ffi->attach('OGR_GeomTransformer_Destroy' => [qw/opaque/] => 'void');
 $ffi->attach('OGR_G_Simplify' => [qw/opaque double/] => 'opaque');
 $ffi->attach('OGR_G_SimplifyPreserveTopology' => [qw/opaque double/] => 'opaque');
 $ffi->attach('OGR_G_DelaunayTriangulation' => [qw/opaque double int/] => 'opaque');
-$ffi->attach('OGR_G_Segmentize' => [qw/opaque double/] => 'void');
+$ffi->attach('OGR_G_Segmentize' => [qw/opaque double/] => 'bool');
 $ffi->attach('OGR_G_Intersects' => [qw/opaque opaque/] => 'int');
 $ffi->attach('OGR_G_Equals' => [qw/opaque opaque/] => 'int');
 $ffi->attach('OGR_G_Disjoint' => [qw/opaque opaque/] => 'int');
