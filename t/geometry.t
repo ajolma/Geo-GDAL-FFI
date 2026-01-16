@@ -78,13 +78,49 @@ SKIP: {
      ok($wkt eq $test->AsText);
 }
 
- SKIP: {
-     skip "No GEOS support in GDAL.", 5 unless $have_geos;
-     skip "Needs version >= 3.3", 1 unless $version >= 30300;
-     my $wkt = 'POLYGON ((0 -1,-1 0,0 1,1 0,0 -1))';
-     my $geom = Geo::GDAL::FFI::Geometry->new(WKT => $wkt);
-     my $test = $geom->Normalize();
-     ok($test->AsText eq 'POLYGON ((-1 0,0 1,1 0,0 -1,-1 0))');
+SKIP: {
+    skip "No GEOS support in GDAL.", 5 unless $have_geos;
+    skip "Needs version >= 3.3", 1 unless $version >= 30300;
+    my $wkt = 'POLYGON ((0 -1,-1 0,0 1,1 0,0 -1))';
+    my $geom = Geo::GDAL::FFI::Geometry->new(WKT => $wkt);
+    my $test = $geom->Normalize();
+    ok($test->AsText eq 'POLYGON ((-1 0,0 1,1 0,0 -1,-1 0))');
+}
+
+SKIP: {
+    skip "No GEOS support in GDAL.", 5 unless $have_geos;
+    skip "Needs version >= 3.6", 1 unless $version >= 30600;
+    my $wkt = 'MULTIPOINT ((0 -1),(-1 0),(0 1),(1 0),(0 -1))';
+    my $geom = Geo::GDAL::FFI::Geometry->new(WKT => $wkt);
+    my $test = $geom->ConcaveHull(0.5)->Normalize;
+    is($test->AsText, 'POLYGON ((-1 0,0 1,1 0,0 -1,-1 0))', 'ConcaveHull');
+}
+
+SKIP: {
+    skip "No GEOS support in GDAL.", 5 unless $have_geos;
+    skip "Needs version >= 3.10", 1 unless $version >= 31000;
+    my $wkt = 'MULTIPOLYGON (((0 -10, -10 0, 0 10, 10 0, 0 -10)))';
+    my $geom = Geo::GDAL::FFI::Geometry->new(WKT => $wkt);
+    my $test = $geom->Segmentize(5)->Normalize;
+    my $exp = <<'EOE'
+    MULTIPOLYGON ((
+        (-10 0,-6.66666666666667 3.33333333333333,-3.33333333333333 6.66666666666667,
+         0 10,3.33333333333333 6.66666666666667,6.66666666666667 3.33333333333333,
+         10 0,6.66666666666667 -3.33333333333333,3.33333333333333 -6.66666666666667,
+         0 -10,-3.33333333333333 -6.66666666666667,-6.66666666666667 -3.33333333333333,
+         -10 0)))';
+EOE
+    ;
+    $exp = Geo::GDAL::FFI::Geometry->new(WKT => $exp);
+    is($test->AsText, $exp->AsText, 'Segmentize');
+}
+
+{
+    skip "No GEOS support in GDAL.", 5 unless $have_geos;
+    my $wkt = 'MULTIPOLYGON (((0 0, 0 1, 1 1, 1 0, 0 0)),((1 0, 1 1, 2 1, 2 0, 1 0)))';
+    my $geom = Geo::GDAL::FFI::Geometry->new(WKT => $wkt);
+    my $test = $geom->UnaryUnion()->Normalize;
+    is($test->AsText, 'POLYGON ((0 0,0 1,1 1,2 1,2 0,1 0,0 0))', 'UnaryUnion');
 }
 
 done_testing();

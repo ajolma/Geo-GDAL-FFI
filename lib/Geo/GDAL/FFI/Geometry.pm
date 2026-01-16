@@ -307,6 +307,27 @@ sub ConvexHull {
     return bless \Geo::GDAL::FFI::OGR_G_ConvexHull($$self), 'Geo::GDAL::FFI::Geometry';
 }
 
+sub ConcaveHull {
+    my ($self, $ratio, $allow_holes) = @_;
+    #  A ratio of 0 causes issues similar to
+    #  https://github.com/libgeos/geos/issues/1212
+    $ratio //= 0.001;
+    $ratio = 0 if $ratio < 0;
+    return bless \Geo::GDAL::FFI::OGR_G_ConcaveHull(
+        $$self,
+        $ratio,
+        $allow_holes
+    ),
+    'Geo::GDAL::FFI::Geometry';
+}
+
+sub Segmentize {
+    my ($self, $max_len) = @_;
+    my $result = Geo::GDAL::FFI::OGR_G_Segmentize($$self, $max_len);
+    confess Geo::GDAL::FFI::error_msg() unless $result;
+    return $self;
+}
+
 sub Buffer {
     my ($self, $dist, $quad_segs) = @_;
     return bless \Geo::GDAL::FFI::OGR_G_Buffer($$self, $dist, $quad_segs), 'Geo::GDAL::FFI::Geometry';
@@ -324,6 +345,13 @@ sub Union {
     my ($self, $geom) = @_;
     confess "Undefined geometry." unless $geom;
     $self = Geo::GDAL::FFI::OGR_G_Union($$self, $$geom);
+    confess Geo::GDAL::FFI::error_msg() unless $self;
+    return bless \$self, 'Geo::GDAL::FFI::Geometry';
+}
+
+sub UnaryUnion {
+    my ($self) = @_;
+    $self = Geo::GDAL::FFI::OGR_G_UnaryUnion($$self);
     confess Geo::GDAL::FFI::error_msg() unless $self;
     return bless \$self, 'Geo::GDAL::FFI::Geometry';
 }
@@ -610,11 +638,20 @@ described in GDAL documentation.
 
 =head2 ConvexHull
 
+=head2 ConcaveHull($ratio, $allow_holes)
+
+Generates a concave hull of the input geometry.
+
+If C<$ratio> is undefined then it defaults to 0.001 as a value of 0 can
+result in unusual segments.
+
 =head2 Buffer
 
 =head2 Intersection
 
 =head2 Union
+
+=head2 UnaryUnion
 
 =head2 Difference
 
@@ -639,6 +676,12 @@ described in GDAL documentation.
 =head2 IsSimple
 
 =head2 IsRing
+
+=head2 Segmentize
+
+$geom->Segmentize($max_length)
+
+Requires GEOS 3.10.
 
 =head2 GetEnvelope
 
