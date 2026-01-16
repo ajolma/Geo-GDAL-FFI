@@ -6,7 +6,7 @@ use Carp;
 use FFI::Platypus::Buffer;
 use base 'Geo::GDAL::FFI::Object';
 
-our $VERSION = '0.14';
+our $VERSION = '0.15';
 
 sub DESTROY {
     my $self = shift;

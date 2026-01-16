@@ -1,4 +1,7 @@
 Revision history for Perl extension Geo::GDAL::FFI
+0.15 January 16, 2026
+    - Add geometry methods for Segmentize, ConcaveHull and UnaryUnion
+    - Fix test failures when ALien::gdal is not used (@sebastic++)
 
 0.14 August 15, 2025
     - A non-dev release of the 0.13_00x series.
