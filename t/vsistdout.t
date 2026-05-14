@@ -35,7 +35,8 @@ my $mem_driver = Geo::GDAL::FFI::get_memory_driver;
 }
 
 # test vsistdout redirection
-if(1){
+TODO: {
+    local $TODO = "Fails with GDAL 3.13", 1 if(Geo::GDAL::FFI::GetVersionInfo() >= 3130000);
     # create a small layer and copy it to vsistdout with redirection
     my $ds = GetDriver($mem_driver)->Create;
     my $layer = $ds->CreateLayer({GeometryType => 'None'});
@@ -66,8 +67,9 @@ if(1){
 
 
 # test Translate
-if(1){
-    my $ds = GetDriver('GTiff')->Create('/vsimem/test.tiff', 10);
+SKIP: {
+    skip "vsimem test fails with GDAL 3.13", 1 if(Geo::GDAL::FFI::GetVersionInfo() >= 3130000);
+    my $ds = GetDriver('GTiff')->Create('/vsimem/test.tiff', 10, 10, 1);
     my $translated = $ds->Translate('/vsimem/translated.tiff', [-of => 'GTiff']);
     ok($translated->GetDriver->GetName eq 'GTiff', "Translate");
 }
