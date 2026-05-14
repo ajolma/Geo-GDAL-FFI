@@ -1,4 +1,12 @@
 Revision history for Perl extension Geo::GDAL::FFI
+
+0.16 May 14, 2026
+    - Geometry class: Add GetExtent and GetExtent3D.
+      Convenience wrappers around the GetEnvelope methods
+      to return values in the same order as GGF::Layer::GetExtent.
+    - Clamp concave maximum hull ratios to 1.
+    - Skip or to-do vsistdout tests for GDAL 3.13 (@sebastic++).
+
 0.15 January 16, 2026
     - Add geometry methods for Segmentize, ConcaveHull and UnaryUnion
     - Fix test failures when ALien::gdal is not used (@sebastic++)
