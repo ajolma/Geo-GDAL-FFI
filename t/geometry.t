@@ -67,6 +67,13 @@ SKIP: {
 
     my $envelope3d = $geom->GetEnvelope3D;
     is_deeply ($envelope3d, [-1,1,-1,1,0,1], 'correct 3D geometry envelope');
+
+    my $extent = $geom->GetExtent;
+    is_deeply ($extent, [-1,-1,1,1], 'correct geometry extent');
+
+    my $extent3d = $geom->GetExtent3D;
+    is_deeply ($extent3d, [-1,-1,0,1,1,1], 'correct 3D geometry extent');
+
 }
 
  SKIP: {
