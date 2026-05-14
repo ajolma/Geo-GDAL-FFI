@@ -313,6 +313,7 @@ sub ConcaveHull {
     #  https://github.com/libgeos/geos/issues/1212
     $ratio //= 0.001;
     $ratio = 0 if $ratio < 0;
+    $ratio = 1 if $ratio > 1;
     return bless \Geo::GDAL::FFI::OGR_G_ConcaveHull(
         $$self,
         $ratio,
