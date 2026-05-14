@@ -436,11 +436,23 @@ sub GetEnvelope {
     return $envelope;
 }
 
+sub GetExtent {
+    my ($self) = @_;
+    my @ext = @{$self->GetEnvelope}[0, 2, 1, 3]; #  x1,y1,x2,y2
+    return \@ext;
+}
+
 sub GetEnvelope3D {
     my ($self) = @_;
     my $envelope = [0,0,0,0,0,0];
     Geo::GDAL::FFI::OGR_G_GetEnvelope3D ($$self, $envelope);
     return $envelope;
+}
+
+sub GetExtent3D {
+    my ($self) = @_;
+    my @ext = @{$self->GetEnvelope3D}[0, 2, 4, 1, 3, 5]; #  x1,y1,z1,x2,y2,z2
+    return \@ext;
 }
 
 sub MakeValid {
@@ -693,6 +705,21 @@ Returns a four element array reference containing
 
 Returns a six element array reference containing
 [Xmin, Xmax, Ymin, Ymax, Zmin, Zmax].
+
+=head2 GetExtent
+
+Returns a four element array reference containing
+[Xmin, Ymin, Xmax, Ymax].
+
+This and GetExtent3D are convenience methods given many systems
+need data in the order x1,y1,x2,y2.
+The order is also consistent with the L<Geo::GDAL::FFI::Layer> GetExtent method.
+
+=head2 GetExtent3D
+
+Returns a six element array reference containing
+[Xmin, Ymin, Zmin, Xmax, Ymax, Zmax].
+
 
 =head2 MakeValid(%options)
 
