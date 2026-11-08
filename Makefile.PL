@@ -5,7 +5,7 @@ use SemVer;
 use FFI::CheckLib;
 use FFI::Platypus;
 
-my $MINIMUM_GDAL = '3.13.3';
+my $MINIMUM_GDAL = '3.12.2';
 my $ok = 0;
 my ($version, $lib);
 

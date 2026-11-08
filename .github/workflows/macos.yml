@@ -64,6 +64,7 @@ jobs:
           cpanm --notest Alien::Build::MM
           cpanm --notest Sort::Versions
           cpanm --notest Alien::Build::Plugin::PkgConfig::PPWrapper
+          cpanm --notest --installdeps Alien::cmake3
           cpanm --notest --installdeps Alien::sqlite
           cpanm -v Alien::sqlite
           cpanm --notest --installdeps Alien::geos::af

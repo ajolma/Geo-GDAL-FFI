@@ -65,6 +65,7 @@ jobs:
           cpanm --notest Sort::Versions
           cpanm --notest Alien::Build::Plugin::PkgConfig::PPWrapper
           cpanm --notest --installdeps Alien::geos::af
+          cpanm --notest Alien::cmake3
           cpanm --notest Alien::geos::af
           cpanm --notest Alien::libtiff
           cpanm --notest Alien::proj
