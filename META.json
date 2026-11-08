@@ -1,59 +1,64 @@
 {
-   "abstract" : "A foreign function interface to GDAL",
-   "author" : [
-      "Ari Jolma <ari.jolma at gmail.com>"
-   ],
-   "dynamic_config" : 1,
-   "generated_by" : "ExtUtils::MakeMaker version 7.24, CPAN::Meta::Converter version 2.150010",
-   "license" : [
-      "artistic_2"
-   ],
-   "meta-spec" : {
-      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
-      "version" : "2"
-   },
-   "name" : "Geo-GDAL-FFI",
-   "no_index" : {
-      "directory" : [
-         "t",
-         "inc"
-      ]
-   },
-   "prereqs" : {
-      "build" : {
-         "requires" : {
-            "ExtUtils::MakeMaker" : "0"
-         }
-      },
-      "configure" : {
-         "requires" : {
-            "Alien::gdal" : "0"
-         }
-      },
-      "runtime" : {
-         "requires" : {
-            "Alien::gdal" : "0",
-            "FFI::Platypus" : "0",
-            "PDL" : "0",
-            "PkgConfig" : "0"
-         }
-      },
-      "test" : {
-         "requires" : {
-            "Data::Dumper" : "0",
-            "JSON" : "0",
-            "Test::More" : "0"
-         }
-      }
-   },
-   "release_status" : "stable",
-   "resources" : {
-      "repository" : {
-         "type" : "git",
-         "url" : "git://github.com/ajolma/Geo-GDAL-FFI.git",
-         "web" : "https://github.com/ajolma/Geo-GDAL-FFI"
-      }
-   },
-   "version" : 0.0501,
-   "x_serialization_backend" : "JSON::PP version 2.27400_02"
+    "abstract" : "A foreign function interface to GDAL",
+    "author" : [
+        "Ari Jolma <ari.jolma at gmail.com>"
+    ],
+    "dynamic_config" : 1,
+    "generated_by" : "ExtUtils::MakeMaker version 7.24, CPAN::Meta::Converter version 2.150010",
+    "license" : [
+        "artistic_2"
+    ],
+    "meta-spec" : {
+        "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+        "version" : "2"
+    },
+    "name" : "Geo-GDAL-FFI",
+    "no_index" : {
+        "directory" : [
+            "t",
+            "inc"
+        ]
+    },
+    "prereqs" : {
+        "build" : {
+            "requires" : {
+                "ExtUtils::MakeMaker" : "0"
+            }
+        },
+        "configure" : {
+            "requires" : {
+                "SemVer": "0",
+                "FFI::CheckLib": "0",
+                "FFI::Platypus": "0",
+            }
+        },
+        "runtime" : {
+            "requires" : {
+                "SemVer": "0",
+                "FFI::CheckLib": "0",
+                "FFI::Platypus" : "0",
+                "PkgConfig" : "0"
+            }
+        },
+        "test" : {
+            "requires" : {
+                "JSON" : "0",
+                "Data::Dumper" : "0",
+                "Path::Tiny" : "0",
+                "Test::More" : "0",
+                "Test::Exception" : "0",
+                "Test::TempDir::Tiny" : "0"
+            }
+        }
+    },
+    "release_status" : "stable",
+    "resources" : {
+        "repository" : {
+            "type" : "git",
+            "url" : "git://github.com/ajolma/Geo-GDAL-FFI.git",
+            "web" : "https://github.com/ajolma/Geo-GDAL-FFI"
+        }
+    },
+    "version" : 0.0501,
+    "x_serialization_backend" : "JSON::PP version 2.27400_02"
 }

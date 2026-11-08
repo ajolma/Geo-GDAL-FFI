@@ -24,29 +24,13 @@ jobs:
         with:
           perl-version: '5.38'
 
-      - name: Locale check
-        run: |
-          locale -a
-          sudo locale-gen de_DE
-          sudo update-locale de_DE
-#          echo Current locale:
-#          locale
-
-      - name: Locale check 2
-        run: |
-          locale -a
-          echo Current locale:
-          locale
-
       - name: perl -V
         run: perl -V
 
       - name: Prepare for CPAN cache
         run: |
           perl -V > perlversion.txt
-          # echo '20220320a' >> perlversion.txt
           echo 'bin build' >> perlversion.txt
-          # dir perlversion.txt
 
       - name: Cache CPAN modules
         uses: actions/cache@v6
@@ -56,32 +40,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
 
-
       - name: Install Dependencies
         run: |
-          sudo apt-get install -y zlib1g-dev
-          sudo apt-get install -y libnet-ssleay-perl
-          sudo apt-get install -y software-properties-common
           sudo add-apt-repository ppa:ubuntugis/ppa
           sudo apt-get install -y gdal-bin
           cpanm --notest local::lib
-          eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
-          cpanm --notest SemVer
-          cpanm --notest PkgConfig
-          cpanm --notest Alien::Build
-          cpanm --notest Alien::Base::Wrapper
-          cpanm --notest FFI::Platypus
-          cpanm --notest FFI::Platypus::Declare
-          cpanm --notest Sort::Versions
-          cpanm --notest Test::Exception
-          cpanm --notest JSON
-          cpanm --notest PDL
-          cpanm --notest Path::Tiny
-          cpanm --notest Test::TempDir::Tiny
   
       - name: Build
         run: |
           eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
-          perl Makefile.PL
           cpanm --notest --installdeps .
+          perl Makefile.PL
           make test
