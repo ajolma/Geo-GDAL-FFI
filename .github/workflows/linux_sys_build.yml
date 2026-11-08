@@ -58,6 +58,7 @@ jobs:
           cpanm --notest local::lib
           echo $(perl -Mlocal::lib=${HOME}/perl5)
           eval "$(perl -Mlocal::lib=${HOME}/perl5)"
+          cpanm --notest SemVer
           cpanm --notest Path::Tiny
           cpanm --notest Test::TempDir::Tiny
           cpanm --notest PDL

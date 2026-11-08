@@ -56,6 +56,7 @@ jobs:
 
       - name: Install Dynamic Dependencies
         run: |
+          cpanm --notest SemVer
           cpanm --notest Path::Tiny
           cpanm --notest Test::TempDir::Tiny
           cpanm --notest PDL

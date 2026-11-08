@@ -56,6 +56,7 @@ jobs:
         run: |
           cpanm --notest local::lib
           eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
+          cpanm --notest SemVer
           cpanm --notest Path::Tiny
           cpanm --notest Test::TempDir::Tiny
           cpanm --notest PDL
