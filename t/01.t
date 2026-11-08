@@ -204,7 +204,7 @@ if(1){
             'AUTHORITY["EPSG","4326"]]';
     #  Handle Alien::gdal version issues due to PkgConfig, where version is a '${CONFIG_VERSION}' literal
     #  We should not be seeing version 2 in the wild now anyway.
-    if ($ffi->{gdal}->version =~ /^2/) {
+    if ($ffi->version() =~ /^2/) {
         $ogc_wkt =
             'GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS84",6378137,298.257223563,'.
             'AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,'.

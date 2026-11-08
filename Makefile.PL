@@ -1,6 +1,53 @@
 use strict;
 use warnings;
 
+use SemVer;
+use FFI::CheckLib;
+use FFI::Platypus;
+
+my $MINIMUM_GDAL = '3.13.3';
+my $ok = 0;
+my ($version, $lib);
+
+for (@ARGV) {
+    $ok = 1, last if /--skip-check/;
+}
+
+if (!$ok) {
+    # Find the latest with shortest filename
+    my $versions = my_find_lib();
+    for my $fn (sort keys %$versions) {
+        my $ver = $versions->{$fn};
+        if (!$version or $ver > $version or ($ver == $version and length($fn) < length($lib))) {
+            $version = $ver;
+            $lib = $fn;
+        }
+        #print "$lib => $versions->{$lib}\n";
+    }
+    my $minimum = SemVer->new($MINIMUM_GDAL);
+    if (!$version) {
+        print "GDAL was NOT found.\n";
+    } elsif ($version < $minimum) {
+        print "Version $version GDAL was found in $lib, but it is too old.\n";
+    } else {
+        print "Usable version $version GDAL was found in $lib.\n";
+        $ok = 1;
+    }
+    if (!$ok) {
+        print "Either install libgdal or install Alien::gdal.\n";
+        print "You can skip this step with --skip-check.\n";
+        exit(1);
+    }
+}
+
+if ($lib) {
+    open(FH, '>', 'lib/Geo/GDAL/FFI/lib.pm') or die $!;
+    print FH "package Geo::GDAL::FFI::lib;\nour \$libgdal = '$lib';\n";
+    close(FH);
+} else {
+    unlink('lib/Geo/GDAL/FFI/lib.pm');
+    unlink('blib/lib/Geo/GDAL/FFI/lib.pm')
+}
 
 use ExtUtils::MakeMaker 6.52;
 
@@ -14,21 +61,22 @@ my %args = (
     LICENSE => "artistic_2",
     MIN_PERL_VERSION => '5.010',
     CONFIGURE_REQUIRES => {
-        'Alien::gdal' => 0,
+        'SemVer' => 0,
+        'FFI::CheckLib' => 0,
+        'FFI::Platypus' => 0,
     },
     PREREQ_PM => {
         'PkgConfig' => 0.23026,
+        'FFI::CheckLib' => 0,
         'FFI::Platypus' => 0,
-        'PDL' => 0,
-        'Sort::Versions' => 0,
-        'Alien::gdal' => 0,
+        'SemVer' => 0,
     },
     TEST_REQUIRES => {
-        'Test::More'          => 0,
-        'Test::Exception'     => 0,
         'JSON'                => 0,
         'Data::Dumper'        => 0,
         'Path::Tiny'          => 0,
+        'Test::More'          => 0,
+        'Test::Exception'     => 0,
         'Test::TempDir::Tiny' => 0,
     },
     META_MERGE => {
@@ -47,3 +95,20 @@ my %args = (
 );
 
 WriteMakefile(%args);
+
+sub my_find_lib {
+    my %versions;
+    my ($lib) = find_lib(
+        lib => 'gdal',
+        verify => sub {
+            my($name, $libpath) = @_;
+            my $ffi = FFI::Platypus->new;
+            $ffi->lib($libpath);
+            my $f = $ffi->function('GDALVersionInfo', [qw/string/] => 'string');
+            my $gdal_version = SemVer->new($f->call('RELEASE_NAME'));
+            $versions{$libpath} = $gdal_version;
+            return 0;
+        },
+    );
+    return \%versions;
+}
