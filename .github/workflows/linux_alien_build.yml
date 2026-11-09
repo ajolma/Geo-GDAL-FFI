@@ -1,4 +1,4 @@
-name: linux_bin_build
+name: linux_alien_build
 
 on:
   push:
