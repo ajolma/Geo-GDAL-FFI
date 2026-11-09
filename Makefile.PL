@@ -8,6 +8,25 @@ use FFI::Platypus;
 my $MINIMUM_GDAL = '3.12.2';
 my $ok = 0;
 my ($version, $lib);
+my $skip_alien = 0;
+
+for (@ARGV) {
+    $skip_alien = 1, last if /--skip-alient/;
+}
+
+unless ($skip_alien) {
+    eval {
+        require Alien::gdal;
+        $lib = (Alien::gdal->dynamic_libs())[0];
+        $version = Alien::gdal->version();
+        print STDERR "You seem to have Alien::gdal ($lib, version $version). Will use that.\n";
+        $lib = 'Alien::gdal';
+        $ok = 1;
+    };
+    if ($@) {
+        print STDERR "$@\n";
+    }
+}
 
 for (@ARGV) {
     $ok = 1, last if /--skip-check/;

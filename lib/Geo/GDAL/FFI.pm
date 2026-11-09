@@ -444,7 +444,7 @@ sub isint {
 
 sub new {
     return $instance if $instance;
-    my ($class, $gdal, $ffi) = @_;
+    my ($class, $ffi) = @_;
 
     $ffi->type('(pointer,size_t,size_t,opaque)->size_t' => 'VSIWriteFunction');
     $ffi->type('(int,int,string)->void' => 'CPLErrorHandler');
@@ -461,7 +461,7 @@ sub new {
 
     # from port/*.h
     $ffi->attach(VSIMalloc => [qw/uint/] => 'opaque');
-    croak "Can't attach to GDAL methods. Problem with GDAL dynamic libs: '$gdal'?" unless $class->can('VSIMalloc');
+    croak "Can't attach to GDAL methods. Problem with GDAL dynamic libs?" unless $class->can('VSIMalloc');
     $ffi->attach(VSIFree => ['opaque'] => 'void');
     $ffi->attach(CPLError => [qw/int int string/] => 'void');
     $ffi->attach(VSIFOpenL => [qw/string string/] => 'opaque');
@@ -1576,7 +1576,6 @@ $ffi->attach('GDALVectorInfo' => [qw/opaque opaque/] => 'string');
 
     $instance = {};
     $instance->{ffi} = $ffi;
-    $instance->{gdal} = $gdal;
     SetErrorHandling();
     GDALAllRegister();
     return bless $instance, $class;
@@ -1791,64 +1790,61 @@ sub get_memory_driver {
     return SemVer->new(GetVersionInfo('RELEASE_NAME')) >= SemVer->new('3.11.0') ? 'MEM' : 'Memory';
 }
 
+sub _set_config {
+    my $ffi = shift;
+    my $version = SemVer->new(Alien::gdal->version() =~ s/[^\d\.]//g);
+    if ($version <= SemVer->new('2.3.1')) {
+        # we do not use Alien::gdal->data_dir since it issues warnings due to GDAL bug
+        my $pc = PkgConfig->find('gdal');
+        if ($pc->errmsg) {
+            my $dir = Alien::gdal->dist_dir;
+            my %options = (search_path_override => ["$dir/lib/pkgconfig", "$dir/lib64/pkgconfig"]);
+            $pc = PkgConfig->find('gdal', %options);
+        }
+        if ($pc->errmsg) {
+            warn $pc->errmsg;
+        } else {
+            my $dir = $pc->get_var('datadir');
+            # this gdal.pc bug was fixed in GDAL 2.3.1
+            # we just hope the one configuring GDAL did not change it to something that ends '/data'
+            $dir =~ s/\/data$//;
+            my $f = $ffi->function('CPLSetConfigOption', [qw/string string/] => 'void');
+            if (opendir(my $dh, $dir)) {
+                $f->call(GDAL_DATA => $dir);
+            } else {
+                my $dist_data_dir = Alien::gdal->dist_dir . '/share/gdal';
+                if (-d $dist_data_dir) {
+                    $f->call(GDAL_DATA => $dist_data_dir);
+                }
+                else {
+                    warn "GDAL data directory ($dir) was not found.";
+                }
+            }
+        }
+    }
+}
+
 BEGIN {
     require PkgConfig;
     PkgConfig->import;
-    my $gdal;
     my $ffi = FFI::Platypus->new;
     eval {
         require Geo::GDAL::FFI::lib;
-        $gdal = $Geo::GDAL::FFI::lib::libgdal;
-        $ffi->lib($gdal);
-    };
-    if ($@) {
-        eval {
-            $gdal = FFI::CheckLib::find_lib_or_die(lib => 'gdal');
-            $ffi->lib($gdal);
-        };
-    };
-    if ($@) {
-        print STDERR "$@\n";
-        eval {
+        my $lib = $Geo::GDAL::FFI::lib::libgdal;
+        if ($lib eq 'Alien::gdal') {
             require Alien::gdal;
-            no strict 'subs';
-            $gdal = Alien::gdal;
-            my @libs = $gdal->dynamic_libs;
-            $ffi->lib(@libs);
-
-            if (versioncmp($gdal->version, '2.3.1') <= 0) {
-                # we do not use Alien::gdal->data_dir since it issues warnings due to GDAL bug
-                my $pc = PkgConfig->find('gdal');
-                if ($pc->errmsg) {
-                    my $dir = Alien::gdal->dist_dir;
-                    my %options = (search_path_override => ["$dir/lib/pkgconfig", "$dir/lib64/pkgconfig"]);
-                    $pc = PkgConfig->find('gdal', %options);
-                }
-                if ($pc->errmsg) {
-                    warn $pc->errmsg;
-                } else {
-                    my $dir = $pc->get_var('datadir');
-                    # this gdal.pc bug was fixed in GDAL 2.3.1
-                    # we just hope the one configuring GDAL did not change it to something that ends '/data'
-                    $dir =~ s/\/data$//;
-                    my $f = $ffi->function('CPLSetConfigOption', [qw/string string/] => 'void');
-                    if (opendir(my $dh, $dir)) {
-                        $f->call(GDAL_DATA => $dir);
-                    } else {
-                        my $dist_data_dir = Alien::gdal->dist_dir . '/share/gdal';
-                        if (-d $dist_data_dir) {
-                            $f->call(GDAL_DATA => $dist_data_dir);
-                        }
-                        else {
-                            warn "GDAL data directory ($dir) was not found.";
-                        }
-                    }
-                }
-            }
-
+            $ffi->lib(Alien::gdal->dynamic_libs());
+            _set_config($ffi)
+        } else {
+            $ffi->lib($lib);
+        }
+    };
+    if ($@) {
+        eval {
+            $ffi->lib(FFI::CheckLib::find_lib_or_die(lib => 'gdal'));
         };
     };
-    $instance = Geo::GDAL::FFI->new($gdal, $ffi);
+    $instance = Geo::GDAL::FFI->new($ffi);
 }
 
 {

@@ -1,0 +1,55 @@
+name: linux_bin_build
+
+on:
+  push:
+    branches:
+      - '*'
+    tags-ignore:
+      - '*'
+  pull_request:
+
+env:
+  PERL_MOD_DIR: /home/runner/perl5/lib/perl5
+
+
+jobs:
+  perl:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: '5.38'
+
+      - name: perl -V
+        run: perl -V
+
+      - name: Prepare for CPAN cache
+        run: |
+          perl -V > perlversion.txt
+          echo 'bin build' >> perlversion.txt
+
+      - name: Cache CPAN modules
+        uses: actions/cache@v6
+        with:
+          path: /home/runner/perl5/
+          key: ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
+
+      - name: Install Dependencies
+        run: |
+          sudo add-apt-repository ppa:ubuntugis/ppa
+          sudo apt-get install -y gdal-bin
+          cpanm --notest local::lib
+          cpanm --notest Alien::gdal
+  
+      - name: Build
+        run: |
+          eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
+          cpanm --notest --installdeps .
+          perl Makefile.PL
+          make test

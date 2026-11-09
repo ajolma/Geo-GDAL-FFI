@@ -122,7 +122,7 @@ EOE
     is($test->AsText, $exp->AsText, 'Segmentize');
 }
 
-{
+SKIP: {
     skip "No GEOS support in GDAL.", 5 unless $have_geos;
     my $wkt = 'MULTIPOLYGON (((0 0, 0 1, 1 1, 1 0, 0 0)),((1 0, 1 1, 2 1, 2 0, 1 0)))';
     my $geom = Geo::GDAL::FFI::Geometry->new(WKT => $wkt);
