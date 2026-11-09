@@ -1,9 +1,15 @@
 use strict;
 use warnings;
 
-use SemVer;
-use FFI::CheckLib;
-use FFI::Platypus;
+eval {
+    require SemVer;
+    require FFI::CheckLib;
+    require FFI::Platypus;
+};
+if ($@) {
+    print STDERR "SemVer, FFI::CheckLib, and FFI::Platypus are required.\n";
+    exit(1);
+}
 
 my $MINIMUM_GDAL = '3.12.2';
 my $ok = 0;
@@ -24,7 +30,7 @@ unless ($skip_alien) {
         $ok = 1;
     };
     if ($@) {
-        print STDERR "$@\n";
+        print STDERR "You do not seem to have Alien::gdal.\n";
     }
 }
 
@@ -117,7 +123,7 @@ WriteMakefile(%args);
 
 sub my_find_lib {
     my %versions;
-    my ($lib) = find_lib(
+    my ($lib) = FFI::CheckLib::find_lib(
         lib => 'gdal',
         verify => sub {
             my($name, $libpath) = @_;
