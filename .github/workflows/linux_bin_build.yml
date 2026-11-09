@@ -27,19 +27,6 @@ jobs:
       - name: perl -V
         run: perl -V
 
-      - name: Prepare for CPAN cache
-        run: |
-          perl -V > perlversion.txt
-          echo 'bin build' >> perlversion.txt
-
-      - name: Cache CPAN modules
-        uses: actions/cache@v6
-        with:
-          path: /home/runner/perl5/
-          key: ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ hashFiles('perlversion.txt') }}
-
       - name: Install Dependencies
         run: |
           sudo add-apt-repository ppa:ubuntugis/ppa
