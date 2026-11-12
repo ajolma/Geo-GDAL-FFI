@@ -11,7 +11,7 @@ if ($@) {
     exit(1);
 }
 
-my $MINIMUM_GDAL = '3.12.2';
+my $MINIMUM_GDAL = '3.1.0';
 my $ok = 0;
 my ($version, $lib);
 my $skip_alien = 0;
