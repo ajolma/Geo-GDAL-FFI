@@ -218,6 +218,7 @@ sub SetColorTable {
 }
 
 sub GetPiddle {
+    confess "PDL is NOT installed." unless $Geo::GDAL::FFI::have_pdl;
     require PDL::Lite;  #  minimal load
     my ($self, $xoff, $yoff, $xsize, $ysize, $xdim, $ydim, $alg) = @_;
     $xoff //= 0;
@@ -262,6 +263,7 @@ sub GetPiddle {
 }
 
 sub SetPiddle {
+    confess "PDL is NOT installed." unless $Geo::GDAL::FFI::have_pdl;
     my ($self, $pdl, $xoff, $yoff, $xsize, $ysize) = @_;
     $xoff //= 0;
     $yoff //= 0;
