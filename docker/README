@@ -1,0 +1,13 @@
+docker buildx build -t geo-gdal-ffi .
+docker run -it --rm geo-gdal-ffi /bin/bash
+
+# Here you can try different combinations
+# with gdal-bin, gdal-dev, without Alien::gdal, with Alien::gdal
+
+apt install software-properties-common
+add-apt-repository ppa:ubuntugis/ppa
+
+apt install -y gdal-bin
+apt install -y libgdal-dev
+
+cpanm -v Alien::gdal
