@@ -97,6 +97,6 @@ jobs:
           export GDAL_LIB=`perl -MAlien::gdal -E'print q{}, Alien::gdal->dist_dir'`
           ls -lR $GDAL_LIB
           ldd `perl -MAlien::gdal -E'print q{}, Alien::gdal->dist_dir, q{/lib/libgdal.so}'`
-          perl Makefile.PL
           cpanm --installdeps --notest .
+          perl Makefile.PL
           make test
