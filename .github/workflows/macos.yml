@@ -81,7 +81,7 @@ jobs:
   
       - name: Build
         run: |
-          perl Makefile.PL
           cpanm --installdeps --notest .
+          perl Makefile.PL
           make test
           
