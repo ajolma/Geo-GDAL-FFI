@@ -9,11 +9,20 @@ use Data::Dumper;
 use JSON;
 use FFI::Platypus::Buffer;
 
-
 SKIP: {
-    skip "PDL not installed" if not $Geo::GDAL::FFI::have_pdl;
 
     my $band = GetDriver('MEM')->Create('', {Width => 7, Height => 15})->GetBand;
+
+    if (not $Geo::GDAL::FFI::have_pdl) {
+
+        eval {
+            my $pdl = $band->GetPiddle;
+        };
+        ok($@ =~ /^PDL is NOT installed/, 'GetPiddle confesses without PDL')
+
+    }
+
+    skip "PDL not installed" unless $Geo::GDAL::FFI::have_pdl;
 
     my $t = $band->Read;
     $t->[5][3] = 1;

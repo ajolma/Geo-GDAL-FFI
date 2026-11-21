@@ -32,6 +32,13 @@ my %args = (
     },
     META_MERGE => {
         "meta-spec" => { version => 2 },
+        prereqs     => {
+            runtime => {
+                recommends => {
+                    'PDL' => 0,
+                },
+            },
+        },
         resources => {
             repository => {
                 type => 'git',
