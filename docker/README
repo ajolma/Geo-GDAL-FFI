@@ -1,13 +1,47 @@
 docker buildx build -t geo-gdal-ffi .
 docker run -it --rm geo-gdal-ffi /bin/bash
 
+cd Geo-GDAL-FFI/
+git checkout ffi-checklib-bootstrap
+git config --global user.email "you@example.com"
+git config --global user.name "Your Name"
+git merge origin/optional-pdl
+
+# Fix Makefile.PL to accept only SemVer in PREREQ_PM and remove PDL from TEST_REQUIRES
+nano Makefile.PL
+
+# Running this
+perl Makefile.PL
+# reports now SemVer, FFI::CheckLib, and FFI::Platypus are required.
+# Run
+cpanm --notest --installdeps .
+
+# Now
+perl Makefile.PL
+# reports
+# You do not seem to have Alien::gdal.
+# GDAL was NOT found.
+# Either install libgdal or install Alien::gdal.
+
 # Here you can try different combinations
 # with gdal-bin, gdal-dev, without Alien::gdal, with Alien::gdal
 
-apt install software-properties-common
-add-apt-repository ppa:ubuntugis/ppa
-
+# The simplest one is
 apt install -y gdal-bin
+
+# and then
+perl Makefile.PL
+make test
+
+#apt install software-properties-common
+#add-apt-repository ppa:ubuntugis/ppa
+
+# Alien::gdal way is *very* long
+
+cpanm Alien::gdal
+
+# Unless you do
+
 apt install -y libgdal-dev
 
-cpanm -v Alien::gdal
+# first but it is still long
