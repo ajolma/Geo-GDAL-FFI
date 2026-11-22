@@ -95,10 +95,8 @@ my %args = (
         'FFI::CheckLib' => 0,
         'FFI::Platypus' => 0,
         'SemVer' => 0,
-        'PDL' => 0,
     },
     TEST_REQUIRES => {
-        'PDL'                 => 0,
         'JSON'                => 0,
         'Data::Dumper'        => 0,
         'Path::Tiny'          => 0,
