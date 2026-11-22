@@ -4,7 +4,13 @@ use v5.10;
 use strict;
 use warnings;
 use Carp;
-use PDL::Types ();
+our $have_pdl = 1;
+eval {
+    require PDL::Types;
+};
+if ($@) {
+    $have_pdl = 0;
+}
 use Config ();  #  needed to silence some FFI::Platypus warnings
 use FFI::Platypus;
 use FFI::Platypus::Buffer;
@@ -239,14 +245,17 @@ sub ResamplingMethods {
     return sort {$resampling{$a} <=> $resampling{$b}} keys %resampling;
 }
 
-our %data_type2pdl_data_type = (
-    Byte => $PDL::Types::PDL_B,
-    Int16 => $PDL::Types::PDL_S,
-    UInt16 => $PDL::Types::PDL_US,
-    Int32 => $PDL::Types::PDL_L,
-    Float32 => $PDL::Types::PDL_F,
-    Float64 => $PDL::Types::PDL_D,
+our %data_type2pdl_data_type = ();
+if ($have_pdl) {
+    %data_type2pdl_data_type = (
+        Byte => $PDL::Types::PDL_B,
+        Int16 => $PDL::Types::PDL_S,
+        UInt16 => $PDL::Types::PDL_US,
+        Int32 => $PDL::Types::PDL_L,
+        Float32 => $PDL::Types::PDL_F,
+        Float64 => $PDL::Types::PDL_D,
     );
+}
 our %pdl_data_type2data_type = reverse %data_type2pdl_data_type;
 
 our %field_types = (

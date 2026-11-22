@@ -23,7 +23,6 @@ no_index:
 requires:
   Alien::gdal: '0'
   FFI::Platypus: '0'
-  PDL: '0'
   PkgConfig: '0'
 resources:
   repository: git://github.com/ajolma/Geo-GDAL-FFI.git

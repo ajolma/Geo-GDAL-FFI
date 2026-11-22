@@ -19,7 +19,6 @@ my %args = (
     PREREQ_PM => {
         'PkgConfig' => 0.23026,
         'FFI::Platypus' => 0,
-        'PDL' => 0,
         'Sort::Versions' => 0,
         'Alien::gdal' => 0,
     },
@@ -33,6 +32,13 @@ my %args = (
     },
     META_MERGE => {
         "meta-spec" => { version => 2 },
+        prereqs     => {
+            runtime => {
+                recommends => {
+                    'PDL' => 0,
+                },
+            },
+        },
         resources => {
             repository => {
                 type => 'git',
