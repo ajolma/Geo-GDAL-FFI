@@ -81,6 +81,6 @@ jobs:
       - name: Build
         run: |
           eval "$(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)"
-          perl Makefile.PL
           cpanm --notest --installdeps .
+          perl Makefile.PL
           make test
