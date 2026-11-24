@@ -17,7 +17,7 @@ my ($version, $lib);
 my $skip_alien = 0;
 
 for (@ARGV) {
-    $skip_alien = 1, last if /--skip-alien/;
+    $skip_alien = 1, last if /--skip-alien-gdal/;
 }
 
 unless ($skip_alien) {
@@ -35,7 +35,7 @@ unless ($skip_alien) {
 }
 
 for (@ARGV) {
-    $ok = 1, last if /--skip-check/;
+    $ok = 1, last if /--skip-gdal-check/;
 }
 
 if (!$ok) {
